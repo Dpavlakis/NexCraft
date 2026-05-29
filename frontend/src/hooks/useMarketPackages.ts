@@ -34,6 +34,10 @@ export interface UseMarketPackagesOptions {
  */
 export function useMarketPackages(options: UseMarketPackagesOptions = {}) {
   const packages = ref<QuickStartPackages[]>([]);
+  // Optional per-gameType banner image used for the gallery summary tile, so a
+  // game whose packages each have their own logo (e.g. Minecraft loaders) can
+  // still show a single banner when grouped.
+  const gameTypeImages = ref<Record<string, string>>({});
   const { onlyDockerTemplate = false } = options;
 
   // Search form state
@@ -130,6 +134,7 @@ export function useMarketPackages(options: UseMarketPackagesOptions = {}) {
         if (!map.has(item.gameType)) {
           const summary: QuickStartPackages = {
             ...item,
+            image: gameTypeImages.value[item.gameType] || item.image,
             key: JSON.stringify({
               title: item.title,
               language: item.language,
@@ -278,6 +283,7 @@ export function useMarketPackages(options: UseMarketPackagesOptions = {}) {
       const list = await getQuickInstallListAddr();
       languageOptions.value = list.value?.languages || [];
       packages.value = list.value?.packages || [];
+      gameTypeImages.value = (list.value as any)?.gameTypeImages || {};
     } catch (err: any) {
       console.error(err.message);
       return reportErrorMsg(err.message);
