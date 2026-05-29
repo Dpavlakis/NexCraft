@@ -61,6 +61,15 @@ interface ResultItem {
 const results = ref<ResultItem[]>([]);
 const loading = ref(false);
 const searchText = ref("");
+const sortField = ref("featured");
+const sortOptions = [
+  { value: "featured", label: t("TXT_CODE_modpack_sort_featured") },
+  { value: "popularity", label: t("TXT_CODE_modpack_sort_popularity") },
+  { value: "lastupdated", label: t("TXT_CODE_modpack_sort_updated") },
+  { value: "name", label: t("TXT_CODE_modpack_sort_name") },
+  { value: "author", label: t("TXT_CODE_modpack_sort_author") },
+  { value: "totaldownloads", label: t("TXT_CODE_modpack_sort_downloads") }
+];
 
 const loadCustom = async () => {
   loading.value = true;
@@ -93,6 +102,7 @@ const search = async () => {
         query: searchText.value,
         source: source.value,
         type: "modpack",
+        sort: sortField.value,
         offset: 0,
         limit: 30
       },
@@ -261,7 +271,7 @@ onMounted(() => {
       <a-col :xs="24" :md="19">
         <CardPanel style="height: 100%">
           <template #body>
-            <div v-if="source !== 'custom'" class="mb-12">
+            <div v-if="source !== 'custom'" class="mb-12 search-row">
               <a-input-search
                 v-model:value="searchText"
                 :placeholder="t('TXT_CODE_modpack_search_ph')"
@@ -270,6 +280,12 @@ onMounted(() => {
               >
                 <template #prefix><SearchOutlined /></template>
               </a-input-search>
+              <a-select
+                v-model:value="sortField"
+                class="sort-select"
+                :options="sortOptions"
+                @change="search"
+              />
             </div>
             <a-spin :spinning="loading">
               <a-list item-layout="horizontal" :data-source="results">
@@ -343,5 +359,14 @@ onMounted(() => {
 <style lang="scss" scoped>
 .mb-12 {
   margin-bottom: 12px;
+}
+.search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.sort-select {
+  width: 200px;
+  flex-shrink: 0;
 }
 </style>

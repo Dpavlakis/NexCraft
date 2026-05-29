@@ -307,6 +307,7 @@ class ModManagerService {
       type?: string;
       loader?: string;
       environment?: string;
+      sort?: string;
     }
   ) {
     if (limit > 50) throw new Error("Limit cannot be greater than 100");
@@ -379,7 +380,7 @@ class ModManagerService {
     query: string,
     offset = 0,
     limit = 20,
-    filters?: { version?: string; type?: string; loader?: string; environment?: string }
+    filters?: { version?: string; type?: string; loader?: string; environment?: string; sort?: string }
   ) {
     try {
       const facets: string[][] = [];
@@ -434,12 +435,21 @@ class ModManagerService {
         }
       }
 
+      const modrinthIndexMap: Record<string, string> = {
+        featured: "relevance",
+        popularity: "downloads",
+        lastupdated: "updated",
+        name: "relevance",
+        author: "relevance",
+        totaldownloads: "downloads"
+      };
       const res = await this.requestWithRetry({
         method: "GET",
         url: `${this.baseUrl}/search`,
         params: {
           query,
           facets: facets.length > 0 ? JSON.stringify(facets) : undefined,
+          index: modrinthIndexMap[(filters?.sort || "featured").toLowerCase()] || "relevance",
           offset,
           limit
         }
@@ -526,7 +536,7 @@ class ModManagerService {
     query: string,
     offset = 0,
     limit = 20,
-    filters?: { version?: string; type?: string; loader?: string; environment?: string }
+    filters?: { version?: string; type?: string; loader?: string; environment?: string; sort?: string }
   ) {
     try {
       const classIdMap: Record<string, number> = {
@@ -569,6 +579,19 @@ class ModManagerService {
       if (filters?.version) {
         params.gameVersion = filters.version;
       }
+
+      // CurseForge sortField: 1 Featured, 2 Popularity, 3 LastUpdated, 4 Name, 5 Author, 6 TotalDownloads
+      const cfSortMap: Record<string, number> = {
+        featured: 1,
+        popularity: 2,
+        lastupdated: 3,
+        name: 4,
+        author: 5,
+        totaldownloads: 6
+      };
+      const sf = cfSortMap[(filters?.sort || "featured").toLowerCase()] || 1;
+      params.sortField = sf;
+      params.sortOrder = sf === 4 ? "asc" : "desc";
 
       const res = await this.requestWithRetry({
         method: "GET",

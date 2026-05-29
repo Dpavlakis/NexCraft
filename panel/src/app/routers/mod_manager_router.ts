@@ -119,6 +119,7 @@ router.get(
       const type = String(ctx.query.type || "all");
       const loader = String(ctx.query.loader || "all");
       const environment = String(ctx.query.environment || "all");
+      const sort = String(ctx.query.sort || "featured");
 
       if (offset < 0 || offset > 100000) {
         throw new Error("Offset must be between 0 and 100000");
@@ -132,7 +133,8 @@ router.get(
         version,
         type,
         loader,
-        environment
+        environment,
+        sort
       });
       ctx.body = result;
     } catch (err) {

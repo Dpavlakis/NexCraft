@@ -35,6 +35,7 @@ export const modpackSearch = useDefineApi<
       query: string;
       source: string; // curseforge | modrinth
       type: string; // "modpack"
+      sort?: string; // featured | popularity | lastupdated | name | author | totaldownloads
       offset?: number;
       limit?: number;
     };
