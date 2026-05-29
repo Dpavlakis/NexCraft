@@ -175,7 +175,7 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
       ]
     },
     {
-      page: "/market",
+      page: "/minecraft",
       items: [
         {
           id: getRandomId(),
@@ -197,7 +197,7 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
       ]
     },
     {
-      page: "/market/editor",
+      page: "/minecraft/editor",
       items: [
         {
           id: getRandomId(),

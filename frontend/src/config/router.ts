@@ -201,7 +201,7 @@ const originRouterConfig: RouterConfig[] = [
     ]
   },
   {
-    path: "/market",
+    path: "/minecraft",
     name: t("TXT_CODE_minecraft_menu"),
     component: LayoutContainer,
     meta: {

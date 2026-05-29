@@ -378,7 +378,7 @@ const submitSso = async () => {
 const leftMenusPanelRef = ref<InstanceType<typeof LeftMenusPanel>>();
 
 const toTemplate = {
-  path: "/market/editor",
+  path: "/minecraft/editor",
   new: () =>
     router.push({
       path: toTemplate.path,

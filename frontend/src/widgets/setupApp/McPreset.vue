@@ -23,7 +23,7 @@ const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 let daemonId = getMetaOrRouteValue("daemonId", false) ?? "";
 let currentNode = ref<ComputedNodeInfo | undefined>(undefined);
 
-const isMarketPage = router.currentRoute.value.path.includes("/market");
+const isMarketPage = router.currentRoute.value.path.includes("/minecraft");
 if (isMarketPage) {
   daemonId = "";
 }

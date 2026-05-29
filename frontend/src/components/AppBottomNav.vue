@@ -24,7 +24,7 @@ const isExpanded = ref(false);
 
 const routePathIcons: Record<string, Component> = {
   "/instances": AppstoreOutlined,
-  "/market": ShopOutlined,
+  "/minecraft": ShopOutlined,
   "/overview": AreaChartOutlined,
   "/users": TeamOutlined,
   "/node": ApartmentOutlined,

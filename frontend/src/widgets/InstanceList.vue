@@ -284,7 +284,7 @@ const handleChangeNode = async (item: NodeStatus) => {
 
 const toCreateAppPage = () => {
   router.push({
-    path: "/market",
+    path: "/minecraft",
     query: {
       daemonId: currentRemoteNode.value?.uuid
     }
@@ -293,7 +293,7 @@ const toCreateAppPage = () => {
 
 const toMarketPage = () => {
   router.push({
-    path: "/market",
+    path: "/minecraft",
     query: {
       daemonId: currentRemoteNode.value?.uuid
     }

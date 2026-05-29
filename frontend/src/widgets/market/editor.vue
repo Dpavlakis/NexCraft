@@ -243,7 +243,7 @@ const uploadToPanel = async () => {
     message.success(t("TXT_CODE_a7907771"));
     setTimeout(() => {
       router.push({
-        path: "/market",
+        path: "/minecraft",
         query: {
           newTemplate: "true"
         }
