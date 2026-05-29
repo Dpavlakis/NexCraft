@@ -145,18 +145,36 @@ class JavaManager {
       const url =
         "https://api.azul.com/metadata/v1/zulu/packages/?java_package_type=jre" +
         `&release_status=ga&availability_types=CA&java_version=${major}&os=${azulOs}` +
-        `&arch=${os.arch()}&archive_type=tar.gz&page=1&page_size=25`;
+        `&arch=${os.arch()}&archive_type=tar.gz&page=1&page_size=12`;
       const { data } = await axios.get(url, { timeout: 20000 });
-      return (Array.isArray(data) ? data : [])
-        .map((p: any) => ({
-          vendor: "zulu",
-          version: Array.isArray(p.java_version) ? p.java_version.join(".") : String(major),
-          releaseName: p.name,
-          releaseTime: undefined,
-          downloadUrl: p.download_url,
-          type: "jre"
-        }))
-        .filter((x: IJavaRelease) => x.downloadUrl);
+      const packages = (Array.isArray(data) ? data : []).filter((p: any) => p.download_url);
+      // The Azul list endpoint omits release dates; the per-package detail
+      // endpoint exposes build_date. Fetch them in parallel (best-effort) so
+      // the picker can show release dates like the Adoptium list does.
+      return await Promise.all(
+        packages.map(async (p: any) => {
+          let releaseTime: string | undefined;
+          try {
+            if (p.package_uuid) {
+              const { data: detail } = await axios.get(
+                `https://api.azul.com/metadata/v1/zulu/packages/${p.package_uuid}`,
+                { timeout: 12000 }
+              );
+              releaseTime = detail?.build_date || undefined;
+            }
+          } catch {
+            // date is best-effort; ignore failures
+          }
+          return {
+            vendor: "zulu",
+            version: Array.isArray(p.java_version) ? p.java_version.join(".") : String(major),
+            releaseName: p.name,
+            releaseTime,
+            downloadUrl: p.download_url,
+            type: "jre"
+          } as IJavaRelease;
+        })
+      );
     } catch {
       return [];
     }
