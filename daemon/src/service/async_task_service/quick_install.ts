@@ -10,6 +10,7 @@ import InstanceConfig from "../../entity/instance/Instance_config";
 import { $t } from "../../i18n";
 import { getFileManager } from "../file_router_service";
 import { InstanceUpdateAction } from "../instance_update_action";
+import { assignFreeMcPort } from "../mc_port";
 import logger from "../log";
 import InstanceSubsystem from "../system_instance";
 import { AsyncTask, IAsyncTaskJSON, TaskCenter } from "./index";
@@ -214,6 +215,17 @@ export class QuickInstallTask extends AsyncTask {
 
       this.instance.resetConfigWithoutDocker();
       this.instance.parameters(config, true);
+
+      // Auto-assign a free port for Minecraft instances so multiple servers
+      // don't all default to 25565.
+      if (String(this.instance.config.type || "").includes("minecraft")) {
+        try {
+          const port = await assignFreeMcPort(this.instance);
+          this.instance.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
+        } catch {
+          // non-fatal
+        }
+      }
 
       this.instance.println("INFO", $t("TXT_CODE_4eccdde8"));
 
