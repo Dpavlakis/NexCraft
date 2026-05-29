@@ -247,7 +247,9 @@ const instanceOperations = computed(() =>
       },
       loading: updateLoading.value,
       disabled: containerState.isDesignMode,
-      condition: () => isStopped.value
+      // Only show the legacy "run update command" action when an update command
+      // is actually configured. For modpacks, use the Update Modpack card instead.
+      condition: () => isStopped.value && !!instanceInfo.value?.config?.updateCommand
     },
     {
       title: t("TXT_CODE_7b67813a"),
