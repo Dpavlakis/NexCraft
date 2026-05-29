@@ -156,7 +156,7 @@ export class ModpackInstallTask extends AsyncTask {
 
     return {
       mc: this.descriptor.mcVersion || "",
-      loader: this.descriptor.loader || "forge",
+      loader: (this.descriptor.loader || "forge") as ModLoader,
       loaderVersion: this.descriptor.loaderVersion || ""
     };
   }

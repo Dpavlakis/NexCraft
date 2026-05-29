@@ -86,7 +86,7 @@ export class ModpackUpdateTask extends AsyncTask {
         await maybeFlatten(staging);
         resolved = {
           mc: this.descriptor.mcVersion || existing.mcVersion,
-          loader: this.descriptor.loader || existing.loader,
+          loader: (this.descriptor.loader || existing.loader) as ModLoader,
           loaderVersion: this.descriptor.loaderVersion || existing.loaderVersion
         };
       } else {
