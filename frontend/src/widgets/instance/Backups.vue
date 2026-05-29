@@ -27,6 +27,7 @@ import {
   DownloadOutlined,
   FolderOpenOutlined,
   RedoOutlined,
+  RollbackOutlined,
   SaveOutlined
 } from "@ant-design/icons-vue";
 import { message } from "ant-design-vue";
@@ -319,6 +320,7 @@ onBeforeUnmount(() => {
           </template>
           <template #right>
             <a-button @click="toConsole">
+              <template #icon><RollbackOutlined /></template>
               {{ t("TXT_CODE_backup_to_console") }}
             </a-button>
             <a-button @click="loadBackups">

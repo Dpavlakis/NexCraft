@@ -2,6 +2,7 @@
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
 import { useDownloadFileDialog } from "@/components/fc";
+import { useAppRouters } from "@/hooks/useAppRouters";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { useFileManager } from "@/hooks/useFileManager";
 import { useRightClickMenu } from "@/hooks/useRightClickMenu";
@@ -30,6 +31,7 @@ import {
   KeyOutlined,
   PauseOutlined,
   PlusOutlined,
+  RollbackOutlined,
   ScissorOutlined,
   SearchOutlined,
   UploadOutlined
@@ -46,6 +48,11 @@ const props = defineProps<{
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = getMetaOrRouteValue("instanceId");
 const daemonId = getMetaOrRouteValue("daemonId");
+
+const { toPage } = useAppRouters();
+const toConsole = () => {
+  toPage({ path: "/instances/terminal", query: { daemonId, instanceId } });
+};
 
 const { isPhone } = useScreen();
 
@@ -478,6 +485,10 @@ onUnmounted(() => {
             </a-typography-title>
           </template>
           <template #right>
+            <a-button @click="toConsole">
+              <template #icon><RollbackOutlined /></template>
+              {{ t("TXT_CODE_backup_to_console") }}
+            </a-button>
             <a-typography-text v-if="selectedRowKeys.length">
               {{
                 `${t("TXT_CODE_7b2c5414")} ${String(selectedRowKeys.length)} ${t(

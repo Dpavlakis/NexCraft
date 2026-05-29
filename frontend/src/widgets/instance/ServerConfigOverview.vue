@@ -8,7 +8,7 @@ import { t } from "@/lang/i18n";
 import { getConfigFileList } from "@/services/apis/instance";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types";
-import { FileExclamationOutlined } from "@ant-design/icons-vue";
+import { FileExclamationOutlined, RollbackOutlined } from "@ant-design/icons-vue";
 import { onMounted, ref } from "vue";
 
 const props = defineProps<{
@@ -97,7 +97,8 @@ onMounted(async () => {
           </template>
           <template #right>
             <a-button @click="toConsole">
-              {{ t("TXT_CODE_95b9833f") }}
+              <template #icon><RollbackOutlined /></template>
+              {{ t("TXT_CODE_backup_to_console") }}
             </a-button>
             <a-button :loading="isLoading" @click="render">
               {{ t("TXT_CODE_b76d94e0") }}

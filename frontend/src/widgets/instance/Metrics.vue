@@ -9,7 +9,7 @@ import { metricsGet, type MetricSample } from "@/services/apis/metrics";
 import { getRandomId } from "@/tools/randId";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types/index";
-import { InfoCircleOutlined, LineChartOutlined } from "@ant-design/icons-vue";
+import { InfoCircleOutlined, LineChartOutlined, RollbackOutlined } from "@ant-design/icons-vue";
 import { init, type ECharts } from "echarts";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
@@ -176,7 +176,10 @@ onBeforeUnmount(() => {
             </a-typography-title>
           </template>
           <template #right>
-            <a-button @click="toConsole">{{ t("TXT_CODE_backup_to_console") }}</a-button>
+            <a-button @click="toConsole">
+              <template #icon><RollbackOutlined /></template>
+              {{ t("TXT_CODE_backup_to_console") }}
+            </a-button>
             <a-popover placement="bottomRight">
               <template #title>{{ t("TXT_CODE_metrics_zoom_title") }}</template>
               <template #content>

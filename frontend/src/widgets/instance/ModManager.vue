@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
+import { useAppRouters } from "@/hooks/useAppRouters";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { useInstanceInfo } from "@/hooks/useInstance";
 import { useScreen } from "@/hooks/useScreen";
@@ -9,6 +10,7 @@ import {
   AppstoreOutlined,
   LoadingOutlined,
   ReloadOutlined,
+  RollbackOutlined,
   SearchOutlined,
   UploadOutlined
 } from "@ant-design/icons-vue";
@@ -42,6 +44,11 @@ const { isPhone } = useScreen();
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = getMetaOrRouteValue("instanceId");
 const daemonId = getMetaOrRouteValue("daemonId");
+
+const { toPage } = useAppRouters();
+const toConsole = () => {
+  toPage({ path: "/instances/terminal", query: { daemonId, instanceId } });
+};
 
 const { instanceInfo, isRunning: isInstanceRunning } = useInstanceInfo({
   instanceId,
@@ -436,6 +443,10 @@ onMounted(async () => {
           </template>
           <template #right>
             <a-space>
+              <a-button @click="toConsole">
+                <template #icon><rollback-outlined /></template>
+                {{ t("TXT_CODE_backup_to_console") }}
+              </a-button>
               <a-button
                 v-if="activeKey === TAB_KEY_MODS || activeKey === TAB_KEY_PLUGINS"
                 @click="onUploadClick"

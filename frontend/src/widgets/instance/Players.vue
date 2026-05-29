@@ -8,7 +8,7 @@ import { t } from "@/lang/i18n";
 import { playerAction, playerList, type PlayerOverview } from "@/services/apis/player";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types/index";
-import { TeamOutlined } from "@ant-design/icons-vue";
+import { RollbackOutlined, TeamOutlined } from "@ant-design/icons-vue";
 import { message, Modal } from "ant-design-vue";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
@@ -81,7 +81,10 @@ onBeforeUnmount(() => timer && clearInterval(timer));
             </a-typography-title>
           </template>
           <template #right>
-            <a-button @click="toConsole">{{ t("TXT_CODE_backup_to_console") }}</a-button>
+            <a-button @click="toConsole">
+              <template #icon><RollbackOutlined /></template>
+              {{ t("TXT_CODE_backup_to_console") }}
+            </a-button>
             <a-button @click="load">{{ t("TXT_CODE_b76d94e0") }}</a-button>
           </template>
         </BetweenMenus>

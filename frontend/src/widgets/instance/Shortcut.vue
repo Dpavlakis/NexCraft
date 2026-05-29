@@ -28,8 +28,8 @@ import {
   CodeOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
-  PauseCircleOutlined,
   PlayCircleOutlined,
+  PoweroffOutlined,
   RedoOutlined,
   TagsOutlined,
   UserOutlined
@@ -205,7 +205,7 @@ const instanceOperations = computed(() =>
     },
     {
       title: t("TXT_CODE_b1dedda3"),
-      icon: PauseCircleOutlined,
+      icon: PoweroffOutlined,
       click: (event: MouseEvent) => {
         event.stopPropagation();
         Modal.confirm({

@@ -10,7 +10,12 @@ import { padZero } from "@/tools/common";
 import { ScheduleActionType, ScheduleCreateType, ScheduleType } from "@/types/const";
 import type { LayoutCard, Schedule } from "@/types/index";
 import NewSchedule from "@/widgets/instance/dialogs/NewSchedule.vue";
-import { DeleteOutlined, EditOutlined, FieldTimeOutlined } from "@ant-design/icons-vue";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  FieldTimeOutlined,
+  RollbackOutlined
+} from "@ant-design/icons-vue";
 import { message } from "ant-design-vue";
 import { onMounted, ref } from "vue";
 import type { AntColumnsType } from "../../types/ant";
@@ -142,7 +147,8 @@ onMounted(async () => {
           </template>
           <template #right>
             <a-button @click="toConsole">
-              {{ t("TXT_CODE_c14b2ea3") }}
+              <template #icon><RollbackOutlined /></template>
+              {{ t("TXT_CODE_backup_to_console") }}
             </a-button>
             <a-button @click="refresh">
               {{ t("TXT_CODE_b76d94e0") }}
