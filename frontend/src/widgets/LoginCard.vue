@@ -160,7 +160,7 @@ onMounted(async () => {
               {{ props.card?.title ? props.card?.title : t("TXT_CODE_3ba5ad") }}
             </div>
           </a-typography-title>
-          <a-typography-paragraph class="mb-20">
+          <a-typography-paragraph class="mb-20 login-subtitle">
             {{ t("TXT_CODE_5b60ad00") }}
           </a-typography-paragraph>
           <div class="account-input-container">
@@ -363,6 +363,15 @@ onMounted(async () => {
   justify-content: center;
   gap: 12px;
   margin-bottom: 18px;
+}
+.glitch-wrapper {
+  text-align: center;
+}
+.glitch {
+  text-align: center;
+}
+.login-subtitle {
+  text-align: center;
 }
 .brand-logo {
   width: 40px;
