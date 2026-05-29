@@ -2,7 +2,7 @@
 import { t } from "@/lang/i18n";
 import type { QuickStartPackages } from "@/types";
 import type { AntTableCell } from "@/types/ant";
-import { DownloadOutlined, QuestionCircleOutlined } from "@ant-design/icons-vue";
+import { DownloadOutlined } from "@ant-design/icons-vue";
 import { Flex } from "ant-design-vue";
 import { computed, ref } from "vue";
 import type { PackageTableColumnDef } from "./usePackageTableColumns";
@@ -161,20 +161,6 @@ function platformDisplayText(platform: string): string {
           <a-button type="link" size="small" @click="openConfigModal(record)">
             {{ t("TXT_CODE_ee5cd485") }}
           </a-button>
-          <Flex
-            v-if="record?.dockerOptional"
-            gap="1px"
-            align="center"
-            class="package-docker-optional-action"
-          >
-            <a-button type="link" size="small" @click="emit('select', record, 'docker')">
-              <!-- Install via Docker -->
-              {{ t("TXT_CODE_9123858b") }}
-            </a-button>
-            <a-tooltip :title="t('TXT_CODE_package_docker_optional_tooltip')" placement="top">
-              <QuestionCircleOutlined class="package-docker-optional-help-icon" tabindex="0" />
-            </a-tooltip>
-          </Flex>
         </Flex>
       </template>
 
