@@ -105,4 +105,7 @@ export default class InstanceConfig implements IGlobalInstanceConfig {
     openFrpTunnelId: "",
     openFrpToken: ""
   };
+
+  // Set when the instance was installed from a CurseForge/Modrinth modpack
+  public packInfo?: IModpackInfo = undefined;
 }

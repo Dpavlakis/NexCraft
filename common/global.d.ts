@@ -52,6 +52,22 @@ declare global {
       openFrpTunnelId?: string;
       openFrpToken?: string;
     };
+
+    // Present only on instances installed from a CurseForge/Modrinth modpack
+    packInfo?: IModpackInfo;
+  }
+
+  interface IModpackInfo {
+    source: "curseforge" | "modrinth";
+    projectId: string;
+    projectName: string;
+    fileId: string;
+    versionName: string;
+    mcVersion: string;
+    loader: "vanilla" | "forge" | "neoforge" | "fabric" | "quilt";
+    loaderVersion: string;
+    iconUrl?: string;
+    installedAt?: number;
   }
 
   type ProcessType = "general" | "docker";

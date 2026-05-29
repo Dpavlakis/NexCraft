@@ -206,6 +206,12 @@ export default class Instance extends EventEmitter {
       );
     }
 
+    // Modpack metadata is a trusted internal object (set by modpack install/update tasks);
+    // configureEntityParams won't copy unknown keys, so assign it directly.
+    if (cfg?.packInfo) {
+      this.config.packInfo = cfg.packInfo;
+    }
+
     configureEntityParams(this.config, cfg, "nickname", String);
     configureEntityParams(this.config, cfg, "startCommand", String);
     configureEntityParams(this.config, cfg, "stopCommand", String);

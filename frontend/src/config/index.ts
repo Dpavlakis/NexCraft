@@ -20,6 +20,7 @@ import InstanceList from "@/widgets/InstanceList.vue";
 import LoginCard from "@/widgets/LoginCard.vue";
 import MarketEditor from "@/widgets/market/editor.vue";
 import Market from "@/widgets/market/index.vue";
+import ModpackBrowser from "@/widgets/market/ModpackBrowser.vue";
 import NodeItem from "@/widgets/node/NodeItem.vue";
 import NodeList from "@/widgets/NodeList.vue";
 import NodeOverview from "@/widgets/NodeOverview.vue";
@@ -97,7 +98,8 @@ export const LAYOUT_CARD_TYPES: { [key: string]: any } = {
   ShelvesCard,
   OperationLogCard,
   Market,
-  MarketEditor
+  MarketEditor,
+  ModpackBrowser
 };
 
 export interface NewCardItem extends LayoutCard {

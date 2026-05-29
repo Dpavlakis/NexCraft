@@ -196,6 +196,15 @@ const originRouterConfig: RouterConfig[] = [
     ]
   },
   {
+    path: "/modpacks",
+    name: t("TXT_CODE_modpack_menu"),
+    component: LayoutContainer,
+    meta: {
+      mainMenu: true,
+      permission: ROLE.ADMIN
+    }
+  },
+  {
     path: "/overview",
     name: t("TXT_CODE_84fbe277"),
     component: LayoutContainer,

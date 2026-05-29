@@ -80,6 +80,7 @@ import "../routers/info_router";
 import "../routers/instance_event_router";
 import "../routers/Instance_router";
 import "../routers/java_manager_router";
+import "../routers/modpack_router";
 import "../routers/passport_router";
 import "../routers/schedule_router";
 import "../routers/stream_router";

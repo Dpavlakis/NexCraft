@@ -847,6 +847,99 @@ class ModManagerService {
     }
   }
 
+  // ---- Modpack support (CurseForge server packs + Modrinth .mrpack) ----
+
+  private readonly CF_KEY = "$2a$10$S.m6.v.m6.v.m6.v.m6.v.m6.v.m6.v.m6.v.m6.v.m6.v.m6.v.m6";
+
+  private parseCfGameVersions(gameVersions: string[]): { mc: string; loader: string } {
+    const loaderNames: Record<string, string> = {
+      forge: "forge",
+      neoforge: "neoforge",
+      fabric: "fabric",
+      quilt: "quilt"
+    };
+    let mc = "";
+    let loader = "vanilla";
+    for (const v of gameVersions || []) {
+      if (/^\d+\.\d+(\.\d+)?$/.test(v) && !mc) mc = v;
+      const lk = loaderNames[String(v).toLowerCase()];
+      if (lk) loader = lk;
+    }
+    return { mc, loader };
+  }
+
+  // Build a forgecdn fallback URL when the CF API omits downloadUrl.
+  private cfFallbackUrl(fileId: number, fileName: string): string {
+    return `https://edge.forgecdn.net/files/${Math.floor(fileId / 1000)}/${fileId % 1000}/${encodeURIComponent(
+      fileName
+    )}`;
+  }
+
+  // List installable versions of a CurseForge modpack, flagging server-pack availability.
+  public async getCurseForgeModpackVersions(modId: string) {
+    const res = await this.requestWithRetry({
+      method: "GET",
+      url: `${this.curseforgeUrl}/v1/cf/mods/${modId}/files`,
+      headers: { Accept: "application/json", "x-api-key": this.CF_KEY }
+    });
+    const files = res.data?.data || [];
+    return files.map((f: any) => {
+      const { mc, loader } = this.parseCfGameVersions(f.gameVersions || []);
+      return {
+        fileId: String(f.id),
+        displayName: f.displayName || f.fileName,
+        fileName: f.fileName,
+        mcVersion: mc,
+        loader,
+        hasServerPack: !!f.serverPackFileId,
+        releaseType: f.releaseType, // 1 release, 2 beta, 3 alpha
+        fileDate: f.fileDate
+      };
+    });
+  }
+
+  // Resolve the downloadable server-pack for a chosen CurseForge modpack file.
+  // Returns null when the pack has no server pack.
+  public async resolveCurseForgeServerPack(modId: string, fileId: string) {
+    const fileRes = await this.requestWithRetry({
+      method: "GET",
+      url: `${this.curseforgeUrl}/v1/cf/mods/${modId}/files/${fileId}`,
+      headers: { Accept: "application/json", "x-api-key": this.CF_KEY }
+    });
+    const file = fileRes.data?.data;
+    const serverId = file?.serverPackFileId;
+    if (!serverId) return null;
+
+    const spRes = await this.requestWithRetry({
+      method: "GET",
+      url: `${this.curseforgeUrl}/v1/cf/mods/${modId}/files/${serverId}`,
+      headers: { Accept: "application/json", "x-api-key": this.CF_KEY }
+    });
+    const sp = spRes.data?.data;
+    if (!sp) return null;
+    const { mc, loader } = this.parseCfGameVersions(sp.gameVersions || file.gameVersions || []);
+    const url = sp.downloadUrl || this.cfFallbackUrl(Number(serverId), sp.fileName);
+    return { serverPackUrl: url, fileName: sp.fileName, mcVersion: mc, loader };
+  }
+
+  // Resolve the .mrpack download URL + metadata for a chosen Modrinth version.
+  public async resolveModrinthVersion(versionId: string) {
+    const res = await this.requestWithRetry({
+      method: "GET",
+      url: `${this.baseUrl}/version/${versionId}`
+    });
+    const v = res.data;
+    if (!v) return null;
+    const file = (v.files || []).find((f: any) => f.primary) || v.files?.[0];
+    if (!file?.url) return null;
+    return {
+      mrpackUrl: file.url,
+      mcVersion: v.game_versions?.[0] || "",
+      loader: v.loaders?.[0] || "",
+      versionName: v.version_number || v.name || ""
+    };
+  }
+
   public async getSpigotVersions(projectId: string) {
     try {
       let resourceName = projectId;
