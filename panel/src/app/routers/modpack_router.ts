@@ -332,7 +332,6 @@ router.post(
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],
-        instance_id: instanceUuid,
         daemon_id: daemonId,
         pack_name: String(ctx.request.body.projectName || ctx.request.body.projectId)
       });
@@ -363,7 +362,6 @@ router.post(
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],
-        instance_id: instanceUuid,
         daemon_id: daemonId,
         pack_name: `${descriptor.loader} ${descriptor.mcVersion}`
       });
