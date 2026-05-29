@@ -3505,6 +3505,7 @@
   "TXT_CODE_modpack_sort_downloads": "Sort by Total Downloads",
   "TXT_CODE_modpack_install": "Install",
   "TXT_CODE_modpack_view_source": "View project page ↗",
+  "TXT_CODE_modpack_updated": "Updated",
   "TXT_CODE_modpack_no_serverpack": "no server pack",
   "TXT_CODE_modpack_install_started": "Modpack install started — watch the instance console for progress.",
   "TXT_CODE_modpack_name": "Instance Name",

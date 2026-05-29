@@ -32,6 +32,24 @@ router.get(
   }
 );
 
+// Full project detail (description, screenshots, categories) for the dialog
+router.get(
+  "/detail",
+  permission({ level: ROLE.USER }),
+  requestConcurrencyLimiter("modpack:detail"),
+  validator({ query: { source: String, projectId: String } }),
+  async (ctx) => {
+    try {
+      ctx.body = await modManagerService.getModpackDetail(
+        String(ctx.query.source),
+        String(ctx.query.projectId)
+      );
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
 // Resolve the install descriptor for a chosen modpack version.
 async function buildDescriptor(body: any) {
   const source = String(body.source).toLowerCase();

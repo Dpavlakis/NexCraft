@@ -947,6 +947,83 @@ class ModManagerService {
     return { serverPackUrl: url, fileName: sp.fileName, mcVersion: mc, loader };
   }
 
+  // Strip HTML/markdown noise to readable plain text for the detail panel.
+  private toPlainText(input: string): string {
+    if (!input) return "";
+    return input
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, " ") // markdown images
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // markdown links -> text
+      .replace(/<[^>]+>/g, " ") // html tags
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/[#>*_`]+/g, "") // leftover markdown markers
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim()
+      .slice(0, 8000);
+  }
+
+  // Full detail for a modpack project (for the install/detail dialog).
+  public async getModpackDetail(source: string, projectId: string) {
+    if (source.toLowerCase() === "curseforge") {
+      const modRes = await this.requestWithRetry({
+        method: "GET",
+        url: `${this.curseforgeUrl}/v1/cf/mods/${projectId}`,
+        headers: { Accept: "application/json", "x-api-key": this.CF_KEY }
+      });
+      const m = modRes.data?.data || {};
+      let body = "";
+      try {
+        const d = await this.requestWithRetry({
+          method: "GET",
+          url: `${this.curseforgeUrl}/v1/cf/mods/${projectId}/description`,
+          headers: { Accept: "application/json", "x-api-key": this.CF_KEY }
+        });
+        body = d.data?.data || "";
+      } catch {}
+      const versions = Array.from(
+        new Set((m.latestFilesIndexes || []).map((f: any) => f.gameVersion))
+      ).filter((v: any) => /^\d+\.\d+(\.\d+)?$/.test(v)) as string[];
+      return {
+        name: m.name,
+        summary: m.summary,
+        author: m.authors?.[0]?.name,
+        iconUrl: m.logo?.url,
+        downloads: m.downloadCount,
+        screenshots: (m.screenshots || []).map((s: any) => s.url),
+        categories: (m.categories || []).map((c: any) => c.name),
+        gameVersions: versions.slice(0, 8),
+        updated: m.dateModified,
+        websiteUrl: m.links?.websiteUrl,
+        description: this.toPlainText(body) || m.summary || ""
+      };
+    }
+
+    // Modrinth
+    const res = await this.requestWithRetry({
+      method: "GET",
+      url: `${this.baseUrl}/project/${projectId}`
+    });
+    const p = res.data || {};
+    return {
+      name: p.title,
+      summary: p.description,
+      author: undefined,
+      iconUrl: p.icon_url,
+      downloads: p.downloads,
+      screenshots: (p.gallery || []).map((g: any) => g.url),
+      categories: p.categories || [],
+      gameVersions: (p.game_versions || []).slice(-8),
+      updated: p.updated,
+      websiteUrl: p.slug ? `https://modrinth.com/modpack/${p.slug}` : undefined,
+      description: this.toPlainText(p.body || p.description || "")
+    };
+  }
+
   // Resolve the .mrpack download URL + metadata for a chosen Modrinth version.
   public async resolveModrinthVersion(versionId: string) {
     const res = await this.requestWithRetry({

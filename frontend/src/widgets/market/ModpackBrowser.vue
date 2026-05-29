@@ -7,8 +7,10 @@ import { remoteNodeList } from "@/services/apis";
 import { createAsyncTask, quickInstallListAddr } from "@/services/apis/instance";
 import {
   installModpack,
+  modpackDetail,
   modpackSearch,
   modpackVersions,
+  type ModpackDetail,
   type ModpackHit,
   type ModpackVersion
 } from "@/services/apis/modpack";
@@ -146,32 +148,56 @@ const dialog = reactive({
   versions: [] as ModpackVersion[],
   versionLoading: false,
   selectedVersion: "" as string,
-  installing: false
+  installing: false,
+  detail: null as ModpackDetail | null,
+  detailLoading: false
 });
 
-const openInstall = async (item: ResultItem) => {
+const loadDetail = async (item: ResultItem) => {
+  dialog.detail = null;
+  dialog.detailLoading = true;
+  try {
+    const { execute } = modpackDetail();
+    const res = await execute({ params: { source: source.value, projectId: item.id } });
+    dialog.detail = res.value || null;
+  } catch (err: any) {
+    // non-fatal — fall back to the summary we already have
+  } finally {
+    dialog.detailLoading = false;
+  }
+};
+
+const loadVersions = async (item: ResultItem) => {
+  dialog.versionLoading = true;
+  try {
+    const { execute } = modpackVersions();
+    const res = await execute({ params: { source: source.value, projectId: item.id } });
+    dialog.versions = res.value || [];
+    const first = dialog.versions.find((v) => versionInstallable(v));
+    dialog.selectedVersion = first ? versionId(first) : "";
+  } catch (err: any) {
+    reportErrorMsg(err.message);
+  } finally {
+    dialog.versionLoading = false;
+  }
+};
+
+const openInstall = (item: ResultItem) => {
   dialog.item = item;
   dialog.instanceName = item.title.slice(0, 40);
   dialog.daemonId = nodes.value[0]?.uuid || "";
   dialog.selectedVersion = "";
   dialog.versions = [];
+  dialog.detail = null;
   dialog.open = true;
   if (source.value !== "custom") {
-    dialog.versionLoading = true;
-    try {
-      const { execute } = modpackVersions();
-      const res = await execute({ params: { source: source.value, projectId: item.id } });
-      dialog.versions = res.value || [];
-      // preselect first installable version
-      const first = dialog.versions.find((v) => versionInstallable(v));
-      dialog.selectedVersion = first ? versionId(first) : "";
-    } catch (err: any) {
-      reportErrorMsg(err.message);
-    } finally {
-      dialog.versionLoading = false;
-    }
+    // fetch detail + versions in parallel
+    loadDetail(item);
+    loadVersions(item);
   }
 };
+
+const formatUpdated = (d?: string) => (d ? new Date(d).toLocaleDateString() : "");
 
 const versionId = (v: ModpackVersion) => String(v.fileId || v.id || "");
 const versionInstallable = (v: ModpackVersion) =>
@@ -342,16 +368,20 @@ onMounted(() => {
   <a-modal
     v-model:open="dialog.open"
     :title="t('TXT_CODE_modpack_install') + (dialog.item ? ' - ' + dialog.item.title : '')"
+    :width="760"
     :confirm-loading="dialog.installing"
     :ok-button-props="{ disabled: !canInstall }"
     @ok="doInstall"
   >
     <div v-if="dialog.item" class="pack-detail">
+      <img
+        v-if="dialog.item.icon"
+        :src="dialog.item.icon"
+        class="pack-hero"
+        alt=""
+        @error="dialog.item && (dialog.item.icon = '')"
+      />
       <div class="pack-head">
-        <a-avatar v-if="dialog.item.icon" :src="dialog.item.icon" shape="square" :size="56" />
-        <a-avatar v-else shape="square" :size="56">
-          <template #icon><AppstoreOutlined /></template>
-        </a-avatar>
         <div class="pack-head-text">
           <div class="pack-title">{{ dialog.item.title }}</div>
           <div class="pack-meta">
@@ -359,17 +389,28 @@ onMounted(() => {
             <span v-if="dialog.item.downloads">
               · {{ formatDownloads(dialog.item.downloads) }} ↓</span
             >
+            <span v-if="dialog.detail?.updated">
+              · {{ t("TXT_CODE_modpack_updated") }} {{ formatUpdated(dialog.detail.updated) }}</span
+            >
           </div>
           <a v-if="dialogSourceUrl" :href="dialogSourceUrl" target="_blank" rel="noopener">
             {{ t("TXT_CODE_modpack_view_source") }}
           </a>
         </div>
       </div>
-      <a-typography-paragraph
-        class="pack-desc"
-        :ellipsis="{ rows: 4, expandable: true }"
-        :content="dialog.item.description"
-      />
+
+      <div v-if="dialog.detail?.categories?.length || dialog.detail?.gameVersions?.length" class="pack-tags">
+        <a-tag v-for="c in dialog.detail?.categories?.slice(0, 6)" :key="'c' + c">{{ c }}</a-tag>
+        <a-tag v-for="g in dialog.detail?.gameVersions?.slice(0, 6)" :key="'g' + g" color="blue">
+          {{ g }}
+        </a-tag>
+      </div>
+
+      <a-spin :spinning="dialog.detailLoading">
+        <div class="pack-desc">
+          {{ dialog.detail?.description || dialog.item.description }}
+        </div>
+      </a-spin>
     </div>
 
     <a-form layout="vertical">
@@ -433,6 +474,14 @@ onMounted(() => {
 .pack-detail {
   margin-bottom: 16px;
 }
+.pack-hero {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(128, 128, 128, 0.08);
+  margin-bottom: 12px;
+}
 .pack-head {
   display: flex;
   gap: 12px;
@@ -440,15 +489,26 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 .pack-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 .pack-meta {
   font-size: 12px;
   opacity: 0.7;
 }
+.pack-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
 .pack-desc {
-  margin-bottom: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
   opacity: 0.85;
+  padding-right: 6px;
 }
 </style>

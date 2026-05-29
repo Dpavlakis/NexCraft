@@ -46,6 +46,31 @@ export const modpackSearch = useDefineApi<
   method: "GET"
 });
 
+export interface ModpackDetail {
+  name?: string;
+  summary?: string;
+  author?: string;
+  iconUrl?: string;
+  downloads?: number;
+  screenshots?: string[];
+  categories?: string[];
+  gameVersions?: string[];
+  updated?: string;
+  websiteUrl?: string;
+  description?: string;
+}
+
+// Full project detail for the install/detail dialog
+export const modpackDetail = useDefineApi<
+  {
+    params: { source: string; projectId: string };
+  },
+  ModpackDetail
+>({
+  url: "/api/protected_modpack/detail",
+  method: "GET"
+});
+
 // List installable versions of a modpack
 export const modpackVersions = useDefineApi<
   {
