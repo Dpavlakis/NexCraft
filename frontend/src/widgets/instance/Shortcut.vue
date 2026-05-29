@@ -37,7 +37,8 @@ import {
 import { message, Modal } from "ant-design-vue";
 import _ from "lodash";
 import prettyBytes, { type Options as PrettyOptions } from "pretty-bytes";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { INSTANCE_STATUS_CODE } from "@/types/const";
 
 const props = defineProps<{
   card: LayoutCard;
@@ -67,6 +68,22 @@ const operationConfig = {
     daemonId: daemonId || ""
   }
 };
+
+// Notify when a server finishes starting (status: Starting -> Running).
+let sawStarting = false;
+watch(
+  () => instanceInfo.value?.status,
+  (s) => {
+    if (s === INSTANCE_STATUS_CODE.STARTING) {
+      sawStarting = true;
+    } else if (s === INSTANCE_STATUS_CODE.RUNNING && sawStarting) {
+      sawStarting = false;
+      message.success(t("TXT_CODE_instance_started"));
+    } else if (s === INSTANCE_STATUS_CODE.STOPPED) {
+      sawStarting = false;
+    }
+  }
+);
 
 const { isLoading: openLoading, execute: executeOpen } = openInstance();
 const { isLoading: stopLoading, execute: executeStop } = stopInstance();
@@ -109,7 +126,7 @@ const actions = {
     const flag = await verifyEULA(instanceId ?? "", daemonId ?? "");
     if (!flag) return;
     await executeOpen(operationConfig);
-    message.success(t("TXT_CODE_e13abbb1"));
+    message.success(t("TXT_CODE_instance_starting"));
   },
   stop: async () => {
     await executeStop(operationConfig);

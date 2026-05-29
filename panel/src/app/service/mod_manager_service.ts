@@ -522,6 +522,17 @@ class ModManagerService {
         };
       });
 
+      // Modrinth's API has no "name"/"author" sort index (they silently fall
+      // back to relevance), so sort those client-side on the returned page.
+      const sortKey = (filters?.sort || "featured").toLowerCase();
+      if (sortKey === "name") {
+        mappedHits.sort((a: any, b: any) => String(a.title).localeCompare(String(b.title)));
+      } else if (sortKey === "author") {
+        mappedHits.sort((a: any, b: any) =>
+          String(a.author || "").localeCompare(String(b.author || ""))
+        );
+      }
+
       return {
         hits: mappedHits,
         total_hits: res.data.total_hits

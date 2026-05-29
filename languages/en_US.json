@@ -2782,6 +2782,8 @@
   "TXT_CODE_e1276b33": "Minimum jump strength attribute",
   "TXT_CODE_e13a6529": "Enable Whitelist (new version)",
   "TXT_CODE_e13abbb1": "Instance Running",
+  "TXT_CODE_instance_starting": "Instance is starting...",
+  "TXT_CODE_instance_started": "Instance started",
   "TXT_CODE_e1454ba7": "User <<operator_name>> updated the <<instance_name>> instance",
   "TXT_CODE_e14b32b": "Number of ticks between attempting to naturally spawn a cat",
   "TXT_CODE_e15e5006": "No content on this page.",

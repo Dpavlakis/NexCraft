@@ -111,24 +111,41 @@ export async function parseMrpackIndex(mrpackPath: string): Promise<MrpackIndex>
 }
 
 // Download every server-relevant file from a parsed .mrpack index into cwd.
+// Files are fetched with a bounded concurrency pool (much faster than serial for
+// the many small mod jars in a typical pack).
 export async function downloadMrpackFiles(
   index: MrpackIndex,
   cwd: string,
   onProgress?: (done: number, total: number) => void,
-  skip?: (relPath: string) => boolean
+  skip?: (relPath: string) => boolean,
+  concurrency = 8
 ) {
   const files = (index.files || []).filter((f) => (f.env?.server ?? "required") !== "unsupported");
+  const total = files.length;
   let done = 0;
-  for (const f of files) {
-    done++;
-    if (onProgress) onProgress(done, files.length);
-    if (skip && skip(f.path)) continue;
-    const dest = safeJoin(cwd, f.path);
-    if (!dest) continue;
-    const url = f.downloads?.[0];
-    if (!url) continue;
-    await downloadManager.downloadFromUrl(url, dest, f.downloads?.[1]);
-  }
+  let next = 0;
+
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= files.length) return;
+      const f = files[i];
+      try {
+        if (!(skip && skip(f.path))) {
+          const dest = safeJoin(cwd, f.path);
+          const url = f.downloads?.[0];
+          if (dest && url) await downloadManager.downloadFromUrl(url, dest, f.downloads?.[1]);
+        }
+      } finally {
+        done++;
+        if (onProgress) onProgress(done, total);
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, files.length || 1) }, () => worker())
+  );
 }
 
 // Extract overrides/ then server-overrides/ from a .mrpack into cwd (server-overrides win).
