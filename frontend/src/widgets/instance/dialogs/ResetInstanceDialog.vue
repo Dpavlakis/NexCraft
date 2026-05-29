@@ -25,6 +25,12 @@ const reinstallTarget = computed(() => ({
   packInfo: props.packInfo
 }));
 
+// A modpack instance focuses straight on that pack's popup (no browse chrome);
+// a custom/vanilla instance browses versions inside a framed dialog.
+const isModpack = computed(
+  () => props.packInfo?.source === "curseforge" || props.packInfo?.source === "modrinth"
+);
+
 const openDialog = () => {
   open.value = true;
 };
@@ -38,7 +44,17 @@ defineExpose({ openDialog });
 </script>
 
 <template>
+  <!-- Modpack reset: just the focused install/reset popup -->
+  <ModpackBrowser
+    v-if="open && isModpack"
+    :card="browserCard"
+    :reinstall-target="reinstallTarget"
+    @close="close"
+  />
+
+  <!-- Custom/vanilla reset: browse versions inside a framed dialog -->
   <a-modal
+    v-else-if="open"
     v-model:open="open"
     :title="t('TXT_CODE_modpack_reset_title')"
     :width="1200"

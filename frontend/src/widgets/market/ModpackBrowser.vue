@@ -53,6 +53,12 @@ const emit = defineEmits<{ (e: "close"): void }>();
 const isReinstall = computed(() => !!props.reinstallTarget);
 // Reset behaviour chosen by the user (only used in reinstall mode).
 const resetMode = ref<ResetMode>("backup_wipe");
+// For a modpack (CurseForge/Modrinth) reset we focus straight on that pack's
+// popup and hide the browse chrome; custom/vanilla resets still browse versions.
+const hideChrome = computed(() => {
+  const src = props.reinstallTarget?.packInfo?.source;
+  return isReinstall.value && (src === "curseforge" || src === "modrinth");
+});
 
 const { toPage } = useAppRouters();
 
@@ -469,6 +475,17 @@ const focusInstalledPack = () => {
   return true;
 };
 
+// In reinstall mode there's no browser behind the popup, so closing it (Cancel)
+// should tear down the whole dialog.
+watch(
+  () => dialog.open,
+  (open) => {
+    // Only the chrome-less modpack reset has nothing behind the popup, so
+    // cancelling it should tear down the whole dialog.
+    if (hideChrome.value && !open && !dialog.installing) emit("close");
+  }
+);
+
 onMounted(() => {
   loadNodes();
   // Default to the installed pack when reinstalling; otherwise load the catalog.
@@ -483,7 +500,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div style="height: 100%" class="container">
+  <!-- Browser chrome (source sidebar + results). Hidden for a modpack reset,
+       where only the focused install/reset popup is shown. -->
+  <div v-if="!hideChrome" style="height: 100%" class="container">
     <a-row :gutter="[24, 24]" style="height: 100%">
       <a-col :span="24">
         <BetweenMenus>
@@ -596,7 +615,10 @@ onBeforeUnmount(() => {
 
   <a-modal
     v-model:open="dialog.open"
-    :title="t('TXT_CODE_modpack_install') + (dialog.item ? ' - ' + dialog.item.title : '')"
+    :title="
+      (isReinstall ? t('TXT_CODE_modpack_reset') : t('TXT_CODE_modpack_install')) +
+      (dialog.item ? ' - ' + dialog.item.title : '')
+    "
     :width="760"
     :confirm-loading="dialog.installing"
     :ok-button-props="{ disabled: !canInstall }"
