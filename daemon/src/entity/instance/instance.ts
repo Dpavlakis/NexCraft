@@ -132,7 +132,9 @@ export default class Instance extends EventEmitter {
   private static readonly MC_READY_PATTERNS: RegExp[] = [
     /\)!\s*For help, type/i, // Java: Done (12.345s)! For help, type "help"
     /Done\s*\([\d.]+s\)!/i, // Java generic "Done (..s)!"
-    /\[INFO\]\s*Server started\.?/i // Bedrock dedicated server
+    // Bedrock: "[2026-05-29 18:13:04:209 INFO] Server started." — the INFO tag
+    // is preceded by a timestamp inside the brackets, so match on "INFO] Server started".
+    /INFO\]\s*Server started\b/i
   ];
   // Safety net: never leave an instance stuck on "Starting" forever if the
   // server doesn't print a recognizable ready line (15 min covers big packs).
