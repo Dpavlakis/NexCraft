@@ -54,6 +54,9 @@ interface ResultItem {
   title: string;
   description: string;
   icon?: string;
+  slug?: string;
+  author?: string;
+  downloads?: number;
   // custom-only:
   targetLink?: string;
   setupInfo?: any;
@@ -112,7 +115,10 @@ const search = async () => {
       id: h.id,
       title: h.title,
       description: h.description,
-      icon: h.icon_url
+      icon: h.icon_url,
+      slug: h.slug,
+      author: h.author,
+      downloads: h.downloads
     }));
   } catch (err: any) {
     reportErrorMsg(err.message);
@@ -176,6 +182,22 @@ const versionLabel = (v: ModpackVersion) => {
     return `${base} — ${t("TXT_CODE_modpack_no_serverpack")}`;
   }
   return base;
+};
+
+const dialogSourceUrl = computed(() => {
+  const it = dialog.item;
+  if (!it) return "";
+  if (source.value === "curseforge")
+    return `https://www.curseforge.com/minecraft/modpacks/${it.slug || it.id}`;
+  if (source.value === "modrinth") return `https://modrinth.com/modpack/${it.slug || it.id}`;
+  return "";
+});
+
+const formatDownloads = (n?: number) => {
+  if (!n) return "";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
 };
 
 const canInstall = computed(
@@ -290,7 +312,7 @@ onMounted(() => {
             <a-spin :spinning="loading">
               <a-list item-layout="horizontal" :data-source="results">
                 <template #renderItem="{ item }">
-                  <a-list-item>
+                  <a-list-item class="result-row" @click="openInstall(item)">
                     <a-list-item-meta :description="item.description">
                       <template #title>{{ item.title }}</template>
                       <template #avatar>
@@ -322,6 +344,32 @@ onMounted(() => {
     :ok-button-props="{ disabled: !canInstall }"
     @ok="doInstall"
   >
+    <div v-if="dialog.item" class="pack-detail">
+      <div class="pack-head">
+        <a-avatar v-if="dialog.item.icon" :src="dialog.item.icon" shape="square" :size="56" />
+        <a-avatar v-else shape="square" :size="56">
+          <template #icon><AppstoreOutlined /></template>
+        </a-avatar>
+        <div class="pack-head-text">
+          <div class="pack-title">{{ dialog.item.title }}</div>
+          <div class="pack-meta">
+            <span v-if="dialog.item.author">{{ dialog.item.author }}</span>
+            <span v-if="dialog.item.downloads">
+              · {{ formatDownloads(dialog.item.downloads) }} ↓</span
+            >
+          </div>
+          <a v-if="dialogSourceUrl" :href="dialogSourceUrl" target="_blank" rel="noopener">
+            {{ t("TXT_CODE_modpack_view_source") }}
+          </a>
+        </div>
+      </div>
+      <a-typography-paragraph
+        class="pack-desc"
+        :ellipsis="{ rows: 4, expandable: true }"
+        :content="dialog.item.description"
+      />
+    </div>
+
     <a-form layout="vertical">
       <a-form-item :label="t('TXT_CODE_modpack_name')">
         <a-input v-model:value="dialog.instanceName" />
@@ -368,5 +416,32 @@ onMounted(() => {
 .sort-select {
   width: 200px;
   flex-shrink: 0;
+}
+.result-row {
+  cursor: pointer;
+}
+.result-row:hover {
+  background: rgba(128, 128, 128, 0.06);
+}
+.pack-detail {
+  margin-bottom: 16px;
+}
+.pack-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.pack-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.pack-meta {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.pack-desc {
+  margin-bottom: 0;
+  opacity: 0.85;
 }
 </style>
