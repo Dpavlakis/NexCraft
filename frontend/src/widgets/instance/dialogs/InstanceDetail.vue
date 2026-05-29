@@ -795,7 +795,7 @@ defineExpose({
           </a-tab-pane>
           <a-tab-pane :key="TabSettings.Basic" :tab="t('TXT_CODE_cc7b54b9')">
             <a-row :gutter="20">
-              <a-col v-if="!isTemplateMode" :xs="24" :lg="8" :offset="0">
+              <a-col v-if="!isTemplateMode" :xs="24" :lg="24" :offset="0">
                 <a-form-item :name="['instance', 'config', 'nickname']">
                   <a-typography-title :level="5" class="require-field">
                     {{ t("TXT_CODE_f70badb9") }}
@@ -813,7 +813,7 @@ defineExpose({
                   />
                 </a-form-item>
               </a-col>
-              <a-col v-if="!isTemplateMode" :xs="24" :lg="8" :offset="0">
+              <a-col v-if="!isTemplateMode" :xs="24" :lg="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5" class="require-field">
                     {{ t("TXT_CODE_2f291d8b") }}
@@ -841,7 +841,7 @@ defineExpose({
                 </a-form-item>
               </a-col>
 
-              <a-col v-if="!isTemplateMode" :xs="24" :lg="8" :offset="0">
+              <a-col v-if="!isTemplateMode" :xs="24" :lg="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5">{{ t("TXT_CODE_fa920c0") }}</a-typography-title>
                   <a-typography-paragraph>
@@ -943,7 +943,7 @@ defineExpose({
                   />
                 </a-form-item>
               </a-col>
-              <a-col :xs="24" :lg="12" :offset="0">
+              <a-col :xs="24" :lg="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5">
                     {{ t("TXT_CODE_a3bcd4b5") }}
@@ -968,7 +968,7 @@ defineExpose({
                   />
                 </a-form-item>
               </a-col>
-              <a-col :xs="24" :lg="6" :offset="0">
+              <a-col :xs="24" :lg="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5" class="require-field">
                     {{ t("TXT_CODE_f041de90") }}
@@ -989,7 +989,7 @@ defineExpose({
                   </a-select>
                 </a-form-item>
               </a-col>
-              <a-col :xs="24" :lg="6" :offset="0">
+              <a-col :xs="24" :lg="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5">{{ t("TXT_CODE_fffaeb17") }}</a-typography-title>
                   <a-typography-paragraph>
@@ -1172,7 +1172,7 @@ defineExpose({
                   </a-form-item>
                 </a-col>
 
-                <a-col v-if="!isTemplateMode" :xs="24" :lg="8" :offset="0">
+                <a-col v-if="!isTemplateMode" :xs="24" :lg="24" :offset="0">
                   <a-form-item :name="['instance', 'config', 'basePort']">
                     <a-typography-title :level="5">
                       {{ t("TXT_CODE_15f5fb07") }}
