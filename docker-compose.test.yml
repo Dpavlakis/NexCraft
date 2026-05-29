@@ -5,7 +5,7 @@
 # Then:  docker compose -f docker-compose.test.yml up -d
 #
 # This joins your existing Unraid macvlan network "br0.2" with FIXED IPs that
-# do NOT collide with your production pair (.41 daemon / .42 web).
+# do NOT collide with your in-use addresses (daemon .46 / web .47).
 #   - Confirm the network name with:  docker network ls   (it should list br0.2)
 #   - Test data lives in a SEPARATE appdata dir so production is untouched.
 services:
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
     networks:
       br0.2:
-        ipv4_address: 192.168.2.43 # web UI -> http://192.168.2.43:23333
+        ipv4_address: 192.168.2.47 # web UI -> http://192.168.2.47:23333
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /mnt/user/appdata/mcsm-test/web/data:/opt/mcsmanager/web/data
@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     networks:
       br0.2:
-        ipv4_address: 192.168.2.44 # register this in the panel as 192.168.2.44:24444
+        ipv4_address: 192.168.2.46 # register this in the panel as 192.168.2.46:24444
     environment:
       - MCSM_DOCKER_WORKSPACE_PATH=/mnt/user/appdata/mcsm-test/daemon/data/InstanceData
     volumes:
