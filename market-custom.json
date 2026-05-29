@@ -1,0 +1,1959 @@
+{
+    "languages":  [
+                      {
+                          "label":  "English",
+                          "value":  "en_us",
+                          "path":  "templates-en.json"
+                      },
+                      {
+                          "label":  "中文",
+                          "value":  "zh_cn",
+                          "path":  "templates-zh.json"
+                      }
+                  ],
+    "packages":  [
+                     {
+                         "title":  "Squad Docker Server",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "use the official Docker image of Squad Server to quickly get started!",
+                         "image":  "http://mcsmanager.com/package-images/squad.jpg",
+                         "gameType":  "Squad",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "Intel Core platform、RAM 8G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./SquadGameServer.sh",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 403240 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "Squad"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:7787/udp",
+                                                                        "{mcsm_port2}:15000/udp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "Rust Docker Server",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run Rust Dedicated Server.",
+                         "image":  "https://cdn.cloudflare.steamstatic.com/steam/apps/252490/header.jpg",
+                         "gameType":  "Rust",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Commercial Use Allowed",
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./RustDedicated -batchmode -nographics +server.port 28015 +rcon.port 28016",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 258550 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "Rust"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:28015/udp",
+                                                                        "{mcsm_port2}:28016/udp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "Factorio Docker Server",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run Factorio Dedicated Server.",
+                         "image":  "https://cdn.cloudflare.steamstatic.com/steam/apps/427520/header.jpg",
+                         "gameType":  "Factorio",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "X86_64、RAM 4G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "TPing",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./bin/x64/factorio --start-server-load-latest",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 427520 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "Factorio"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:34197/udp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "http://mcsmanager.com/package-images/steam.jpg",
+                         "gameType":  "Hytale",
+                         "description":  "Use Eclipse Temurin Java Docker image to run Hytale Dedicated Server.",
+                         "title":  "Hytale Docker Server",
+                         "category":  "hytale",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 4G+",
+                         "targetLink":  "https://github.com/SkyKingPX/Hytale-Server-Installer/releases/download/1.0.0/hytale-server-installer-linux-mcsm.zip",
+                         "author":  "SkyKing_PX",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "type":  "hytale",
+                                           "startCommand":  "java -Xms2G -Xmx4G -XX:AOTCache=HytaleServer.aot -jar HytaleServer.jar --assets Assets.zip",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "./hytale-server-installer-linux",
+                                           "ie":  "UTF-8",
+                                           "oe":  "UTF-8",
+                                           "processType":  "docker",
+                                           "docker":  {
+                                                          "image":  "eclipse-temurin:25-jdk",
+                                                          "updateCommandImage":  "eclipse-temurin:25-jdk",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:5520/udp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "Terraria Server",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run Terraria Dedicated Server.",
+                         "image":  "https://cdn.akamai.steamstatic.com/steam/apps/105600/header.jpg?t=1666290860",
+                         "gameType":  "Terraria",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 8G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./TerrariaServer.bin.x86_64 -port 7777 -autocreate 2 -worldname world1",
+                                           "stopCommand":  "exit",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 105600 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/terraria",
+                                           "tag":  [
+                                                       "terraria"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:7777/tcp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "Palworld Server",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run Palworld Dedicated Server.",
+                         "image":  "http://mcsmanager.com/package-images/pal.webp",
+                         "gameType":  "Palworld",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 8G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./PalServer.sh -port=8211 -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 2394010 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "Palworld"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:8211/udp",
+                                                                        "{mcsm_port2}:25575/tcp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "Project Zomboid",
+                         "title-zh":  "僵尸毁灭工程",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run Project Zomboid Dedicated Server.",
+                         "description-zh":  "使用 steam-game-runtime Docker 镜像和 SteamCMD 运行 Project Zomboid 专用服务器。",
+                         "image":  "http://mcsmanager.com/package-images/pz.jpg",
+                         "gameType":  "Zombie Survival",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 8G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./start-server.sh",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 380870 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "Project Zomboid"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:16261/udp",
+                                                                        "{mcsm_port2}:16262/udp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "Satisfactory Docker Server",
+                         "title-zh":  "幸福工厂 Docker 服务器",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run Satisfactory Dedicated Server.",
+                         "description-zh":  "使用 steam-game-runtime Docker 镜像和 SteamCMD 运行幸福工厂专用服务器。",
+                         "image":  "https://cdn.cloudflare.steamstatic.com/steam/apps/526870/header.jpg",
+                         "gameType":  "Satisfactory",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 8G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./FactoryServer.sh",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 1690800 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "Satisfactory"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:7777/tcp",
+                                                                        "{mcsm_port2}:7777/udp",
+                                                                        "{mcsm_port3}:8888/tcp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "7 Days to Die Docker Server",
+                         "title-zh":  "七日杀 Docker 服务器",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run 7 Days to Die Dedicated Server.",
+                         "description-zh":  "使用 steam-game-runtime Docker 镜像和 SteamCMD 运行七日杀专用服务器。",
+                         "image":  "https://cdn.cloudflare.steamstatic.com/steam/apps/251570/header.jpg",
+                         "gameType":  "7 Days to Die",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 12G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./startserver.sh -configfile=serverconfig.xml",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 294420 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "7 Days to Die"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:26900/udp",
+                                                                        "{mcsm_port2}:26900/tcp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "Left 4 Dead 2 Docker Server",
+                         "title-zh":  "求生之路2 Docker 服务器",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run Left 4 Dead 2 Dedicated Server.",
+                         "description-zh":  "使用 steam-game-runtime Docker 镜像和 SteamCMD 运行求生之路2专用服务器。",
+                         "image":  "https://cdn.cloudflare.steamstatic.com/steam/apps/550/header.jpg",
+                         "gameType":  "Left 4 Dead 2",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 4G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./srcds_run -game left4dead2 -port 27015 +maxplayers 8 +map c1m4_atrium",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 222860 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "Left 4 Dead 2"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:27015/udp",
+                                                                        "{mcsm_port2}:27015/tcp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "ARK: Survival Evolved Docker Server",
+                         "title-zh":  "方舟：生存进化 Docker 服务器",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "Use the steam-game-runtime Docker image and SteamCMD to run ARK: Survival Evolved Dedicated Server.",
+                         "description-zh":  "使用 steam-game-runtime Docker 镜像和 SteamCMD 运行方舟：生存进化专用服务器。",
+                         "image":  "https://cdn.cloudflare.steamstatic.com/steam/apps/346110/header.jpg",
+                         "gameType":  "ARK: Survival Evolved",
+                         "category":  "Latest Version",
+                         "runtime":  "Linux",
+                         "hardware":  "RAM 8G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "MCSManager",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "./ShooterGame/Binaries/Linux/ShooterGameServer Ragnarok?listen?Port=7777?QueryPort=27015?MaxPlayers=120?bRawSockets?AllowCrateSpawnsOnTopOfStructures=True -UseBattlEye -nosteamclient -game -server -log",
+                                           "stopCommand":  "^C",
+                                           "updateCommand":  "/home/steam/steamcmd/steamcmd.sh -net_ipv4 +force_install_dir \"/data\" +login anonymous \"+app_update 376030 validate\" +quit",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "steam/universal",
+                                           "tag":  [
+                                                       "ARK"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "runAs":  "steam",
+                                           "docker":  {
+                                                          "image":  "githubyumao/steam-game-runtime:latest",
+                                                          "updateCommandImage":  "githubyumao/steam-game-runtime:latest",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:7777/udp",
+                                                                        "{mcsm_port2}:7778/udp",
+                                                                        "{mcsm_port3}:27015/udp"
+                                                                    ],
+                                                          "changeWorkdir":  true,
+                                                          "workingDir":  "/data",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "extraVolumes":  [
+
+                                                                           ]
+                                                      }
+                                       }
+                     },
+                     {
+                         "title":  "EndStone MC Server",
+                         "language":  "en_us",
+                         "platform":  "Linux",
+                         "description":  "For Linux, using the official EndStone MC Docker image, one-click to quickly set up the server!",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "category":  "Latest Version",
+                         "runtime":  "Ubuntu/Centos LTS",
+                         "hardware":  "RAM 2G+",
+                         "size":  "",
+                         "targetLink":  "",
+                         "author":  "EndStone",
+                         "tags":  [
+                                      "Docker version"
+                                  ],
+                         "setupInfo":  {
+                                           "startCommand":  "endstone -y -s .",
+                                           "stopCommand":  "stop",
+                                           "ie":  "utf8",
+                                           "oe":  "utf8",
+                                           "type":  "minecraft/bedrock",
+                                           "tag":  [
+                                                       "bedrock"
+                                                   ],
+                                           "fileCode":  "utf8",
+                                           "processType":  "docker",
+                                           "updateCommand":  "",
+                                           "docker":  {
+                                                          "image":  "endstone/endstone:latest",
+                                                          "containerName":  "endstone-server",
+                                                          "ports":  [
+                                                                        "{mcsm_port1}:19132/udp"
+                                                                    ],
+                                                          "extraVolumes":  [
+
+                                                                           ],
+                                                          "workingDir":  "",
+                                                          "env":  [
+
+                                                                  ],
+                                                          "changeWorkdir":  true
+                                                      }
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 26.1.2 Paper Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PaperMC] Minecraft 26.1.2",
+                         "category":  "mc-paper",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "100MB",
+                         "remark":  "Minecraft Paper",
+                         "targetLink":  "https://fill-data.papermc.io/v1/objects/6a03b365d66c68ad0d4fe843c51183d7cdbfb20fa3d11b2423984648f4bc9e57/paper-26.1.2-60.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/paper",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar paper-26.1.2-60.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.11 Paper Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PaperMC] Minecraft 1.21.11",
+                         "category":  "mc-paper",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "100MB",
+                         "remark":  "Minecraft Paper",
+                         "targetLink":  "https://fill-data.papermc.io/v1/objects/6c099540fccd27e10750d1adcb382f1552fb5aa2816aeaf2cc1efb23ddd9e3df/paper-1.21.11-131.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/paper",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar paper-1.21.11-131.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.10 Paper Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PaperMC] Minecraft 1.21.10",
+                         "category":  "mc-paper",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "100MB",
+                         "remark":  "Minecraft Paper",
+                         "targetLink":  "https://api.papermc.io/v2/projects/paper/versions/1.21.10/builds/117/downloads/paper-1.21.10-117.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/paper",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar paper-1.21.10-117.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.8 Paper Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PaperMC] Minecraft 1.21.8",
+                         "category":  "mc-paper",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "100MB",
+                         "remark":  "Minecraft Paper",
+                         "targetLink":  "https://api.papermc.io/v2/projects/paper/versions/1.21.8/builds/60/downloads/paper-1.21.8-60.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/paper",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar paper-1.21.8-60.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.4 Paper Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PaperMC] Minecraft 1.21.4",
+                         "category":  "mc-paper",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "50MB",
+                         "remark":  "Minecraft Paper",
+                         "targetLink":  "https://api.papermc.io/v2/projects/paper/versions/1.21.4/builds/232/downloads/paper-1.21.4-232.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/paper",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar paper-1.21.4-232.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.1 Paper Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PaperMC] Minecraft 1.21.1",
+                         "category":  "mc-paper",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "100MB",
+                         "remark":  "Minecraft Paper",
+                         "targetLink":  "https://api.papermc.io/v2/projects/paper/versions/1.21.1/builds/133/downloads/paper-1.21.1-133.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/paper",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar paper-1.21.1-133.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 26.1.2 Purpur Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PurpurMC] Minecraft 26.1.2",
+                         "category":  "mc-purpur",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Purpur",
+                         "targetLink":  "https://github.com/SkyKingPX/MCSManagerServerSoftware/releases/download/PurpurMC/purpur-26.1.2-2585.jar",
+                         "author":  "purpurmc.org",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/purpur",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar purpur-26.1.2-2585.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.11 Purpur Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PurpurMC] Minecraft 1.21.11",
+                         "category":  "mc-purpur",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Purpur",
+                         "targetLink":  "https://github.com/SkyKingPX/MCSManagerServerSoftware/releases/download/PurpurMC/purpur-1.21.11-2568.jar",
+                         "author":  "purpurmc.org",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/purpur",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar purpur-1.21.11-2568.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.10 Purpur Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PurpurMC] Minecraft 1.21.10",
+                         "category":  "mc-purpur",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Purpur",
+                         "targetLink":  "https://github.com/SkyKingPX/MCSManagerServerSoftware/releases/download/PurpurMC/purpur-1.21.10-2535.jar",
+                         "author":  "purpurmc.org",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/purpur",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar purpur-1.21.10-2535.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.8 Purpur Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PurpurMC] Minecraft 1.21.8",
+                         "category":  "mc-purpur",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Purpur",
+                         "targetLink":  "https://github.com/SkyKingPX/MCSManagerServerSoftware/releases/download/PurpurMC/purpur-1.21.8-2497.jar",
+                         "author":  "purpurmc.org",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/purpur",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar purpur-1.21.8-2497.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.4 Purpur Quick Server Setup, High Performance, Low Resource Usage, Plugin Support, No Mod Support",
+                         "title":  "[PurpurMC] Minecraft 1.21.4",
+                         "category":  "mc-purpur",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "50MB",
+                         "remark":  "Only Purpur included",
+                         "targetLink":  "https://github.com/SkyKingPX/MCSManagerServerSoftware/releases/download/PurpurMC/purpur-1.21.4-2416.jar",
+                         "author":  "purpurmc.org",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/purpur",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar purpur-1.21.4-2416.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 26.1.2 Forge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[Forge] Minecraft 26.1.2",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/26.1.2-64.0.8/forge-26.1.2-64.0.8-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-26.1.2-64.0.8-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 26.1.2 Forge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[Forge] Minecraft 26.1.2",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/26.1.2-64.0.8/forge-26.1.2-64.0.8-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-26.1.2-64.0.8-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.11 Forge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[Forge] Minecraft 1.21.11",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.11-61.1.5/forge-1.21.11-61.1.5-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.11-61.1.5-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.11 Forge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[Forge] Minecraft 1.21.11",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.11-61.1.5/forge-1.21.11-61.1.5-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.11-61.1.5-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.10 Forge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[Forge] Minecraft 1.21.10",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.10-60.1.5/forge-1.21.10-60.1.5-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.10-60.1.5-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.10 Forge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[Forge] Minecraft 1.21.10",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.10-60.1.5/forge-1.21.10-60.1.5-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.10-60.1.5-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.8 Forge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[Forge] Minecraft 1.21.8",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.8-58.1.9/forge-1.21.8-58.1.9-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.8-58.1.9-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.8 Forge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[Forge] Minecraft 1.21.8",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.8-58.1.9/forge-1.21.8-58.1.9-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.8-58.1.9-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.4 Forge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[Forge] Minecraft 1.21.4",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.4-54.1.8/forge-1.21.4-54.1.8-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.4-54.1.8-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.4 Forge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[Forge] Minecraft 1.21.4",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.4-54.1.8/forge-1.21.4-54.1.8-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.4-54.1.8-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.1 Forge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[Forge] Minecraft 1.21.1",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.1-52.1.6/forge-1.21.1-52.1.6-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.1-52.1.6-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.1 Forge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[Forge] Minecraft 1.21.1",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.1-52.1.6/forge-1.21.1-52.1.6-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.21.1-52.1.6-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.20.1 Forge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[Forge] Minecraft 1.20.1",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 17+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.20/forge-1.20.1-47.4.20-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:17-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:17-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.20.1-47.4.20-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.20.1 Forge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[Forge] Minecraft 1.20.1",
+                         "category":  "mc-forge",
+                         "runtime":  "Java 17+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft Forge",
+                         "targetLink":  "https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.20/forge-1.20.1-47.4.20-installer.jar",
+                         "author":  "minecraftforge.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:17-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:17-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/forge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar forge-1.20.1-47.4.20-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 26.1.2 NeoForge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[NeoForge] Minecraft 26.1.2",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/26.1.2.42-beta/neoforge-26.1.2.42-beta-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-26.1.2.42-beta-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 26.1.2 NeoForge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[NeoForge] Minecraft 26.1.2",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/26.1.2.42-beta/neoforge-26.1.2.42-beta-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-26.1.2.42-beta-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.11 NeoForge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[NeoForge] Minecraft 1.21.11",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.11.42/neoforge-21.11.42-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.11.42-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.11 NeoForge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[NeoForge] Minecraft 1.21.11",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.11.42/neoforge-21.11.42-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.11.42-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.10 NeoForge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[NeoForge] Minecraft 1.21.10",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.10.63/neoforge-21.10.63-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.10.63-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.10 NeoForge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[NeoForge] Minecraft 1.21.10",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.10.63/neoforge-21.10.63-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.10.63-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.8 NeoForge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[NeoForge] Minecraft 1.21.8",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.8.53/neoforge-21.8.53-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.8.53-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.8 NeoForge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[NeoForge] Minecraft 1.21.8",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.8.53/neoforge-21.8.53-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.8.53-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.4 NeoForge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[NeoForge] Minecraft 1.21.4",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.4.157/neoforge-21.4.157-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.4.157-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.4 NeoForge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[NeoForge] Minecraft 1.21.4",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.4.157/neoforge-21.4.157-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.4.157-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Linux",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.1 NeoForge Quick Server Setup, Mod Support for Linux",
+                         "title":  "[NeoForge] Minecraft 1.21.1",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.228/neoforge-21.1.228-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  "sh ./run.sh",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.1.228-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "Windows",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.1 NeoForge Quick Server Setup, Mod Support for Windows",
+                         "title":  "[NeoForge] Minecraft 1.21.1",
+                         "category":  "mc-neoforge",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 8G+",
+                         "size":  "7MB",
+                         "remark":  "Minecraft NeoForge",
+                         "targetLink":  "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.228/neoforge-21.1.228-installer.jar",
+                         "author":  "neoforged.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/neoforge",
+                                           "startCommand":  ".\\run.bat",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar neoforge-21.1.228-installer.jar --installServer",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 26.1.2 Fabric Quick Server Setup, Mod Support",
+                         "title":  "[FabricMC] Minecraft 26.1.2",
+                         "category":  "mc-fabric",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "5MB",
+                         "remark":  "Minecraft Fabric",
+                         "targetLink":  "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.1/fabric-installer-1.1.1.jar",
+                         "author":  "fabricmc.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/fabric",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar fabric-server-launch.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar fabric-installer-1.1.1.jar server -mcversion 26.1.2 -downloadMinecraft -noprofile",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.11 Fabric Quick Server Setup, Mod Support",
+                         "title":  "[FabricMC] Minecraft 1.21.11",
+                         "category":  "mc-fabric",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "5MB",
+                         "remark":  "Minecraft Fabric",
+                         "targetLink":  "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.1/fabric-installer-1.1.1.jar",
+                         "author":  "fabricmc.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/fabric",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar fabric-server-launch.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar fabric-installer-1.1.1.jar server -mcversion 1.21.11 -downloadMinecraft -noprofile",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.10 Fabric Quick Server Setup, Mod Support",
+                         "title":  "[FabricMC] Minecraft 1.21.10",
+                         "category":  "mc-fabric",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "5MB",
+                         "remark":  "Minecraft Fabric",
+                         "targetLink":  "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.1/fabric-installer-1.1.1.jar",
+                         "author":  "fabricmc.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/fabric",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar fabric-server-launch.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar fabric-installer-1.1.1.jar server -mcversion 1.21.10 -downloadMinecraft -noprofile",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.8 Fabric Quick Server Setup, Mod Support",
+                         "title":  "[FabricMC] Minecraft 1.21.8",
+                         "category":  "mc-fabric",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "5MB",
+                         "remark":  "Minecraft Fabric",
+                         "targetLink":  "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.1/fabric-installer-1.1.1.jar",
+                         "author":  "fabricmc.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/fabric",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar fabric-server-launch.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar fabric-installer-1.1.1.jar server -mcversion 1.21.8 -downloadMinecraft -noprofile",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.4 Fabric Quick Server Setup, Mod Support",
+                         "title":  "[FabricMC] Minecraft 1.21.4",
+                         "category":  "mc-fabric",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "5MB",
+                         "remark":  "Minecraft Fabric",
+                         "targetLink":  "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.1/fabric-installer-1.1.1.jar",
+                         "author":  "fabricmc.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/fabric",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar fabric-server-launch.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar fabric-installer-1.1.1.jar server -mcversion 1.21.4 -downloadMinecraft -noprofile",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Minecraft 1.21.1 Fabric Quick Server Setup, Mod Support",
+                         "title":  "[FabricMC] Minecraft 1.21.1",
+                         "category":  "mc-fabric",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "5MB",
+                         "remark":  "Minecraft Fabric",
+                         "targetLink":  "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.1/fabric-installer-1.1.1.jar",
+                         "author":  "fabricmc.net",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/fabric",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -jar fabric-server-launch.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "java -jar fabric-installer-1.1.1.jar server -mcversion 1.21.1 -downloadMinecraft -noprofile",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Standard Vanilla Minecraft 26.1.2 Server Setup (Official) - No Mod/Plugin Support",
+                         "title":  "[Vanilla] Minecraft 26.1.2",
+                         "category":  "mc-vanilla",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 2G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Java",
+                         "targetLink":  "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar",
+                         "author":  "Mojang Studios",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java",
+                                           "startCommand":  "java -Xms2048M -Xmx2048M -jar server.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Standard Vanilla Minecraft 1.21.11 Server Setup (Official) - No Mod/Plugin Support",
+                         "title":  "[Vanilla] Minecraft 1.21.11",
+                         "category":  "mc-vanilla",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 2G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Java",
+                         "targetLink":  "https://piston-data.mojang.com/v1/objects/64bb6d763bed0a9f1d632ec347938594144943ed/server.jar",
+                         "author":  "Mojang Studios",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java",
+                                           "startCommand":  "java -Xms2048M -Xmx2048M -jar server.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Standard Vanilla Minecraft 1.21.10 Server Setup (Official) - No Mod/Plugin Support",
+                         "title":  "[Vanilla] Minecraft 1.21.10",
+                         "category":  "mc-vanilla",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 2G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Java",
+                         "targetLink":  "https://piston-data.mojang.com/v1/objects/95495a7f485eedd84ce928cef5e223b757d2f764/server.jar",
+                         "author":  "Mojang Studios",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java",
+                                           "startCommand":  "java -Xms2048M -Xmx2048M -jar server.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Standard Vanilla Minecraft 1.21.8 Server Setup (Official) - No Mod/Plugin Support",
+                         "title":  "[Vanilla] Minecraft 1.21.8",
+                         "category":  "mc-vanilla",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 2G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Java",
+                         "targetLink":  "https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar",
+                         "author":  "Mojang Studios",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java",
+                                           "startCommand":  "java -Xms2048M -Xmx2048M -jar server.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "gameType":  "Minecraft",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "description":  "Standard Vanilla Minecraft 1.21.4 Server Setup (Official) - No Mod/Plugin Support",
+                         "title":  "[Vanilla] Minecraft 1.21.4",
+                         "category":  "mc-vanilla",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 2G+",
+                         "size":  "55MB",
+                         "remark":  "Minecraft Java",
+                         "targetLink":  "https://piston-data.mojang.com/v1/objects/4707d00eb834b446575d89a61a11b5d548d8c001/server.jar",
+                         "author":  "Mojang Studios",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java",
+                                           "startCommand":  "java -Xms2048M -Xmx2048M -jar server.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 26.1.2 Folia Quick Server Setup, Plugin Support",
+                         "title":  "[Folia] Minecraft 26.1.2",
+                         "category":  "mc-folia",
+                         "runtime":  "Java 25+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "50MB",
+                         "remark":  "Minecraft Folia",
+                         "targetLink":  "https://fill-data.papermc.io/v1/objects/607afd1c3320008e1ffd2eaee6780ace4419d5f8c527b75e79f259be79ebf57b/folia-26.1.2-8.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:25-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:25-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/folia",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -XX:+AlwaysPreTouch -XX:+DisableExplicitGC -XX:+ParallelRefProcEnabled -XX:+PerfDisableSharedMem -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1HeapRegionSize=8M -XX:G1HeapWastePercent=5 -XX:G1MaxNewSizePercent=40 -XX:G1MixedGCCountTarget=4 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1NewSizePercent=30 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:G1ReservePercent=20 -XX:InitiatingHeapOccupancyPercent=15 -XX:MaxGCPauseMillis=200 -XX:MaxTenuringThreshold=1 -XX:SurvivorRatio=32 -jar folia-26.1.2-8.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.11 Folia Quick Server Setup, Plugin Support",
+                         "title":  "[Folia] Minecraft 1.21.11",
+                         "category":  "mc-folia",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "50MB",
+                         "remark":  "Minecraft Folia",
+                         "targetLink":  "https://fill-data.papermc.io/v1/objects/f52c408490a0225611e67907a3ca19f7e6da2c6bc899e715d5f46844e7103c39/folia-1.21.11-14.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/folia",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -XX:+AlwaysPreTouch -XX:+DisableExplicitGC -XX:+ParallelRefProcEnabled -XX:+PerfDisableSharedMem -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1HeapRegionSize=8M -XX:G1HeapWastePercent=5 -XX:G1MaxNewSizePercent=40 -XX:G1MixedGCCountTarget=4 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1NewSizePercent=30 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:G1ReservePercent=20 -XX:InitiatingHeapOccupancyPercent=15 -XX:MaxGCPauseMillis=200 -XX:MaxTenuringThreshold=1 -XX:SurvivorRatio=32 -jar folia-1.21.11-14.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     },
+                     {
+                         "platform":  "ALL",
+                         "language":  "en_us",
+                         "image":  "https://s4.imlazy.ink:233/img/screenshots/2021-08-19_14.52.11.png",
+                         "gameType":  "Minecraft",
+                         "description":  "Minecraft 1.21.8 Folia Quick Server Setup, Plugin Support",
+                         "title":  "[Folia] Minecraft 1.21.8",
+                         "category":  "mc-folia",
+                         "runtime":  "Java 21+",
+                         "hardware":  "RAM 4G+",
+                         "size":  "50MB",
+                         "remark":  "Minecraft Folia",
+                         "targetLink":  "https://fill-data.papermc.io/v1/objects/233843cfd5001b6f658fcab549178d694cc37f0277d004ea295de0a94c57278f/folia-1.21.8-6.jar",
+                         "author":  "papermc.io",
+                         "dockerOptional":  {
+                                                "image":  "eclipse-temurin:21-jdk",
+                                                "updateCommandImage":  "eclipse-temurin:21-jdk"
+                                            },
+                         "setupInfo":  {
+                                           "type":  "minecraft/java/folia",
+                                           "startCommand":  "java -Xms4096M -Xmx4096M -XX:+AlwaysPreTouch -XX:+DisableExplicitGC -XX:+ParallelRefProcEnabled -XX:+PerfDisableSharedMem -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1HeapRegionSize=8M -XX:G1HeapWastePercent=5 -XX:G1MaxNewSizePercent=40 -XX:G1MixedGCCountTarget=4 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1NewSizePercent=30 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:G1ReservePercent=20 -XX:InitiatingHeapOccupancyPercent=15 -XX:MaxGCPauseMillis=200 -XX:MaxTenuringThreshold=1 -XX:SurvivorRatio=32 -jar folia-1.21.8-6.jar nogui",
+                                           "stopCommand":  "stop",
+                                           "updateCommand":  "",
+                                           "ie":  "utf-8",
+                                           "oe":  "utf-8"
+                                       }
+                     }
+                 ]
+}
