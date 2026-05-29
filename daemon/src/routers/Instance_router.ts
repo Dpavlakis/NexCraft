@@ -352,7 +352,7 @@ routerApp.on("instance/command", async (ctx, data) => {
 });
 
 // delete instance
-routerApp.on("instance/delete", (ctx, data) => {
+routerApp.on("instance/delete", async (ctx, data) => {
   const instanceUuids = data.instanceUuids;
   const deleteFile = data.deleteFile;
   const instances = [];
@@ -360,11 +360,22 @@ routerApp.on("instance/delete", (ctx, data) => {
     try {
       const instance = InstanceSubsystem.getInstance(instanceUuid);
       if (!instance) throw new Error($t("TXT_CODE_3bfb9e04"));
-      instances.push({
-        instanceUuid: instance.instanceUuid,
-        nickname: instance.config.nickname
-      });
+      const nickname = instance.config.nickname;
+      // If the instance is still running, force-stop it first; otherwise
+      // removeInstance() refuses (and previously the error was swallowed, so
+      // the delete silently did nothing). We're deleting it anyway, so a kill
+      // is appropriate, then wait for the process to fully exit.
+      if (instance.status() !== Instance.STATUS_STOP) {
+        try {
+          await instance.execPreset("kill");
+        } catch (err: any) {}
+        const start = Date.now();
+        while (instance.status() !== Instance.STATUS_STOP && Date.now() - start < 15000) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+      }
       InstanceSubsystem.removeInstance(instanceUuid, deleteFile);
+      instances.push({ instanceUuid: instance.instanceUuid, nickname });
     } catch (err: any) {}
   }
   protocol.msg(ctx, "instance/delete", { instanceUuids, instances });
