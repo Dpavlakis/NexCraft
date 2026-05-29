@@ -164,11 +164,14 @@ export async function maybeFlatten(cwd: string, ignore: string[] = []) {
   if (dirs.length !== 1 || files.length !== 0) return;
   const inner = path.join(cwd, dirs[0].name);
   const innerEntries = fs.readdirSync(inner);
+  // Require server-defining markers, NOT just any .jar (a single top-level
+  // "mods" folder full of jars must not be hoisted/destroyed).
   const looksLikeServer = innerEntries.some(
     (n) =>
-      /^(mods|libraries)$/i.test(n) ||
+      /^(mods|libraries|config|defaultconfigs)$/i.test(n) ||
       /installer.*\.jar$/i.test(n) ||
-      /\.jar$/i.test(n) ||
+      /^(forge|neoforge|fabric|quilt).*\.jar$/i.test(n) ||
+      /^(minecraft_server|server)\.?.*\.jar$/i.test(n) ||
       /(run|start|startserver|serverstart)\.(sh|bat)$/i.test(n)
   );
   if (!looksLikeServer) return;

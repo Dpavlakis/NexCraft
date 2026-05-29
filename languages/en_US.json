@@ -3529,5 +3529,6 @@
   "TXT_CODE_modpack.updateBackup": "Creating a backup before updating...",
   "TXT_CODE_modpack.updateDownloading": "Downloading the new pack version...",
   "TXT_CODE_modpack.updateApplying": "Applying the update (preserving your world)...",
-  "TXT_CODE_modpack.updateDone": "Modpack updated successfully."
+  "TXT_CODE_modpack.updateDone": "Modpack updated successfully.",
+  "TXT_CODE_modpack.updateFailedStopped": "Update failed; the server was left stopped. Restore the pre-update backup if needed."
 }

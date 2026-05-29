@@ -870,7 +870,9 @@ class ModManagerService {
 
   // Build a forgecdn fallback URL when the CF API omits downloadUrl.
   private cfFallbackUrl(fileId: number, fileName: string): string {
-    return `https://edge.forgecdn.net/files/${Math.floor(fileId / 1000)}/${fileId % 1000}/${encodeURIComponent(
+    // ForgeCDN requires the last segment zero-padded to 3 digits.
+    const last3 = String(fileId % 1000).padStart(3, "0");
+    return `https://edge.forgecdn.net/files/${Math.floor(fileId / 1000)}/${last3}/${encodeURIComponent(
       fileName
     )}`;
   }

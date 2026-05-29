@@ -34,7 +34,7 @@ export const modpackSearch = useDefineApi<
     params: {
       query: string;
       source: string; // curseforge | modrinth
-      type: "modpack";
+      type: string; // "modpack"
       offset?: number;
       limit?: number;
     };

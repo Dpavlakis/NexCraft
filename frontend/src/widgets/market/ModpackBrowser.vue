@@ -32,8 +32,12 @@ const sources: { key: Source; label: string }[] = [
 
 // ---- nodes ----
 const nodes = ref<NodeStatus[]>([]);
-const nodeLabel = (n: NodeStatus) =>
-  (n as any).remarks || `${(n as any).ip || ""}:${(n as any).port || ""}` || n.uuid;
+const nodeLabel = (n: NodeStatus) => {
+  const remarks = (n as any).remarks;
+  if (remarks) return remarks;
+  const ipPort = `${(n as any).ip || ""}:${(n as any).port || ""}`;
+  return ipPort !== ":" ? ipPort : n.uuid;
+};
 const loadNodes = async () => {
   const { execute } = remoteNodeList();
   try {

@@ -55,6 +55,7 @@ export class ModpackUpdateTask extends AsyncTask {
     const wasRunning = inst.status() === Instance.STATUS_RUNNING;
     const staging = path.join(cwd, ".mcsm_update_stage");
     const tmpArchive = path.join(cwd, ".mcsm_update_archive");
+    let succeeded = false;
 
     try {
       // 1) Mandatory pre-update backup (abort entirely if it fails)
@@ -142,6 +143,7 @@ export class ModpackUpdateTask extends AsyncTask {
         true
       );
 
+      succeeded = true;
       this.phase = "done";
       inst.println("INFO", $t("TXT_CODE_modpack.updateDone"));
     } catch (error: any) {
@@ -152,12 +154,17 @@ export class ModpackUpdateTask extends AsyncTask {
       await fs.remove(staging).catch(() => {});
       await fs.remove(tmpArchive).catch(() => {});
       if (inst.status() === Instance.STATUS_BUSY) inst.status(Instance.STATUS_STOP);
-      if (wasRunning) {
+      // Only restart on success. On failure the mods/loader were already removed,
+      // so relaunching would boot a broken server over the live world; leave it
+      // stopped (the pre-update backup is the recovery path) and warn.
+      if (wasRunning && succeeded) {
         try {
           await inst.execPreset("start");
         } catch {
           // ignore restart failure
         }
+      } else if (wasRunning && !succeeded) {
+        inst.println("WARN", $t("TXT_CODE_modpack.updateFailedStopped"));
       }
     }
     this.stop();
