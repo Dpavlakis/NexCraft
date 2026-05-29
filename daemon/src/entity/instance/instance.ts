@@ -114,6 +114,24 @@ export default class Instance extends EventEmitter {
   private outputLoopTask?: NodeJS.Timeout;
   private outputBuffer: CircularBuffer<string>;
 
+  // Minecraft "Starting" -> "Running" readiness tracking. While a MC server is
+  // booting, the process is alive but the world isn't loaded yet. We keep the
+  // instance in STATUS_STARTING and only flip to STATUS_RUNNING once the server
+  // logs that it finished loading (or a safety timeout elapses).
+  private mcReadinessActive = false;
+  private mcReadinessTail = "";
+  private mcReadinessTimer?: NodeJS.Timeout;
+  // Lines a Minecraft server (vanilla/Paper/Spigot/Forge/NeoForge/Fabric/Quilt
+  // and Bedrock) prints when it has finished starting up.
+  private static readonly MC_READY_PATTERNS: RegExp[] = [
+    /\)!\s*For help, type/i, // Java: Done (12.345s)! For help, type "help"
+    /Done\s*\([\d.]+s\)!/i, // Java generic "Done (..s)!"
+    /\[INFO\]\s*Server started\.?/i // Bedrock dedicated server
+  ];
+  // Safety net: never leave an instance stuck on "Starting" forever if the
+  // server doesn't print a recognizable ready line (15 min covers big packs).
+  private static readonly MC_READY_TIMEOUT_MS = 15 * 60 * 1000;
+
   // When initializing an instance, the instance must be initialized through uuid and configuration class, otherwise the instance will be unavailable
   constructor(instanceUuid: string, config: InstanceConfig) {
     super();
@@ -363,16 +381,67 @@ export default class Instance extends EventEmitter {
     this.config.lastDatetime = Date.now();
     const outputCode = this.config.terminalOption.pty ? "utf-8" : this.config.oe;
     process.on("data", (text: any) => {
-      this.pushOutput(iconv.decode(text, outputCode));
+      const decoded = iconv.decode(text, outputCode);
+      this.pushOutput(decoded);
+      if (this.mcReadinessActive) this.checkMcReadiness(decoded);
     });
     process.on("exit", (code: number) => this.stopped(code));
     this.process = process;
-    this.instanceStatus = Instance.STATUS_RUNNING;
+
+    // For Minecraft servers, stay in STATUS_STARTING until the server actually
+    // finishes loading the world (detected from its console output); for all
+    // other instance types the process being alive means it's running.
+    if (this.isMcReadinessTracked()) {
+      this.instanceStatus = Instance.STATUS_STARTING;
+      this.beginMcReadinessWatch();
+    } else {
+      this.instanceStatus = Instance.STATUS_RUNNING;
+    }
     this.emit("open", this);
 
     // start all lifecycle tasks
     this.lifeCycleTaskManager.execLifeCycleTask(1);
     this.startOutputLoop();
+  }
+
+  // Whether this instance should use Minecraft startup-readiness detection.
+  private isMcReadinessTracked(): boolean {
+    return String(this.config.type || "").includes("minecraft");
+  }
+
+  // Begin watching console output for the "server is ready" line.
+  private beginMcReadinessWatch() {
+    this.mcReadinessActive = true;
+    this.mcReadinessTail = "";
+    if (this.mcReadinessTimer) clearTimeout(this.mcReadinessTimer);
+    this.mcReadinessTimer = setTimeout(() => {
+      // Safety net: server never printed a recognizable ready line.
+      this.markMcReady();
+    }, Instance.MC_READY_TIMEOUT_MS);
+  }
+
+  // Feed a chunk of console output; flip to RUNNING when the ready line appears.
+  private checkMcReadiness(chunk: string) {
+    if (!this.mcReadinessActive) return;
+    // Keep a small rolling tail so a ready line split across chunks still matches.
+    const text = (this.mcReadinessTail + chunk).slice(-1024);
+    this.mcReadinessTail = text;
+    if (Instance.MC_READY_PATTERNS.some((re) => re.test(text))) {
+      this.markMcReady();
+    }
+  }
+
+  // Transition a starting Minecraft instance to RUNNING (idempotent).
+  private markMcReady() {
+    if (this.mcReadinessTimer) {
+      clearTimeout(this.mcReadinessTimer);
+      this.mcReadinessTimer = undefined;
+    }
+    this.mcReadinessActive = false;
+    this.mcReadinessTail = "";
+    if (this.instanceStatus === Instance.STATUS_STARTING) {
+      this.instanceStatus = Instance.STATUS_RUNNING;
+    }
   }
 
   // If the instance performs any operation exception, it must throw an exception through this function
@@ -446,6 +515,12 @@ export default class Instance extends EventEmitter {
 
   // Release resources (mainly release process-related resources)
   releaseResources() {
+    if (this.mcReadinessTimer) {
+      clearTimeout(this.mcReadinessTimer);
+      this.mcReadinessTimer = undefined;
+    }
+    this.mcReadinessActive = false;
+    this.mcReadinessTail = "";
     try {
       this.process?.destroy();
     } catch (error: any) {
