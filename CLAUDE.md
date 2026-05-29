@@ -24,13 +24,24 @@ The original MCSManager is credited (login footer). Keep changes Minecraft-focus
 - **Host/general process mode only — no Docker instances** (removed from the creation UI; backend left intact).
 - Zip overwrite must use `node-stream-zip` (Go `file_zip` does NOT overwrite).
 - Per-instance CPU/RAM = pidusage over the **process tree** (walk `/proc`), not `instance.info` (docker-only).
-- Auto-Java: provision a matching JRE per pack (`{mcsm_java}` + `config.java.id`); daemon ships Java 21.
+- Auto-Java: provision a matching JRE per pack (`{mcsm_java}` + `config.java.id`); daemon ships Java 21. Azul release dates come from the per-package detail endpoint (list endpoint omits them).
 - `web.dockerfile` must install/copy daemon source + run a root `npm install` (panel imports daemon `system_file` and uses root `async-mutex`).
 - vue-tsc: `a-select` v-model rejects `null` (use `undefined`); cast when feeding a widened union into a strict-typed API.
 - Bundled loader logos live in `frontend/src/assets/loaders/`; brand SVGs (`curseforge.svg`, `modrinth.svg`) in `assets/`.
 - Use real assets/live data, not placeholders or curated lists. Keep UI consistent (e.g. "Return" back button + power-off stop icon everywhere). Everything sans-serif.
+- Status: Minecraft instances stay **Starting** until the server logs ready, then flip to **Running** (daemon `instance.ts` readiness watch). Toasts/UI key off the real RUNNING status, not the process-open event. Start needs no confirm; stop/restart/kill do.
+- Instance management is full-page cards keyed by route (`/instances/<page>`): register the card in `frontend/config/index.ts`, the route in `config/router.ts`, the default page in `panel/.../frontend_layout.ts` (now **auto-merges missing default pages** into a saved layout), and a nav button in `ManagerBtns.vue`.
+
+## Features added (this fork, beyond upstream)
+- **Backups** (manual + scheduled, restore via node-stream-zip), **server icon**, **Java picker** (Adoptium/Azul → major → release, with dates) + auto-provision, **Players** (RCON), **Metrics** (process-tree CPU/RAM, zoom), **per-instance server-port auto-assign**, **client-only crash-mod stripping**.
+- **Marketplace → Prism-style modpack browser** (Custom / CurseForge / Modrinth) with a custom builder (Vanilla/Paper/Purpur/Folia/Fabric/Forge/NeoForge/Quilt, real logos, live versions). Install → instance.
+- **Per-instance Modpack Update card** (`ModpackUpdate.vue`, route `/instances/modpackUpdate`): reads `config.packInfo`, lists source versions, updates with auto-backup + world preservation (daemon `ModpackUpdateTask`). Admin-gated.
+- **Easy MOTD editor** on Basic Settings (Java instances) → `server.properties` motd via daemon `instance/motd` (`mc_motd.ts`).
+- **Autostart delay** (per-instance, `eventTask.autoStartDelay`) and **Shutdown timeout** (`config.stopTimeout`, force-kill after stop command). Player-count ping every 10s (was 60s). Deleting a running instance now force-stops then deletes.
+- NexCraft branding incl. SVG favicon (`frontend/public/nexcraft_logo.svg`).
 
 ## Open / optional
-- Per-instance modpack **Update card** UI (backend exists).
-- Rework **Reset/Reinstall** to use the new builder (data-touching — get explicit OK first).
+- **In progress: Reset/Reinstall rework** to use the new Prism-style builder (data-touching — replaces an instance's contents).
 - **EndStone** (Bedrock/Python) — would need Python added to the daemon image.
+- Optional: **auto-Java-on-launch** (detect `UnsupportedClassVersionError`, provision matching JRE + retry).
+- **Superpowers** Claude Code plugin — blocked on auto-mode self-modify guard; user runs `/plugin` or grants a rule.
