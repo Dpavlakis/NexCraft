@@ -8,6 +8,7 @@ import Instance from "../../entity/instance/instance";
 import InstanceConfig from "../../entity/instance/Instance_config";
 import { $t } from "../../i18n";
 import downloadManager from "../download_manager";
+import { assignFreeMcPort } from "../mc_port";
 import { ModloaderBootstrap, type ModLoader } from "../modloader_bootstrap";
 import {
   downloadMrpackFiles,
@@ -228,6 +229,14 @@ export class ModpackInstallTask extends AsyncTask {
         } catch {
           // non-fatal — server just won't have an icon
         }
+      }
+
+      // Auto-assign a free port so multiple servers don't all sit on 25565
+      try {
+        const port = await assignFreeMcPort(inst);
+        inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
+      } catch {
+        // non-fatal — user can set the port manually
       }
 
       this.phase = "bootstrap";
