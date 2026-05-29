@@ -14,10 +14,10 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
 ## Build & deploy (IMPORTANT)
 - **No local Node toolchain — the Docker build is the typechecker.** Make changes, commit, push to `nexcraft main`; the user pulls on Unraid and rebuilds. If a build fails, fix from the pasted error.
 - **Always give the full `docker run` commands in any rebuild instructions**, and say which image changed:
-  - daemon (`daemon/`, `common/`) → `mcsm-daemon:backup-test`
-  - web (`frontend/`, `panel/`, `languages/`) → `mcsm-web:backup-test`
+  - daemon (`daemon/`, `common/`) → `nexcraft-daemon` (container `nexcraft-daemon`)
+  - web (`frontend/`, `panel/`, `languages/`) → `nexcraft-web` (container `nexcraft-web`)
   - The **web build also compiles the daemon** (panel bundles daemon source), so a daemon type error breaks the web build too.
-- Containers (Unraid, network `br0.2`): daemon `192.168.2.46`, web `192.168.2.47`; data under `/mnt/user/appdata/mcsm-test/...`; source at `/mnt/user/appdata/mcsm-src`. Use local image tags (template GUI force-pulls).
+- Containers (Unraid, network `br0.2`): daemon `192.168.2.46`, web `192.168.2.47`; data under `/mnt/user/appdata/mcsm-test/...`; source at `/mnt/user/appdata/mcsm-src`. Use local image tags (template GUI force-pulls). (Images/containers renamed from the legacy `mcsm-*:backup-test` / `mcsm-*-test` to `nexcraft-*`; data paths unchanged.)
 - Commit messages end with: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 
 ## Conventions / gotchas
