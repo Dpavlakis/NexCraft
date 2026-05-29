@@ -233,6 +233,7 @@ export default class Instance extends EventEmitter {
     configureEntityParams(this.config, cfg, "nickname", String);
     configureEntityParams(this.config, cfg, "startCommand", String);
     configureEntityParams(this.config, cfg, "stopCommand", String);
+    configureEntityParams(this.config, cfg, "stopTimeout", Number);
     configureEntityParams(this.config, cfg, "updateCommand", String);
     configureEntityParams(this.config, cfg, "runAs", String);
     configureEntityParams(this.config, cfg, "cwd", String);
@@ -290,6 +291,7 @@ export default class Instance extends EventEmitter {
       configureEntityParams(this.config.eventTask, cfg.eventTask, "autoRestart", Boolean);
       configureEntityParams(this.config.eventTask, cfg.eventTask, "autoRestartMaxTimes", Number);
       configureEntityParams(this.config.eventTask, cfg.eventTask, "ignore", Boolean);
+      configureEntityParams(this.config.eventTask, cfg.eventTask, "autoStartDelay", Number);
     }
     if (cfg.terminalOption) {
       configureEntityParams(this.config.terminalOption, cfg.terminalOption, "haveColor", Boolean);

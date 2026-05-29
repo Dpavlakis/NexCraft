@@ -55,7 +55,8 @@ const submit = async () => {
         crlf: options.value?.config.crlf,
         ie: options.value?.config.ie,
         oe: options.value?.config.oe,
-        stopCommand: options.value?.config.stopCommand
+        stopCommand: options.value?.config.stopCommand,
+        stopTimeout: options.value?.config.stopTimeout
       }
     });
     emit("update");
@@ -137,6 +138,21 @@ defineExpose({
             </a-typography-paragraph>
             <a-input
               v-model:value="options.config.stopCommand"
+              :style="'width: ' + (isPhone ? '100%' : '220px')"
+            />
+          </a-form-item>
+
+          <a-form-item>
+            <a-typography-title :level="5">{{ t("TXT_CODE_shutdownTimeout_title") }}</a-typography-title>
+            <a-typography-paragraph>
+              <a-typography-text type="secondary">
+                {{ t("TXT_CODE_shutdownTimeout_desc") }}
+              </a-typography-text>
+            </a-typography-paragraph>
+            <a-input-number
+              v-model:value="options.config.stopTimeout"
+              :min="0"
+              :step="10"
               :style="'width: ' + (isPhone ? '100%' : '220px')"
             />
           </a-form-item>

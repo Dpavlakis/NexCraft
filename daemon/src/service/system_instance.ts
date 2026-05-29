@@ -46,29 +46,38 @@ class InstanceSubsystem extends EventEmitter {
 
   // start automatically at boot
   private async autoStart() {
+    // Let the daemon settle before kicking off any auto-start instances
     await sleep(1000 * 5);
     for (const instance of this.instances.values()) {
       if (instance.config.eventTask.autoStart && instance.status() == Instance.STATUS_STOP) {
-        instance
-          .execPreset("start")
-          .then(() => {
-            logger.info(
-              $t("TXT_CODE_system_instance.autoStart", {
-                name: instance.config.nickname,
-                uuid: instance.instanceUuid
-              })
-            );
-          })
-          .catch((reason) => {
-            logger.error(
-              $t("TXT_CODE_system_instance.autoStartErr", {
-                name: instance.config.nickname,
-                uuid: instance.instanceUuid,
-                reason: reason
-              })
-            );
-          });
-        await sleep(1000 * 5);
+        // Per-instance configurable delay before auto-starting (seconds); each is
+        // scheduled independently so delays are relative to boot, not cumulative.
+        const delaySec = Number(instance.config.eventTask.autoStartDelay) || 0;
+        const delayMs = Math.max(0, delaySec) * 1000;
+        setTimeout(() => {
+          // Re-check: the instance may have been started/removed during the delay
+          if (!(instance.config.eventTask.autoStart && instance.status() == Instance.STATUS_STOP))
+            return;
+          instance
+            .execPreset("start")
+            .then(() => {
+              logger.info(
+                $t("TXT_CODE_system_instance.autoStart", {
+                  name: instance.config.nickname,
+                  uuid: instance.instanceUuid
+                })
+              );
+            })
+            .catch((reason) => {
+              logger.error(
+                $t("TXT_CODE_system_instance.autoStartErr", {
+                  name: instance.config.nickname,
+                  uuid: instance.instanceUuid,
+                  reason: reason
+                })
+              );
+            });
+        }, delayMs);
       }
     }
   }

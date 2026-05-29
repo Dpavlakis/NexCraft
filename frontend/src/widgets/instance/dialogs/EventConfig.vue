@@ -93,6 +93,23 @@ defineExpose({
         </a-typography-paragraph>
         <a-switch v-model:checked="options.config.eventTask.autoStart" />
       </a-form-item>
+
+      <template v-if="options.config.eventTask.autoStart">
+        <a-form-item>
+          <a-typography-title :level="5">{{ t("TXT_CODE_autoStartDelay_title") }}</a-typography-title>
+          <a-typography-paragraph>
+            <a-typography-text type="secondary">
+              {{ t("TXT_CODE_autoStartDelay_desc") }}
+            </a-typography-text>
+          </a-typography-paragraph>
+          <a-input-number
+            v-model:value="options.config.eventTask.autoStartDelay"
+            :min="0"
+            :step="5"
+            :style="'width: 220px'"
+          />
+        </a-form-item>
+      </template>
     </a-form>
   </a-modal>
 </template>

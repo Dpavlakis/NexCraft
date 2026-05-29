@@ -395,7 +395,8 @@ router.put(
       const eventTask = {
         autoStart: toBoolean(config.eventTask?.autoStart),
         autoRestart: toBoolean(config.eventTask?.autoRestart),
-        autoRestartMaxTimes: toNumber(config.eventTask?.autoRestartMaxTimes)
+        autoRestartMaxTimes: toNumber(config.eventTask?.autoRestartMaxTimes),
+        autoStartDelay: toNumber(config.eventTask?.autoStartDelay)
       };
 
       // web terminal settings
@@ -417,6 +418,7 @@ router.put(
       const ie = !isEmpty(config.ie) ? toText(config?.ie) : null;
       const fileCode = toText(config.fileCode);
       const stopCommand = config.stopCommand ? toText(config.stopCommand) : null;
+      const stopTimeout = !isEmpty(config.stopTimeout) ? toNumber(config.stopTimeout) : null;
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId || "");
       const isTopPermission = isTopPermissionByUuid(getUserUuid(ctx));
 
@@ -434,6 +436,7 @@ router.put(
           oe,
           ie,
           stopCommand,
+          stopTimeout,
           rconIp,
           rconPort,
           rconPassword,

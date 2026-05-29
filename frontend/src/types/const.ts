@@ -164,6 +164,7 @@ export const defaultInstanceInfo: IGlobalInstanceConfig = {
   nickname: "",
   startCommand: "",
   stopCommand: "^c",
+  stopTimeout: 0,
   cwd: "",
   ie: "UTF-8",
   oe: "UTF-8",
@@ -201,7 +202,8 @@ export const defaultInstanceInfo: IGlobalInstanceConfig = {
     autoStart: false,
     autoRestart: false,
     autoRestartMaxTimes: 3,
-    ignore: false
+    ignore: false,
+    autoStartDelay: 0
   },
   docker: defaultDockerConfig,
   pingConfig: {

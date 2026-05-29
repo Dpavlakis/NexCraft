@@ -11,6 +11,8 @@ export default class InstanceConfig implements IGlobalInstanceConfig {
   public nickname = "Undefined";
   public startCommand = "";
   public stopCommand = "^C";
+  // Seconds to wait after the stop command before forcibly killing the process (0 = wait indefinitely)
+  public stopTimeout = 0;
   public cwd = ".";
   public ie = "utf-8";
   public oe = "utf-8";
@@ -52,7 +54,9 @@ export default class InstanceConfig implements IGlobalInstanceConfig {
     autoStart: false,
     autoRestart: false,
     autoRestartMaxTimes: -1,
-    ignore: false
+    ignore: false,
+    // Seconds to wait before auto-starting this instance when the daemon boots
+    autoStartDelay: 0
   };
 
   // java

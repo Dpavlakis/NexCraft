@@ -3,6 +3,7 @@ declare global {
     nickname: string;
     startCommand: string;
     stopCommand: string;
+    stopTimeout?: number;
     cwd: string;
     ie: string;
     oe: string;
@@ -41,6 +42,7 @@ declare global {
       autoRestart: boolean;
       autoRestartMaxTimes: number;
       ignore: boolean;
+      autoStartDelay?: number;
     };
     docker: IGlobalInstanceDockerConfig;
     pingConfig: {
