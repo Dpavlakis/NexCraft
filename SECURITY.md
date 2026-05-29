@@ -1,11 +1,12 @@
 ## Security Vulnerability Reporting
 
-If you discover a security vulnerability in MCSManager and believe it may harm other users, and you are willing to help us fix it but do not wish to disclose the details publicly.
+NexCraft is a personal, Minecraft-focused fork of [MCSManager](https://github.com/MCSManager/MCSManager).
 
-**Please send detailed information to our email: support@mcsmanager.com.**
+If you discover a security vulnerability and believe it may harm other users, please report it **privately** rather than opening a public issue.
 
-The email subject format should be: `[Security Vulnerability] <Title>`
+**Preferred:** open a private report via GitHub Security Advisories:
+<https://github.com/Dpavlakis/NexCraft/security/advisories/new>
 
-Please provide detailed steps to reproduce the security vulnerability, its impact, and we will reply and express our gratitude upon receiving your email.
+Please include detailed steps to reproduce, the impact, and any suggested fix. We'll acknowledge your report and credit your contribution.
 
-We will acknowledge your contribution by adding your name to the `readme.md` and `code`!
+> If the issue originates in upstream MCSManager itself, please also consider reporting it to the upstream project.

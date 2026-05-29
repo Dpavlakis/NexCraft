@@ -1,7 +1,11 @@
 # docker-compose.yml
+# NexCraft has no published images — build them from this repo first:
+#   docker build -f dockerfile/web.dockerfile    -t nexcraft-web .
+#   docker build -f dockerfile/daemon.dockerfile -t nexcraft-daemon .
+# (see docs: https://dpavlakis.github.io/NexCraft/installation)
 services:
   web:
-    image: githubyumao/mcsmanager-web:latest
+    image: nexcraft-web
     ports:
       - "23333:23333"
     volumes:
@@ -10,7 +14,7 @@ services:
       - <CHANGE_ME_TO_INSTALL_PATH>/web/logs:/opt/mcsmanager/web/logs
 
   daemon:
-    image: githubyumao/mcsmanager-daemon:latest
+    image: nexcraft-daemon
     restart: unless-stopped
     network_mode: host # if you want run instance in daemon container
     # ports:

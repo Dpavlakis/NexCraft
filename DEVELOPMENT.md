@@ -1,12 +1,14 @@
 ## Setting Up Development Environment
 
-This section is **for developers**. If you want to develop MCSManager or contribute code, please read this content carefully:
+This section is **for developers**. If you want to develop NexCraft or contribute code, please read this content carefully:
+
+> NexCraft is a Minecraft-focused fork of [MCSManager](https://github.com/MCSManager/MCSManager); the build/runtime mechanics below are inherited from upstream.
 
 ### Required Environment
 
-- Node.js v16+
+- Node.js (latest LTS, v20+)
 
-We use `Visual Studio Code` to develop MCSManager, we **highly recommend** these plugins:
+We use `Visual Studio Code` to develop NexCraft, we **highly recommend** these plugins:
 
 - i18n Text Display Support (I18n Ally)
 - Code Formatting (Prettier)
@@ -20,8 +22,8 @@ We use `Visual Studio Code` to develop MCSManager, we **highly recommend** these
 #### 1. Download the Source Code
 
 ```bash
-git clone https://github.com/MCSManager/MCSManager.git
-cd MCSManager
+git clone https://github.com/Dpavlakis/NexCraft.git
+cd NexCraft
 ```
 
 #### 2. Download Binary Dependency Files
@@ -65,7 +67,7 @@ wget https://github.com/MCSManager/Zip-Tools/releases/download/latest/7z_linux_x
 ./install-dependents.bat
 ```
 
-#### 4. Run MCSManager
+#### 4. Run NexCraft
 
 ```bash
 npm run dev
@@ -154,6 +156,7 @@ After the build is complete, you will find the production code in the `productio
 
 ### Finally
 
-For more content, please refer to the official documentation.
+For NexCraft usage docs, see https://dpavlakis.github.io/NexCraft/
 
+For the underlying MCSManager runtime/network details, see the upstream docs:
 https://docs.mcsmanager.com/ops/mcsm_network.html
