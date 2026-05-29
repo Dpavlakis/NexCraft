@@ -254,7 +254,11 @@ export class ModloaderBootstrap {
   }
 
   // Build a start command from already-present server artifacts (CF server packs, post-install layout).
-  private detectStartFromExisting(): string | undefined {
+  // When `allowScripts` is false, the pack's own start scripts are ignored so we
+  // can build a managed-Java (@args / -jar) command instead — pack scripts call
+  // the system `java` and often self-restart, which hides crashes from the
+  // auto-Java-on-launch recovery.
+  private detectStartFromExisting(allowScripts = true): string | undefined {
     const javaExe = this.startJava;
     const cwd = this.cwd();
     // Forge/NeoForge 1.17+ args files
@@ -265,26 +269,28 @@ export class ModloaderBootstrap {
       return `${javaExe} ${this.memArgs()} @user_jvm_args.txt @${rel} nogui`;
     }
     // Start scripts shipped by the pack (most CF Forge/NeoForge server packs)
-    const scripts =
-      os.platform() === "win32"
-        ? ["run.bat", "start.bat", "startserver.bat", "serverstart.bat"]
-        : ["run.sh", "start.sh", "startserver.sh", "serverstart.sh"];
-    for (const s of scripts) {
-      const sp = path.join(cwd, s);
-      if (fs.existsSync(sp)) {
-        if (os.platform() !== "win32") {
-          try {
-            // CF packs ship CRLF .sh scripts (they have a .bat sibling); bash
-            // chokes on \r, so normalize line endings, then make it executable.
-            const content = fs.readFileSync(sp, "utf-8");
-            if (content.includes("\r")) fs.writeFileSync(sp, content.replace(/\r\n/g, "\n"));
-            fs.chmodSync(sp, 0o755);
-          } catch {
-            // ignore
+    if (allowScripts) {
+      const scripts =
+        os.platform() === "win32"
+          ? ["run.bat", "start.bat", "startserver.bat", "serverstart.bat"]
+          : ["run.sh", "start.sh", "startserver.sh", "serverstart.sh"];
+      for (const s of scripts) {
+        const sp = path.join(cwd, s);
+        if (fs.existsSync(sp)) {
+          if (os.platform() !== "win32") {
+            try {
+              // CF packs ship CRLF .sh scripts (they have a .bat sibling); bash
+              // chokes on \r, so normalize line endings, then make it executable.
+              const content = fs.readFileSync(sp, "utf-8");
+              if (content.includes("\r")) fs.writeFileSync(sp, content.replace(/\r\n/g, "\n"));
+              fs.chmodSync(sp, 0o755);
+            } catch {
+              // ignore
+            }
+            return `bash ${s}`;
           }
-          return `bash ${s}`;
+          return s;
         }
-        return s;
       }
     }
     // Forge/NeoForge legacy universal/server jar
@@ -383,7 +389,7 @@ export class ModloaderBootstrap {
       }
     }
 
-    const start = this.detectStartFromExisting();
+    const start = this.detectStartFromExisting(false);
     if (!start) throw new Error($t("TXT_CODE_modpack.noStartArtifact"));
     return { startCommand: start };
   }
@@ -395,24 +401,33 @@ export class ModloaderBootstrap {
     this.installerJava = "java";
     let start = this.detectStartFromExisting();
 
-    // If the pack ships a runnable script (CF run.sh/startserver.sh), the script
-    // invokes the system `java` itself — a managed runtime can't be injected, so
-    // don't provision one. Warn only if the system Java likely won't work.
+    // A pack start script (CF run.sh/startserver.sh) runs the system `java` and
+    // frequently self-restarts on crash — which hides a Java-version mismatch from
+    // the auto-Java-on-launch recovery (the process never "stops"). If we can
+    // bootstrap this loader with a managed Java (known loader, or a bundled
+    // installer is present), prefer that over the pack script. Only fall back to
+    // the script when we can't self-bootstrap.
     if (start && this.isScriptStart(start)) {
-      try {
-        const major = staticJavaMajor(this.input.mcVersion);
-        const sys = await javaManager.getSystemJavaMajor();
-        if (major && sys && sys !== major) {
-          this.input.instance.println(
-            "WARN",
-            $t("TXT_CODE_modpack.javaWarn", { mc: this.input.mcVersion })
-          );
+      const manageableLoaders = ["forge", "neoforge", "fabric", "quilt", "vanilla"];
+      const canSelfBootstrap =
+        manageableLoaders.includes(this.input.loader) || !!this.findInstallerJar();
+      if (!canSelfBootstrap) {
+        try {
+          const major = staticJavaMajor(this.input.mcVersion);
+          const sys = await javaManager.getSystemJavaMajor();
+          if (major && sys && sys !== major) {
+            this.input.instance.println(
+              "WARN",
+              $t("TXT_CODE_modpack.javaWarn", { mc: this.input.mcVersion })
+            );
+          }
+        } catch {
+          // ignore — classification only
         }
-      } catch {
-        // ignore — classification only
+        this.println($t("TXT_CODE_modpack.startDetected", { cmd: start }));
+        return { startCommand: start };
       }
-      this.println($t("TXT_CODE_modpack.startDetected", { cmd: start }));
-      return { startCommand: start };
+      this.println($t("TXT_CODE_modpack.preferManagedJava"));
     }
 
     // Otherwise we control the java invocation — provision the right Java first
@@ -421,8 +436,9 @@ export class ModloaderBootstrap {
     this.installerJava = await this.javaCmd();
     this.startJava = this.startJavaToken();
 
-    // 1) Re-detect now that the java token may have changed.
-    start = this.detectStartFromExisting();
+    // 1) Re-detect now that the java token may have changed. Ignore pack scripts
+    //    on the managed path so we build an @args/-jar command we can inject Java into.
+    start = this.detectStartFromExisting(false);
     if (start) {
       this.println($t("TXT_CODE_modpack.startDetected", { cmd: start }));
       return { startCommand: start };
@@ -438,7 +454,7 @@ export class ModloaderBootstrap {
       } catch {
         // ignore
       }
-      start = this.detectStartFromExisting();
+      start = this.detectStartFromExisting(false);
       if (start) {
         this.println($t("TXT_CODE_modpack.startDetected", { cmd: start }));
         return { startCommand: start };
