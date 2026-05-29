@@ -360,6 +360,7 @@ onMounted(async () => {
 .brand-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin-bottom: 18px;
 }
