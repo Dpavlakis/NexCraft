@@ -187,6 +187,14 @@ const originRouterConfig: RouterConfig[] = [
             meta: {
               permission: ROLE.USER
             }
+          },
+          {
+            path: `/instances/modpackUpdate`,
+            name: t("TXT_CODE_modpack_update_card_title"),
+            component: LayoutContainer,
+            meta: {
+              permission: ROLE.USER
+            }
           }
         ]
       }

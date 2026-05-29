@@ -398,6 +398,28 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
       ]
     },
     {
+      page: "/instances/modpackUpdate",
+      items: [
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "InstanceModpackUpdate",
+          title: t("TXT_CODE_modpack_update_card_title"),
+          width: 12,
+          height: LayoutCardHeight.AUTO,
+          disableDelete: true
+        },
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "EmptyCard",
+          title: "",
+          width: 12,
+          height: LayoutCardHeight.MINI
+        }
+      ]
+    },
+    {
       page: "/instances/metrics",
       items: [
         {

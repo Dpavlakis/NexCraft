@@ -17,6 +17,7 @@ import {
   AppstoreAddOutlined,
   ArrowRightOutlined,
   BuildOutlined,
+  CloudDownloadOutlined,
   CloudUploadOutlined,
   CodeOutlined,
   ControlOutlined,
@@ -217,6 +218,23 @@ const btns = computed(() => {
       click: () => {
         toPage({
           path: "/instances/backup",
+          query: {
+            instanceId,
+            daemonId
+          }
+        });
+      }
+    },
+    {
+      title: t("TXT_CODE_modpack_update_card_title"),
+      icon: CloudDownloadOutlined,
+      // Only meaningful for instances installed from a modpack/server source;
+      // updating is admin-only (matches the /update route permission).
+      condition: () =>
+        isAdmin.value && !isGlobalTerminal.value && !!instanceInfo.value?.config?.packInfo,
+      click: () => {
+        toPage({
+          path: "/instances/modpackUpdate",
           query: {
             instanceId,
             daemonId
