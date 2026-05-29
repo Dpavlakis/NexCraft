@@ -40,7 +40,13 @@ const props = defineProps<{
   card: LayoutCard;
   // When set, the browser operates in "reinstall mode": instead of creating a
   // new instance, the chosen pack/build is reinstalled into this instance.
-  reinstallTarget?: { instanceId: string; daemonId: string; instanceName?: string };
+  // packInfo (when present) focuses the dialog on the currently-installed pack.
+  reinstallTarget?: {
+    instanceId: string;
+    daemonId: string;
+    instanceName?: string;
+    packInfo?: IModpackInfo;
+  };
 }>();
 const emit = defineEmits<{ (e: "close"): void }>();
 
@@ -440,9 +446,31 @@ watch(customLoader, () => {
   if (source.value === "custom") loadCustom();
 });
 
+// In reinstall mode, jump straight to the currently-installed pack's dialog so
+// the reset focuses on what's already there (rather than the browse list).
+const focusInstalledPack = () => {
+  const pk = props.reinstallTarget?.packInfo;
+  if (!pk) return false;
+  if (pk.source === "curseforge" || pk.source === "modrinth") {
+    selectSource(pk.source);
+    openInstall({
+      id: pk.projectId,
+      title: pk.projectName || pk.projectId,
+      description: "",
+      icon: pk.iconUrl
+    });
+    return true;
+  }
+  // Custom/vanilla build: focus the Custom tab on the same loader.
+  selectSource("custom");
+  if (pk.loader) customLoader.value = pk.loader;
+  return true;
+};
+
 onMounted(() => {
   loadNodes();
-  loadCustom();
+  // Default to the installed pack when reinstalling; otherwise load the catalog.
+  if (!focusInstalledPack()) loadCustom();
   nextTick(recomputeHeight);
   window.addEventListener("resize", recomputeHeight);
 });

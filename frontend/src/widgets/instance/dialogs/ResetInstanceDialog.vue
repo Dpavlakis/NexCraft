@@ -9,6 +9,7 @@ const props = defineProps<
     daemonId?: string;
     instanceId?: string;
     instanceName?: string;
+    packInfo?: IModpackInfo;
   } & MountComponent
 >();
 
@@ -20,7 +21,8 @@ const browserCard = { title: t("TXT_CODE_modpack_reset_title") } as unknown as L
 const reinstallTarget = computed(() => ({
   instanceId: props.instanceId || "",
   daemonId: props.daemonId || "",
-  instanceName: props.instanceName
+  instanceName: props.instanceName,
+  packInfo: props.packInfo
 }));
 
 const openDialog = () => {

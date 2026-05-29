@@ -220,7 +220,8 @@ const instanceOperations = computed(() =>
           await openResetInstanceDialog(
             daemonId ?? "",
             instanceId ?? "",
-            instanceInfo.value?.config.nickname
+            instanceInfo.value?.config.nickname,
+            instanceInfo.value?.config.packInfo
           );
         } catch (error: any) {
           // ignore

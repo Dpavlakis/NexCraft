@@ -281,12 +281,14 @@ export async function openMarketDialog(
 export async function openResetInstanceDialog(
   daemonId?: string,
   instanceId?: string,
-  instanceName?: string
+  instanceName?: string,
+  packInfo?: IModpackInfo
 ) {
   const dialog = useMountComponent({
     daemonId,
     instanceId,
-    instanceName
+    instanceName,
+    packInfo
   }).load<InstanceType<typeof ResetInstanceDialog>>(ResetInstanceDialog);
   return dialog!.openDialog();
 }
