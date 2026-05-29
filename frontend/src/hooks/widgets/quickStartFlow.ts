@@ -144,11 +144,6 @@ export function useQuickStartFlow() {
         }
       },
       {
-        title: t("TXT_CODE_acd4abda"),
-        key: QUICKSTART_METHOD.DOCKER,
-        icon: CodeOutlined
-      },
-      {
         title: t("TXT_CODE_444db70f"),
         key: QUICKSTART_METHOD.FILE,
         icon: CloudUploadOutlined

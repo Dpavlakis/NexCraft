@@ -10,12 +10,7 @@ import InstallOptionButton from "@/widgets/market/InstallOptionButton.vue";
 import ModpackBrowser from "@/widgets/market/ModpackBrowser.vue";
 import { useMarketTour } from "@/widgets/market/useMarketTour";
 import CreateInstanceForm from "@/widgets/setupApp/CreateInstanceForm.vue";
-import {
-  AppstoreAddOutlined,
-  BlockOutlined,
-  FileZipOutlined,
-  FolderOpenOutlined
-} from "@ant-design/icons-vue";
+import { AppstoreAddOutlined, FileZipOutlined, FolderOpenOutlined } from "@ant-design/icons-vue";
 import { Tour } from "ant-design-vue";
 import { ref } from "vue";
 
@@ -33,7 +28,7 @@ const daemonId = getMetaOrRouteValue("daemonId", false) ?? "";
 
 // Form data state
 const formData = ref({
-  createMethod: QUICKSTART_METHOD.DOCKER,
+  createMethod: QUICKSTART_METHOD.IMPORT,
   daemonId: daemonId || ""
 });
 
@@ -72,15 +67,6 @@ const manualInstallOptions = [
     description: t("TXT_CODE_f09da050"),
     action: (e: Event) => {
       handleInstallAction(QUICKSTART_METHOD.IMPORT);
-      e.preventDefault();
-    }
-  },
-  {
-    label: t("TXT_CODE_bae487e4"),
-    icon: BlockOutlined,
-    description: t("TXT_CODE_256e5825"),
-    action: (e: Event) => {
-      handleInstallAction(QUICKSTART_METHOD.DOCKER);
       e.preventDefault();
     }
   },
