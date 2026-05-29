@@ -53,6 +53,13 @@ const loadNodes = async () => {
 };
 
 // ---- results ----
+interface CustomVersion {
+  id: string;
+  label: string;
+  runtime?: string;
+  targetLink: string;
+  setupInfo?: any;
+}
 interface ResultItem {
   id: string;
   title: string;
@@ -61,11 +68,50 @@ interface ResultItem {
   slug?: string;
   author?: string;
   downloads?: number;
-  // custom-only:
-  targetLink?: string;
-  setupInfo?: any;
+  // custom-only: selectable server versions for this software
+  customVersions?: CustomVersion[];
 }
 const results = ref<ResultItem[]>([]);
+
+// Friendly names/descriptions for the built-in Minecraft server catalog,
+// keyed by the catalog's `category` so all versions of one software collapse
+// into a single clean entry (like Prism/PaperMC) with a version dropdown.
+const CUSTOM_GROUPS: Record<string, { name: string; description: string }> = {
+  "mc-vanilla": {
+    name: "Vanilla",
+    description: "The official, unmodified Minecraft server from Mojang."
+  },
+  "mc-paper": {
+    name: "PaperMC",
+    description: "High-performance Spigot fork with great plugin support and optimizations."
+  },
+  "mc-purpur": {
+    name: "Purpur",
+    description: "A Paper fork with many extra configuration and gameplay options."
+  },
+  "mc-folia": {
+    name: "Folia",
+    description: "A Paper fork using regionised multithreading for very large servers."
+  },
+  "mc-fabric": {
+    name: "Fabric",
+    description: "Lightweight, modular mod loader for client- and server-side mods."
+  },
+  "mc-forge": {
+    name: "Forge",
+    description: "The classic Minecraft mod loader with the largest mod ecosystem."
+  },
+  "mc-neoforge": {
+    name: "NeoForge",
+    description: "A modern, community-driven fork of Forge."
+  }
+};
+
+// "[PaperMC] Minecraft 1.21.1" -> "1.21.1"
+const parseVersionLabel = (title: string) => {
+  const m = /Minecraft\s+([\w.\-+]+)/i.exec(title || "");
+  return m ? m[1] : title || "";
+};
 const loading = ref(false);
 const searchText = ref("");
 const sortField = ref("featured");
@@ -95,19 +141,54 @@ const loadCustom = async () => {
   try {
     // reuse the existing quick-install catalog, Minecraft only
     const res = await quickInstallListAddr().execute();
-    const pkgs = (res.value?.packages || []).filter((p: any) => p.gameType === "Minecraft");
-    results.value = pkgs.map((p: any) => ({
-      id: p.title,
-      title: p.title,
-      description: p.description,
-      icon: p.image,
-      targetLink: p.targetLink,
-      setupInfo: p.setupInfo
-    }));
+    // Minecraft only, and skip Docker-based catalog entries (host/general only).
+    const pkgs = (res.value?.packages || []).filter(
+      (p: any) =>
+        p.gameType === "Minecraft" &&
+        !(p.tags || []).some((tg: string) => /docker/i.test(String(tg))) &&
+        String(p.setupInfo?.processType || "general") !== "docker"
+    );
+
+    // Group all versions of one software (by catalog category) into a single
+    // clean entry with a version dropdown; anything uncategorised stays on its own.
+    const groups = new Map<string, ResultItem>();
+    const singles: ResultItem[] = [];
+    for (const p of pkgs) {
+      const cat = String(p.category || "");
+      const meta = CUSTOM_GROUPS[cat];
+      const version: CustomVersion = {
+        id: String(p.title),
+        label: parseVersionLabel(p.title),
+        runtime: p.runtime,
+        targetLink: p.targetLink || "",
+        setupInfo: p.setupInfo
+      };
+      if (meta) {
+        let g = groups.get(cat);
+        if (!g) {
+          g = { id: cat, title: meta.name, description: meta.description, icon: p.image, customVersions: [] };
+          groups.set(cat, g);
+        }
+        // de-dupe versions that share the same display label
+        if (!g.customVersions!.some((v) => v.label === version.label)) {
+          g.customVersions!.push(version);
+        }
+      } else {
+        singles.push({
+          id: String(p.title),
+          title: p.title,
+          description: p.description,
+          icon: p.image,
+          customVersions: [version]
+        });
+      }
+    }
+    results.value = [...groups.values(), ...singles];
   } catch (err: any) {
     reportErrorMsg(err.message);
   } finally {
     loading.value = false;
+    nextTick(recomputeHeight);
   }
 };
 
@@ -206,11 +287,30 @@ const openInstall = (item: ResultItem) => {
   dialog.detail = null;
   dialog.acceptEula = false;
   dialog.open = true;
-  if (source.value !== "custom") {
+  if (source.value === "custom") {
+    const cv = item.customVersions || [];
+    // Prefer the newest version that runs on the daemon's bundled Java (21);
+    // newer entries (e.g. Java 25+) would fail to launch by default.
+    const runnable = cv.find((v) => {
+      const m = /Java\s+(\d+)/i.exec(v.runtime || "");
+      return !m || Number(m[1]) <= 21;
+    });
+    const chosen = runnable || cv[0];
+    dialog.selectedVersion = chosen?.id || "";
+    dialog.instanceName = `${item.title}${chosen ? " " + chosen.label : ""}`.slice(0, 40);
+  } else {
     // fetch detail + versions in parallel
     loadDetail(item);
     loadVersions(item);
   }
+};
+
+// Keep the instance name in sync with the chosen built-in version.
+const onCustomVersionChange = () => {
+  const it = dialog.item;
+  if (!it || source.value !== "custom") return;
+  const cv = (it.customVersions || []).find((v) => v.id === dialog.selectedVersion);
+  if (cv) dialog.instanceName = `${it.title} ${cv.label}`.slice(0, 40);
 };
 
 const formatUpdated = (d?: string) => (d ? new Date(d).toLocaleDateString() : "");
@@ -249,7 +349,8 @@ const formatDownloads = (n?: number) => {
 
 const canInstall = computed(() => {
   if (!dialog.instanceName || !dialog.daemonId) return false;
-  if (source.value === "custom") return true; // custom packs use the built-in EULA prompt on start
+  // custom packs auto-accept the EULA on install; just need a version chosen
+  if (source.value === "custom") return !!dialog.selectedVersion;
   return dialog.acceptEula && !!dialog.selectedVersion;
 });
 
@@ -259,14 +360,17 @@ const doInstall = async () => {
   try {
     let instanceUuid = "";
     if (source.value === "custom") {
+      const cv =
+        (dialog.item.customVersions || []).find((v) => v.id === dialog.selectedVersion) ||
+        dialog.item.customVersions?.[0];
       const { execute } = createAsyncTask();
       const res = await execute({
         params: { daemonId: dialog.daemonId, uuid: "-", task_name: "quick_install" },
         data: {
           time: Date.now(),
           newInstanceName: dialog.instanceName,
-          targetLink: dialog.item.targetLink || "",
-          setupInfo: dialog.item.setupInfo
+          targetLink: cv?.targetLink || "",
+          setupInfo: cv?.setupInfo
         }
       });
       instanceUuid = res.value?.instanceUuid || "";
@@ -455,6 +559,17 @@ onBeforeUnmount(() => {
         <a-select v-model:value="dialog.daemonId">
           <a-select-option v-for="n in nodes" :key="n.uuid" :value="n.uuid">
             {{ nodeLabel(n) }}
+          </a-select-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item v-if="source === 'custom'" :label="t('TXT_CODE_modpack_version')">
+        <a-select v-model:value="dialog.selectedVersion" @change="onCustomVersionChange">
+          <a-select-option
+            v-for="v in dialog.item?.customVersions || []"
+            :key="v.id"
+            :value="v.id"
+          >
+            {{ v.label }}<span v-if="v.runtime"> — {{ v.runtime }}</span>
           </a-select-option>
         </a-select>
       </a-form-item>
