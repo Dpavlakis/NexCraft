@@ -41,7 +41,7 @@ export default class InstanceConfig implements IGlobalInstanceConfig {
 
   // terminal option
   public terminalOption = {
-    haveColor: false,
+    haveColor: true,
     pty: true,
     ptyWindowCol: 164,
     ptyWindowRow: 40

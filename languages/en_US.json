@@ -3544,6 +3544,7 @@
   "TXT_CODE_modpack.updateDone": "Modpack updated successfully.",
   "TXT_CODE_modpack.portAssigned": "Assigned free port {{port}} (server-port + query.port).",
   "TXT_CODE_modpack.directStart": "Using a direct Java start command for accurate CPU/RAM monitoring: {{cmd}}",
+  "TXT_CODE_modpack.removedClientMods": "Removed client-only mod(s) that crash a dedicated server: {{mods}}",
   "TXT_CODE_modpack.javaResolving": "Determining the Java version this pack needs...",
   "TXT_CODE_modpack.javaUsingSystem": "System Java {{ver}} matches this pack — using it.",
   "TXT_CODE_modpack.javaDownloading": "Required Java {{ver}} is not installed — downloading it now (this may take a minute)...",

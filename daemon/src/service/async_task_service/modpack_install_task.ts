@@ -16,6 +16,7 @@ import {
   extractZipOverwrite,
   maybeFlatten,
   parseMrpackIndex,
+  removeKnownClientMods,
   resolveLoader
 } from "../modpack_files";
 import InstanceSubsystem from "../system_instance";
@@ -207,6 +208,20 @@ export class ModpackInstallTask extends AsyncTask {
         this.descriptor.source === "curseforge"
           ? await this.installCurseForge()
           : await this.installModrinth();
+
+      // Strip client-only mods that would crash a dedicated server (e.g. e4mc
+      // shipped in client optimization packs like Fabulously Optimized).
+      try {
+        const removed = await removeKnownClientMods(inst.absoluteCwdPath());
+        if (removed.length) {
+          inst.println(
+            "INFO",
+            $t("TXT_CODE_modpack.removedClientMods", { mods: removed.join(", ") })
+          );
+        }
+      } catch {
+        // non-fatal
+      }
 
       // Accept the Minecraft EULA on the user's behalf (they checked the box).
       if (this.descriptor.acceptEula) {

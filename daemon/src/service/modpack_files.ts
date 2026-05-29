@@ -19,6 +19,40 @@ export interface MrpackIndex {
   files: MrpackFile[];
 }
 
+// Client-only mods that ship in "optimization"/client modpacks but crash a
+// dedicated server (they advertise server support or arrive via overrides, so
+// the Modrinth env filter can't catch them). Matched against the jar filename.
+// Extend this list as new offenders are found.
+export const CLIENT_ONLY_CRASH_MODS: RegExp[] = [
+  /(^|[^a-z])e4mc/i // world-sharing tunnel: NoSuchMethodError on join
+];
+
+// Remove known client-only mods from <cwd>/mods so a client modpack installed
+// as a server can still boot. Returns the removed filenames.
+export async function removeKnownClientMods(cwd: string): Promise<string[]> {
+  const modsDir = path.join(cwd, "mods");
+  if (!fs.existsSync(modsDir)) return [];
+  const removed: string[] = [];
+  let entries: string[] = [];
+  try {
+    entries = fs.readdirSync(modsDir);
+  } catch {
+    return [];
+  }
+  for (const name of entries) {
+    if (!/\.jar$/i.test(name)) continue;
+    if (CLIENT_ONLY_CRASH_MODS.some((re) => re.test(name))) {
+      try {
+        await fs.remove(path.join(modsDir, name));
+        removed.push(name);
+      } catch {
+        // ignore — best effort
+      }
+    }
+  }
+  return removed;
+}
+
 // Files/dirs preserved across a modpack update (never deleted or overwritten).
 export const MODPACK_PRESERVE_FILES = [
   "server.properties",

@@ -15,6 +15,7 @@ import {
   makeShouldPreserve,
   maybeFlatten,
   parseMrpackIndex,
+  removeKnownClientMods,
   resolveLoader
 } from "../modpack_files";
 import { AsyncTask, IAsyncTaskJSON } from "./index";
@@ -116,6 +117,19 @@ export class ModpackUpdateTask extends AsyncTask {
           return !skip(rel);
         }
       });
+
+      // Strip client-only mods that crash a dedicated server (e.g. e4mc).
+      try {
+        const removed = await removeKnownClientMods(cwd);
+        if (removed.length) {
+          inst.println(
+            "INFO",
+            $t("TXT_CODE_modpack.removedClientMods", { mods: removed.join(", ") })
+          );
+        }
+      } catch {
+        // non-fatal
+      }
 
       // 5) Re-bootstrap the modloader for the new version
       this.phase = "bootstrap";
