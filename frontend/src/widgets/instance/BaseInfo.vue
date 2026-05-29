@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { getFileConfigAddr } from "@/hooks/useFileManager";
 import { useInstanceInfo } from "@/hooks/useInstance";
 import { t } from "@/lang/i18n";
+import { downloadAddress } from "@/services/apis/fileManager";
+import { parseForwardAddress } from "@/tools/protocol";
 import type { LayoutCard } from "@/types";
 import { CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons-vue";
 import { computed, onMounted, ref } from "vue";
@@ -45,6 +48,24 @@ const instanceGameServerInfo = computed(() => {
   }
 });
 
+const serverIconUrl = ref("");
+const loadServerIcon = async () => {
+  if (!instanceId || !daemonId) return;
+  const type = instanceInfo.value?.config?.type || "";
+  if (!type.includes("minecraft")) return;
+  try {
+    const { execute: getAddr } = downloadAddress();
+    const res = await getAddr({
+      params: { file_name: "server-icon.png", daemonId: String(daemonId), uuid: String(instanceId) }
+    });
+    if (!res.value) return;
+    const addr = parseForwardAddress(getFileConfigAddr(res.value), "http");
+    serverIconUrl.value = `${addr}/download/${res.value.password}/server-icon.png`;
+  } catch (e) {
+    // no icon / unreachable -> show nothing
+  }
+};
+
 onMounted(async () => {
   if (instanceId && daemonId) {
     await execute({
@@ -53,6 +74,7 @@ onMounted(async () => {
         daemonId: daemonId
       }
     });
+    loadServerIcon();
   }
 });
 </script>
@@ -62,6 +84,15 @@ onMounted(async () => {
   <CardPanel class="containerWrapper" style="height: 100%">
     <template #title>
       {{ card.title }}
+    </template>
+    <template #operator>
+      <img
+        v-if="serverIconUrl"
+        :src="serverIconUrl"
+        class="server-icon"
+        alt=""
+        @error="serverIconUrl = ''"
+      />
     </template>
     <template #body>
       <a-typography-paragraph>
@@ -186,3 +217,13 @@ onMounted(async () => {
 
   <DockerInfo ref="DockerInfoDialog" :docker-info="instanceInfo?.config.docker" />
 </template>
+
+<style lang="scss" scoped>
+.server-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+</style>

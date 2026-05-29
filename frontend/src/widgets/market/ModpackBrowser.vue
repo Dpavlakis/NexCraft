@@ -201,6 +201,11 @@ const openInstall = (item: ResultItem) => {
 
 const formatUpdated = (d?: string) => (d ? new Date(d).toLocaleDateString() : "");
 
+const onMemWheel = (e: WheelEvent) => {
+  const delta = e.deltaY < 0 ? 1024 : -1024;
+  dialog.maxMemoryMB = Math.max(1024, (dialog.maxMemoryMB || 0) + delta);
+};
+
 const versionId = (v: ModpackVersion) => String(v.fileId || v.id || "");
 const versionInstallable = (v: ModpackVersion) =>
   source.value === "curseforge" ? v.hasServerPack !== false && !!v.fileId : true;
@@ -443,7 +448,13 @@ onMounted(() => {
         </a-select>
       </a-form-item>
       <a-form-item v-if="source !== 'custom'" :label="t('TXT_CODE_modpack_memory')">
-        <a-input-number v-model:value="dialog.maxMemoryMB" :min="1024" :step="1024" style="width: 100%" />
+        <a-input-number
+          v-model:value="dialog.maxMemoryMB"
+          :min="1024"
+          :step="1024"
+          style="width: 100%"
+          @wheel.prevent="onMemWheel"
+        />
       </a-form-item>
       <a-form-item v-if="source !== 'custom'">
         <a-checkbox v-model:checked="dialog.acceptEula">
