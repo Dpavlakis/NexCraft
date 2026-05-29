@@ -1,5 +1,6 @@
 import schedule from "node-schedule";
 import StorageSubsystem from "../common/system_storage";
+import backupManager from "./backup_service";
 import Instance from "../entity/instance/instance";
 import { $t } from "../i18n";
 import { sleep } from "../utils/sleep";
@@ -13,7 +14,8 @@ export enum ScheduleActionTypeEnum {
   Stop = "stop",
   Start = "start",
   Restart = "restart",
-  Kill = "kill"
+  Kill = "kill",
+  Backup = "backup"
 }
 
 export const ScheduleTypeEnum = {
@@ -244,6 +246,10 @@ class InstanceControlSubsystem {
         }
         if (actionType === ScheduleActionTypeEnum.Kill) {
           await instance.execPreset("kill");
+          continue;
+        }
+        if (actionType === ScheduleActionTypeEnum.Backup) {
+          await backupManager.startBackupTask(instanceUuid).wait();
           continue;
         }
 

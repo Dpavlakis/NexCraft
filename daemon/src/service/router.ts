@@ -73,6 +73,7 @@ export function navigation(socket: Socket) {
 
 // The authentication routing order must be the first load. These routing orders cannot be changed without authorization
 import "../routers/auth_router";
+import "../routers/backup_router";
 import "../routers/environment_router";
 import "../routers/file_router";
 import "../routers/info_router";

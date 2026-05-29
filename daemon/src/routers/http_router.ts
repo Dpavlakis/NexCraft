@@ -5,6 +5,7 @@ import path from "path";
 import { DAEMON_INDEX_HTML } from "../const/index_html";
 import FileWriter from "../entity/file_writer";
 import { $t } from "../i18n";
+import backupManager from "../service/backup_service";
 import { missionPassport } from "../service/mission_passport";
 import FileManager from "../service/system_file";
 import InstanceSubsystem from "../service/system_instance";
@@ -42,6 +43,34 @@ router.get("/download/:key/:fileName", async (ctx) => {
       throw new Error((ctx.body = "Access denied: Invalid destination"));
 
     const fileAbsPath = fileManager.toAbsolutePath(fileRelativePath);
+    await sendFile(ctx, fileAbsPath);
+  } catch (error: any) {
+    if (!ctx.res.headersSent) {
+      ctx.body = $t("TXT_CODE_http_router.downloadErr", { error: error.message });
+      ctx.status = 500;
+    }
+  } finally {
+    missionPassport.deleteMission(key);
+  }
+});
+
+// Backup download route (backups live outside the instance cwd, so they need a dedicated route)
+router.get("/backup-download/:key/:fileName", async (ctx) => {
+  const key = ctx.params.key;
+  const paramsFileName = ctx.params.fileName;
+  try {
+    const mission = missionPassport.getMission(key, "backup-download");
+    if (!mission) throw new Error((ctx.body = "Access denied: No task found"));
+    const instance = InstanceSubsystem.getInstance(mission.parameter.instanceUuid);
+    if (!instance) throw new Error($t("TXT_CODE_http_router.instanceNotExist"));
+    if (!FileManager.checkFileName(paramsFileName))
+      throw new Error($t("TXT_CODE_http_router.fileNameNotSpec"));
+
+    // resolveBackupFile enforces the traversal guard and that the file exists
+    const fileAbsPath = backupManager.resolveBackupFile(
+      mission.parameter.instanceUuid,
+      mission.parameter.fileName
+    );
     await sendFile(ctx, fileAbsPath);
   } catch (error: any) {
     if (!ctx.res.headersSent) {

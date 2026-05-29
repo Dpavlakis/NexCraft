@@ -6,6 +6,7 @@ import "./service/user_service";
 import "./service/user_statistics";
 import "./service/visual_data";
 
+import backupRouter from "./routers/backup_router";
 import serviceRouter from "./routers/daemon_router";
 import environmentRouter from "./routers/environment_router";
 import filemanager_router from "./routers/filemananger_router";
@@ -35,6 +36,7 @@ export function mountRouters(app: Koa<Koa.DefaultState, Koa.DefaultContext>) {
   apiRouter.use(lowUserRouter.routes()).use(lowUserRouter.allowedMethods());
   apiRouter.use(userRouter.routes()).use(userRouter.allowedMethods());
   apiRouter.use(scheduleRouter.routes()).use(scheduleRouter.allowedMethods());
+  apiRouter.use(backupRouter.routes()).use(backupRouter.allowedMethods());
   apiRouter.use(settingsRouter.routes()).use(settingsRouter.allowedMethods());
   apiRouter.use(ssoRouter.routes()).use(ssoRouter.allowedMethods());
   apiRouter.use(environmentRouter.routes()).use(environmentRouter.allowedMethods());

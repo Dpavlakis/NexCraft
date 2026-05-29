@@ -163,6 +163,14 @@ const originRouterConfig: RouterConfig[] = [
             meta: {
               permission: ROLE.USER
             }
+          },
+          {
+            path: `/instances/backup`,
+            name: t("TXT_CODE_backup_card_title"),
+            component: LayoutContainer,
+            meta: {
+              permission: ROLE.USER
+            }
           }
         ]
       }

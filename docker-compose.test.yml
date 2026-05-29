@@ -1,0 +1,32 @@
+# Test compose for the locally-built backup-feature images.
+# Build the images first (from the project root):
+#   docker build -f dockerfile/web.dockerfile    -t mcsm-web:backup-test .
+#   docker build -f dockerfile/daemon.dockerfile -t mcsm-daemon:backup-test .
+# Then:  docker compose -f docker-compose.test.yml up -d
+#
+# Adjust the appdata paths below to your Unraid share if needed.
+services:
+  web:
+    image: mcsm-web:backup-test
+    container_name: mcsm-web-test
+    restart: unless-stopped
+    ports:
+      - "23333:23333"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/user/appdata/mcsm-test/web/data:/opt/mcsmanager/web/data
+      - /mnt/user/appdata/mcsm-test/web/logs:/opt/mcsmanager/web/logs
+
+  daemon:
+    image: mcsm-daemon:backup-test
+    container_name: mcsm-daemon-test
+    restart: unless-stopped
+    network_mode: host # daemon listens on host :24444 and can run instances
+    environment:
+      - MCSM_DOCKER_WORKSPACE_PATH=/mnt/user/appdata/mcsm-test/daemon/data/InstanceData
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/user/appdata/mcsm-test/daemon/data:/opt/mcsmanager/daemon/data
+      - /mnt/user/appdata/mcsm-test/daemon/logs:/opt/mcsmanager/daemon/logs
+      - /var/run/docker.sock:/var/run/docker.sock

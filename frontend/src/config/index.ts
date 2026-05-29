@@ -5,6 +5,7 @@ import DefaultCard from "@/widgets/DefaultCard.vue";
 import EmptyCard from "@/widgets/EmptyCard.vue";
 import ImageManager from "@/widgets/imageManager/index.vue";
 import NewImage from "@/widgets/imageManager/NewImage.vue";
+import InstanceBackups from "@/widgets/instance/Backups.vue";
 import InstanceBaseInfo from "@/widgets/instance/BaseInfo.vue";
 import InstanceFileManager from "@/widgets/instance/FileManager.vue";
 import InstanceManagerBtns from "@/widgets/instance/ManagerBtns.vue";
@@ -73,6 +74,7 @@ export const LAYOUT_CARD_TYPES: { [key: string]: any } = {
   InstanceServerConfigOverview,
   InstanceServerConfigFile,
   InstanceFileManager,
+  InstanceBackups,
   InstanceModManager,
   UserAccessSettings,
   ImageBox,
@@ -342,6 +344,34 @@ export function getLayoutCardPool() {
       title: t("TXT_CODE_72cce10b"),
       width: 12,
       description: t("TXT_CODE_f49b2787"),
+      height: LayoutCardHeight.MEDIUM,
+      category: NEW_CARD_TYPE.INSTANCE,
+      params: [
+        {
+          field: "instanceId",
+          label: t("TXT_CODE_e6a5c12b"),
+          type: "string"
+        },
+        {
+          field: "daemonId",
+          label: t("TXT_CODE_72cfab69"),
+          type: "string"
+        },
+        {
+          field: "instance",
+          label: t("TXT_CODE_cb043d10"),
+          type: "instance"
+        }
+      ]
+    },
+    {
+      id: getRandomId(),
+      permission: ROLE.USER,
+      meta: {},
+      type: "InstanceBackups",
+      title: t("TXT_CODE_backup_card_title"),
+      width: 12,
+      description: t("TXT_CODE_backup_card_desc"),
       height: LayoutCardHeight.MEDIUM,
       category: NEW_CARD_TYPE.INSTANCE,
       params: [

@@ -17,6 +17,7 @@ import {
   AppstoreAddOutlined,
   ArrowRightOutlined,
   BuildOutlined,
+  CloudUploadOutlined,
   CodeOutlined,
   ControlOutlined,
   DashboardOutlined,
@@ -197,6 +198,20 @@ const btns = computed(() => {
       click: () => {
         toPage({
           path: "/instances/schedule",
+          query: {
+            instanceId,
+            daemonId
+          }
+        });
+      }
+    },
+    {
+      title: t("TXT_CODE_backup_card_title"),
+      icon: CloudUploadOutlined,
+      condition: () => !isGlobalTerminal.value,
+      click: () => {
+        toPage({
+          path: "/instances/backup",
           query: {
             instanceId,
             daemonId
