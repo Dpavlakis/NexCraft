@@ -3577,5 +3577,11 @@
   "TXT_CODE_metrics_1h": "Last 1 hour",
   "TXT_CODE_metrics_6h": "Last 6 hours",
   "TXT_CODE_metrics_24h": "Last 24 hours",
-  "TXT_CODE_metrics_hint": "Sampled every 60s while the daemon runs. CPU/RAM are 0 when the server is stopped; player count needs the status ping configured."
+  "TXT_CODE_metrics_hint": "Sampled every 60s while the daemon runs. CPU is the server's share of the whole machine; RAM is the process tree's memory. Player count needs the status ping configured.",
+  "TXT_CODE_metrics_zoom_title": "Zooming the graph",
+  "TXT_CODE_metrics_zoom_line1": "Hold Shift then use your scroll wheel to zoom in and out.",
+  "TXT_CODE_metrics_zoom_line2": "Or click the area-zoom button (top-right of the chart) then drag the area you'd like to zoom into.",
+  "TXT_CODE_metrics_zoom_line3": "Drag the slider below the chart to pan across time. Use the restore button to reset.",
+  "TXT_CODE_metrics_area_zoom": "Area zoom",
+  "TXT_CODE_metrics_reset_zoom": "Reset zoom"
 }

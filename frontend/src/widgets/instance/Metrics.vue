@@ -8,7 +8,7 @@ import { metricsGet, type MetricSample } from "@/services/apis/metrics";
 import { getRandomId } from "@/tools/randId";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types/index";
-import { LineChartOutlined } from "@ant-design/icons-vue";
+import { InfoCircleOutlined, LineChartOutlined } from "@ant-design/icons-vue";
 import { init, type ECharts } from "echarts";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
@@ -19,8 +19,13 @@ const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
 const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
 
+// Match the chart text to the rest of the UI instead of echarts' default font.
+const APP_FONT =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
+
 const domId = "metrics-" + getRandomId();
 let chart: ECharts | undefined;
+let chartReady = false;
 const loading = ref(false);
 const range = ref(6 * 3600 * 1000); // default 6h
 const rangeOptions = [
@@ -35,46 +40,63 @@ const fmt = (ms: number) => {
   return `${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-const render = (samples: MetricSample[]) => {
+// Static chart configuration — set once so the current zoom level survives the
+// 60s auto-refresh (data is merged in separately by updateData()).
+const setupChart = () => {
   if (!chart) return;
-  const times = samples.map((s) => fmt(s.t));
   chart.setOption({
-    tooltip: { trigger: "axis" },
+    textStyle: { fontFamily: APP_FONT },
+    tooltip: { trigger: "axis", textStyle: { fontFamily: APP_FONT } },
     legend: {
       data: [t("TXT_CODE_metrics_cpu"), t("TXT_CODE_metrics_ram"), t("TXT_CODE_metrics_players")],
-      top: 0
+      top: 0,
+      textStyle: { fontFamily: APP_FONT }
     },
-    grid: { top: 36, bottom: 36, left: 48, right: 48 },
-    xAxis: { type: "category", boundaryGap: false, data: times },
+    toolbox: {
+      right: 12,
+      top: 0,
+      feature: {
+        dataZoom: {
+          yAxisIndex: "none",
+          title: { zoom: t("TXT_CODE_metrics_area_zoom"), back: t("TXT_CODE_metrics_reset_zoom") }
+        },
+        restore: { title: t("TXT_CODE_metrics_reset_zoom") }
+      }
+    },
+    grid: { top: 44, bottom: 70, left: 48, right: 56 },
+    xAxis: { type: "category", boundaryGap: false, data: [] },
     yAxis: [
       { type: "value", name: "%", min: 0, max: 100 },
       { type: "value", name: t("TXT_CODE_metrics_count_gb"), min: 0 }
     ],
+    dataZoom: [
+      {
+        type: "inside",
+        xAxisIndex: 0,
+        zoomOnMouseWheel: "shift",
+        moveOnMouseMove: true,
+        moveOnMouseWheel: false
+      },
+      { type: "slider", xAxisIndex: 0, bottom: 12, height: 22 }
+    ],
     series: [
-      {
-        name: t("TXT_CODE_metrics_cpu"),
-        type: "line",
-        smooth: true,
-        showSymbol: false,
-        yAxisIndex: 0,
-        data: samples.map((s) => +(s.cpu || 0).toFixed(1))
-      },
-      {
-        name: t("TXT_CODE_metrics_ram"),
-        type: "line",
-        smooth: true,
-        showSymbol: false,
-        yAxisIndex: 1,
-        data: samples.map((s) => +((s.memMB || 0) / 1024).toFixed(2))
-      },
-      {
-        name: t("TXT_CODE_metrics_players"),
-        type: "line",
-        step: "end",
-        showSymbol: false,
-        yAxisIndex: 1,
-        data: samples.map((s) => s.players || 0)
-      }
+      { name: t("TXT_CODE_metrics_cpu"), type: "line", smooth: true, showSymbol: false, yAxisIndex: 0, data: [] },
+      { name: t("TXT_CODE_metrics_ram"), type: "line", smooth: true, showSymbol: false, yAxisIndex: 1, data: [] },
+      { name: t("TXT_CODE_metrics_players"), type: "line", step: "end", showSymbol: false, yAxisIndex: 1, data: [] }
+    ]
+  });
+  chartReady = true;
+};
+
+const updateData = (samples: MetricSample[]) => {
+  if (!chart) return;
+  if (!chartReady) setupChart();
+  chart.setOption({
+    xAxis: { data: samples.map((s) => fmt(s.t)) },
+    series: [
+      { data: samples.map((s) => +(s.cpu || 0).toFixed(1)) },
+      { data: samples.map((s) => +((s.memMB || 0) / 1024).toFixed(2)) },
+      { data: samples.map((s) => s.players || 0) }
     ]
   });
 };
@@ -86,7 +108,7 @@ const load = async () => {
     const res = await execute({
       params: { daemonId, uuid: instanceId, since: Date.now() - range.value }
     });
-    render(res.value || []);
+    updateData(res.value || []);
   } catch (err: any) {
     reportErrorMsg(err.message);
   } finally {
@@ -99,7 +121,10 @@ const onResize = () => chart?.resize();
 let timer: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
   const el = document.getElementById(domId);
-  if (el) chart = init(el);
+  if (el) {
+    chart = init(el);
+    setupChart();
+  }
   load();
   timer = setInterval(load, 60000);
   window.addEventListener("resize", onResize);
@@ -123,6 +148,19 @@ onBeforeUnmount(() => {
             </a-typography-title>
           </template>
           <template #right>
+            <a-popover placement="bottomRight">
+              <template #title>{{ t("TXT_CODE_metrics_zoom_title") }}</template>
+              <template #content>
+                <div style="max-width: 280px">
+                  <p style="margin-bottom: 8px">{{ t("TXT_CODE_metrics_zoom_line1") }}</p>
+                  <p style="margin-bottom: 8px">{{ t("TXT_CODE_metrics_zoom_line2") }}</p>
+                  <p style="margin-bottom: 0">{{ t("TXT_CODE_metrics_zoom_line3") }}</p>
+                </div>
+              </template>
+              <a-button type="text">
+                <InfoCircleOutlined />
+              </a-button>
+            </a-popover>
             <a-select
               v-model:value="range"
               :options="rangeOptions"
