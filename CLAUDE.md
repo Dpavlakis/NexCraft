@@ -41,7 +41,6 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
 - NexCraft branding incl. SVG favicon (`frontend/public/nexcraft_logo.svg`).
 
 ## Open / optional
-- **EndStone** (Bedrock/Python) — would need Python added to the daemon image (+ install path + loader button). The only substantial item left.
-- Optional: publish `docs/` as a GitHub Wiki / Pages site; add more README screenshots (Metrics, Players, Update card).
+- Optional: add more README/docs screenshots (Metrics, Players, Update card).
 
-(Done since: Reset/Reinstall rework, per-instance Update card, auto-Java-on-launch, login branding, repo migration to standalone NexCraft.)
+(Done since: Reset/Reinstall rework, per-instance Update card, auto-Java-on-launch, login branding, repo migration to standalone NexCraft, Plain Bedrock support, packInfo persistence fix, docs published as a VitePress GitHub Pages site at dpavlakis.github.io/NexCraft. EndStone explicitly dropped.)
