@@ -310,7 +310,8 @@ onMounted(() => {
               />
             </div>
             <a-spin :spinning="loading">
-              <a-list item-layout="horizontal" :data-source="results">
+              <div class="results-scroll">
+                <a-list item-layout="horizontal" :data-source="results">
                 <template #renderItem="{ item }">
                   <a-list-item class="result-row" @click="openInstall(item)">
                     <a-list-item-meta :description="item.description">
@@ -329,7 +330,8 @@ onMounted(() => {
                     </template>
                   </a-list-item>
                 </template>
-              </a-list>
+                </a-list>
+              </div>
             </a-spin>
           </template>
         </CardPanel>
@@ -416,6 +418,11 @@ onMounted(() => {
 .sort-select {
   width: 200px;
   flex-shrink: 0;
+}
+.results-scroll {
+  max-height: 560px; /* ~8 rows */
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .result-row {
   cursor: pointer;
