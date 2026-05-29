@@ -5,7 +5,7 @@ import LeftMenusPanel from "@/components/LeftMenusPanel.vue";
 import Loading from "@/components/Loading.vue";
 import { useUploadFileDialog } from "@/components/fc";
 import { router } from "@/config/router";
-import { SUPPORTED_LANGS, isCN, t } from "@/lang/i18n";
+import { SUPPORTED_LANGS, t } from "@/lang/i18n";
 import { setSettingInfo, settingInfo } from "@/services/apis";
 import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import { useLayoutConfigStore } from "@/stores/useLayoutConfig";
@@ -18,13 +18,9 @@ import {
   BankOutlined,
   BookOutlined,
   BugOutlined,
-  EditOutlined,
   GithubOutlined,
   LockOutlined,
-  MessageOutlined,
-  MoneyCollectOutlined,
   PicLeftOutlined,
-  PlusOutlined,
   ProjectOutlined,
   QuestionCircleOutlined
 } from "@ant-design/icons-vue";
@@ -38,7 +34,7 @@ defineProps<{
 const { execute, isReady } = settingInfo();
 const { execute: submitExecute, isLoading: submitIsLoading } = setSettingInfo();
 const { getSettingsConfig, setSettingsConfig } = useLayoutConfigStore();
-const { setLogoImage, setBackgroundImage } = useAppConfigStore();
+const { setBackgroundImage } = useAppConfigStore();
 const { changeDesignMode, containerState } = useLayoutContainerStore();
 
 interface MySettings extends Settings {
@@ -54,7 +50,7 @@ const sidebarPositionOptions = [
   { label: t("TXT_CODE_SETTINGS_LAYOUT_SIDEBAR_POSITION_RIGHT"), value: "right" as const }
 ];
 
-const ApacheLicense = `Copyright ${new Date().getFullYear()} MCSManager
+const ApacheLicense = `Copyright ${new Date().getFullYear()} MCSManager (original work) and NexCraft contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -130,17 +126,6 @@ const menus = arrayFilter([
     icon: ApiOutlined
   },
   {
-    title: t("TXT_CODE_46cb40d5"),
-    key: "sponsor",
-    icon: MoneyCollectOutlined,
-    condition: () => !isCN(),
-    click: () => {
-      let url = "https://www.patreon.com/mcsmanager";
-      if (isCN()) url = "https://afdian.com/a/mcsmanager";
-      window.open(url, "_blank");
-    }
-  },
-  {
     title: t("TXT_CODE_3b4b656d"),
     key: "about",
     icon: QuestionCircleOutlined
@@ -177,18 +162,19 @@ const totpDriftOptions = ref([
 
 const aboutLinks = arrayFilter([
   {
-    title: "GitHub",
+    title: "NexCraft on GitHub",
     icon: GithubOutlined,
-    url: "https://github.com/MCSManager/MCSManager"
-  },
-  {
-    title: "Discord",
-    icon: MessageOutlined,
-    url: "https://discord.gg/BNpYMVX7Cd"
+    url: "https://github.com/Dpavlakis/NexCraft"
   }
 ]);
 
+// Upstream MCSManager — NexCraft is built on it, kept here as a reference.
 const contacts = arrayFilter([
+  {
+    title: "MCSManager (upstream)",
+    icon: GithubOutlined,
+    url: "https://github.com/MCSManager/MCSManager"
+  },
   {
     title: t("TXT_CODE_41dd4d19"),
     icon: BankOutlined,
@@ -202,7 +188,7 @@ const contacts = arrayFilter([
   {
     title: t("TXT_CODE_26407d1f"),
     icon: BugOutlined,
-    url: "https://github.com/MCSManager/MCSManager/issues"
+    url: "https://github.com/Dpavlakis/NexCraft/issues"
   }
 ]);
 
@@ -220,32 +206,6 @@ const handleSavePageTitle = async () => {
       await setSettingsConfig(cfg);
 
       message.success(t("TXT_CODE_a7907771"));
-    }
-  });
-};
-
-const uploadLogo = async () => {
-  const body = document.querySelector("body");
-  if (formData.value && body) {
-    const url = await useUploadFileDialog();
-    if (url) {
-      formData.value.logoUrl = url;
-      setLogoImage(url);
-    }
-  }
-};
-
-const handleSaveLogoUrl = async (url?: string) => {
-  Modal.confirm({
-    title: t("TXT_CODE_dc053043"),
-    content: t("TXT_CODE_cf95364f"),
-    async onOk() {
-      const cfg = await getSettingsConfig();
-      if (!cfg?.theme) {
-        return reportErrorMsg(t("TXT_CODE_b89780e2"));
-      }
-      cfg.theme.logoImage = url ?? formData.value?.logoUrl ?? "";
-      await setSettingsConfig(cfg);
     }
   });
 };
@@ -377,22 +337,6 @@ const submitSso = async () => {
 
 const leftMenusPanelRef = ref<InstanceType<typeof LeftMenusPanel>>();
 
-const toTemplate = {
-  path: "/minecraft/editor",
-  new: () =>
-    router.push({
-      path: toTemplate.path,
-      query: {
-        newTemplate: "true"
-      }
-    }),
-  edit: () =>
-    router.push({
-      path: toTemplate.path,
-      query: {}
-    })
-};
-
 onMounted(async () => {
   const res = await execute();
   const cfg = await getSettingsConfig();
@@ -478,27 +422,6 @@ onUnmounted(() => {
                       style="max-width: 320px"
                       :placeholder="t('TXT_CODE_4ea93630')"
                     />
-                  </a-form-item>
-
-                  <a-form-item>
-                    <a-typography-title :level="5">{{ t("TXT_CODE_6265ae47") }}</a-typography-title>
-                    <a-typography-paragraph type="secondary">
-                      {{ t("TXT_CODE_24c4768a") }}
-                    </a-typography-paragraph>
-                    <a-input
-                      v-model:value="formData.presetPackAddr"
-                      :placeholder="t('TXT_CODE_4ea93630')"
-                      style="max-width: 320px"
-                    />
-
-                    <a-button class="mx-8" type="primary" @click="toTemplate.edit">
-                      {{ t("TXT_CODE_ad207008") }}
-                      <EditOutlined />
-                    </a-button>
-                    <a-button @click="toTemplate.new">
-                      {{ t("TXT_CODE_53499d7") }}
-                      <PlusOutlined />
-                    </a-button>
                   </a-form-item>
 
                   <a-form-item>
@@ -636,35 +559,6 @@ onUnmounted(() => {
                       {{ t("TXT_CODE_abfe9512") }}
                     </a-button>
                   </div>
-
-                  <a-form-item>
-                    <a-typography-title :level="5">{{ t("TXT_CODE_47b5a2f7") }}</a-typography-title>
-                    <a-typography-paragraph>
-                      <a-typography-text type="secondary">
-                        <div>
-                          {{ t("TXT_CODE_cf95364f") }}
-                        </div>
-                      </a-typography-text>
-                    </a-typography-paragraph>
-                    <a-typography-paragraph>
-                      <div class="flex">
-                        <a-input
-                          v-model:value="formData.logoUrl"
-                          style="max-width: 320px"
-                          :placeholder="t('TXT_CODE_4ea93630')"
-                        />
-                        <a-button class="ml-6" @click="() => uploadLogo()">
-                          {{ t("TXT_CODE_ae09d79d") }}
-                        </a-button>
-                      </div>
-                    </a-typography-paragraph>
-                    <a-button type="primary" class="mr-6" @click="handleSaveLogoUrl()">
-                      {{ t("TXT_CODE_abfe9512") }}
-                    </a-button>
-                    <a-button danger @click="handleSaveLogoUrl('')">
-                      {{ t("TXT_CODE_50d471b2") }}
-                    </a-button>
-                  </a-form-item>
 
                   <a-form-item>
                     <a-typography-title :level="5">{{ t("TXT_CODE_8ae0dc90") }}</a-typography-title>
@@ -1184,7 +1078,7 @@ onUnmounted(() => {
               </a-typography-title>
               <a-typography-paragraph>
                 <p>
-                  {{ $t("TXT_CODE_d0c670df") }}
+                  {{ $t("TXT_CODE_nexcraft_about") }}
                 </p>
               </a-typography-paragraph>
               <div class="pb-4 flex">
@@ -1221,18 +1115,6 @@ onUnmounted(() => {
             </div>
           </template>
 
-          <template #sponsor>
-            <div class="content-box" :style="{ maxHeight: card.height }">
-              <a-typography-title :level="4" class="mb-24">
-                {{ t("TXT_CODE_46cb40d5") }}
-              </a-typography-title>
-              <a-typography-paragraph>
-                <p>
-                  {{ $t("TXT_CODE_d0c670df") }}
-                </p>
-              </a-typography-paragraph>
-            </div>
-          </template>
         </LeftMenusPanel>
       </template>
     </CardPanel>
