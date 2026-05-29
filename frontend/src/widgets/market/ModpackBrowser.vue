@@ -22,7 +22,7 @@ import type { LayoutCard, NodeStatus } from "@/types";
 import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
-import vanillaIcon from "@/assets/loaders/vanilla.png";
+import vanillaIcon from "@/assets/loaders/vanilla.svg";
 import paperIcon from "@/assets/loaders/paper.png";
 import purpurIcon from "@/assets/loaders/purpur.png";
 import foliaIcon from "@/assets/loaders/folia.png";
