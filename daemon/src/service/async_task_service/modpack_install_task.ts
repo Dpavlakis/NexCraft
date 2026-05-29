@@ -268,6 +268,22 @@ export class ModpackInstallTask extends AsyncTask {
     } catch {
       // non-fatal — user can set the port manually
     }
+
+    // Enable server telemetry by default (silences the BDS startup nag).
+    try {
+      const propFile = path.join(cwd, "server.properties");
+      let props = fs.existsSync(propFile) ? fs.readFileSync(propFile, "utf-8") : "";
+      const re = /^emit-server-telemetry\s*=.*$/m;
+      if (re.test(props)) {
+        props = props.replace(re, "emit-server-telemetry=true");
+      } else {
+        props = (props && !props.endsWith("\n") ? props + "\n" : props) + "emit-server-telemetry=true\n";
+      }
+      fs.writeFileSync(propFile, props);
+    } catch {
+      // non-fatal
+    }
+
     // The daemon spawns argv[0] directly, so wrap in `sh -c` to set
     // LD_LIBRARY_PATH; `exec` replaces the shell so stdin (the "stop" command)
     // and the pid map straight to bedrock_server.
