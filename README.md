@@ -49,6 +49,18 @@ Everything is wrapped in the proven MCSManager foundation: a distributed multi-n
 
 <br />
 
+## Documentation
+
+Full usage docs live in **[`docs/`](docs/README.md)**:
+
+- [Installation](docs/installation.md)
+- [Creating Minecraft Servers](docs/creating-servers.md)
+- [Updating & Resetting Modpacks](docs/modpacks.md)
+- [Managing an Instance](docs/managing-instances.md)
+- [Troubleshooting / FAQ](docs/faq.md)
+
+<br />
+
 ## Runtime Environment
 
 NexCraft runs on **Windows** and **Linux** (and macOS). No database is required — just the **Node.js** runtime (latest LTS recommended) and basic decompression utilities. The daemon ships with Java 21 and provisions additional JRE versions on demand for packs that need them.
