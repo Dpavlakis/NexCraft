@@ -171,11 +171,6 @@ const aboutLinks = arrayFilter([
 // Upstream MCSManager — NexCraft is built on it, kept here as a reference.
 const contacts = arrayFilter([
   {
-    title: "MCSManager (upstream)",
-    icon: GithubOutlined,
-    url: "https://github.com/MCSManager/MCSManager"
-  },
-  {
     title: t("TXT_CODE_41dd4d19"),
     icon: BankOutlined,
     url: "https://mcsmanager.com/"
