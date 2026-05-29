@@ -41,7 +41,7 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
 - NexCraft branding incl. SVG favicon (`frontend/public/nexcraft_logo.svg`).
 
 ## Open / optional
-- **In progress: Reset/Reinstall rework** to use the new Prism-style builder (data-touching — replaces an instance's contents).
-- **EndStone** (Bedrock/Python) — would need Python added to the daemon image.
-- Optional: **auto-Java-on-launch** (detect `UnsupportedClassVersionError`, provision matching JRE + retry).
-- **Superpowers** Claude Code plugin — blocked on auto-mode self-modify guard; user runs `/plugin` or grants a rule.
+- **EndStone** (Bedrock/Python) — would need Python added to the daemon image (+ install path + loader button). The only substantial item left.
+- Optional: publish `docs/` as a GitHub Wiki / Pages site; add more README screenshots (Metrics, Players, Update card).
+
+(Done since: Reset/Reinstall rework, per-instance Update card, auto-Java-on-launch, login branding, repo migration to standalone NexCraft.)
