@@ -58,7 +58,7 @@ const loadReleases = async () => {
 
 const loadMajors = async () => {
   majors.value = [];
-  selectedMajor.value = null;
+  selectedMajor.value = undefined;
   releases.value = [];
   selected.value = null;
   loadingMajors.value = true;
