@@ -3537,6 +3537,7 @@
   "TXT_CODE_modpack_view_source": "View project page ↗",
   "TXT_CODE_modpack_updated": "Updated",
   "TXT_CODE_modpack_no_serverpack": "no server pack",
+  "TXT_CODE_modpack_preview_warn": "preview · needs the Minecraft Preview client",
   "TXT_CODE_modpack_install_started": "Modpack install started — watch the instance console for progress.",
   "TXT_CODE_modpack_reset": "Reset",
   "TXT_CODE_modpack_reset_started": "Reset started — watch the instance console for progress.",

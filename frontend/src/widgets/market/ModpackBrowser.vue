@@ -180,7 +180,10 @@ const applyCustomFilter = () => {
     .map((v) => ({
       id: v.id,
       title: v.id,
-      description: `${v.type}${v.releaseTime ? " · " + fmtDate(v.releaseTime) : ""}`,
+      description:
+        v.type === "preview"
+          ? t("TXT_CODE_modpack_preview_warn")
+          : `${v.type}${v.releaseTime ? " · " + fmtDate(v.releaseTime) : ""}`,
       mcType: v.type
     }));
   nextTick(recomputeHeight);
