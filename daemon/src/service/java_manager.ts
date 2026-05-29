@@ -14,6 +14,15 @@ import logger from "./log";
 import FileManager from "./system_file";
 import InstanceSubsystem from "./system_instance";
 
+export interface IJavaRelease {
+  vendor: string;
+  version: string;
+  releaseName?: string;
+  releaseTime?: string;
+  downloadUrl: string;
+  type: string;
+}
+
 class JavaManager {
   private javaDataDir = "";
   public readonly javaList = new Map<string, IJavaRuntime>();
@@ -70,6 +79,87 @@ class JavaManager {
 
   exists(id: string) {
     return this.javaList.has(id);
+  }
+
+  // ---- Prism-style version lookup (Adoptium / Azul Zulu) ----
+  private osArch() {
+    const arch = os.arch() === "x64" ? "x64" : os.arch() === "arm64" ? "aarch64" : os.arch();
+    let adoptiumOs = "linux";
+    let azulOs = "linux";
+    if (os.platform() === "win32") {
+      adoptiumOs = "windows";
+      azulOs = "windows";
+    } else if (os.platform() === "darwin") {
+      adoptiumOs = "mac";
+      azulOs = "macos";
+    }
+    return { arch, adoptiumOs, azulOs };
+  }
+
+  // Major versions available for a vendor.
+  async listJavaMajors(vendor: string): Promise<number[]> {
+    try {
+      if (vendor === "adoptium") {
+        const { data } = await axios.get("https://api.adoptium.net/v3/info/available_releases", {
+          timeout: 15000
+        });
+        const list: number[] = Array.isArray(data?.available_releases) ? data.available_releases : [];
+        const extra = [data?.most_recent_feature_release, data?.most_recent_lts].filter(
+          (n: any) => typeof n === "number"
+        );
+        return Array.from(new Set([...list, ...extra])).sort((a, b) => a - b);
+      }
+    } catch {
+      // fall through to defaults
+    }
+    // Azul Zulu (and Adoptium fallback): sensible common majors
+    return [8, 11, 17, 21, 25];
+  }
+
+  // Specific releases (newest first) for a vendor + major version.
+  async listJavaReleases(vendor: string, major: number): Promise<IJavaRelease[]> {
+    const { arch, adoptiumOs, azulOs } = this.osArch();
+    try {
+      if (vendor === "adoptium") {
+        const url =
+          `https://api.adoptium.net/v3/assets/feature_releases/${major}/ga` +
+          `?architecture=${arch}&heap_size=normal&image_type=jre&os=${adoptiumOs}` +
+          `&page_size=25&project=jdk&sort_order=DESC&vendor=eclipse`;
+        const { data } = await axios.get(url, { timeout: 20000 });
+        return (Array.isArray(data) ? data : [])
+          .map((r: any) => {
+            const bin =
+              (r.binaries || []).find((b: any) => b.image_type === "jre") || r.binaries?.[0];
+            return {
+              vendor: "adoptium",
+              version: String(r.version_data?.semver || r.release_name || "").split("+")[0],
+              releaseName: r.release_name,
+              releaseTime: r.timestamp || bin?.updated_at,
+              downloadUrl: bin?.package?.link || "",
+              type: "jre"
+            } as IJavaRelease;
+          })
+          .filter((x: IJavaRelease) => x.downloadUrl);
+      }
+      // Azul Zulu
+      const url =
+        "https://api.azul.com/metadata/v1/zulu/packages/?java_package_type=jre" +
+        `&release_status=ga&availability_types=CA&java_version=${major}&os=${azulOs}` +
+        `&arch=${os.arch()}&archive_type=tar.gz&page=1&page_size=25`;
+      const { data } = await axios.get(url, { timeout: 20000 });
+      return (Array.isArray(data) ? data : [])
+        .map((p: any) => ({
+          vendor: "zulu",
+          version: Array.isArray(p.java_version) ? p.java_version.join(".") : String(major),
+          releaseName: p.name,
+          releaseTime: undefined,
+          downloadUrl: p.download_url,
+          type: "jre"
+        }))
+        .filter((x: IJavaRelease) => x.downloadUrl);
+    } catch {
+      return [];
+    }
   }
 
   async getJavaDownloadUrl(info: JavaInfo) {
@@ -185,7 +275,7 @@ class JavaManager {
   // Download + extract a Java runtime into data/JavaData/<fullname>. Shared by
   // the manual Java Manager (download router) and the automatic provisioning
   // used when installing a modpack that needs a specific Java version.
-  async downloadAndInstall(info: JavaInfo, log?: (m: string) => void) {
+  async downloadAndInstall(info: JavaInfo, downloadUrl?: string, log?: (m: string) => void) {
     info.downloading = true;
     const javaPath = path.join(this.javaDataDir, info.fullname);
     fs.mkdirsSync(javaPath);
@@ -201,13 +291,13 @@ class JavaManager {
     this.javaList.set(info.fullname, { info, path: javaPath, usingInstances: [] });
 
     try {
-      const downloadUrl = await this.getJavaDownloadUrl(info);
-      if (!downloadUrl) throw new Error($t("TXT_CODE_4b0f31b4"));
+      const resolvedUrl = downloadUrl || (await this.getJavaDownloadUrl(info));
+      if (!resolvedUrl) throw new Error($t("TXT_CODE_4b0f31b4"));
 
-      logger.info(`Download Java: ${downloadUrl} --> ${info.fullname}`);
-      const fileName = path.basename(new URL(downloadUrl).pathname);
+      logger.info(`Download Java: ${resolvedUrl} --> ${info.fullname}`);
+      const fileName = path.basename(new URL(resolvedUrl).pathname);
       const filePath = path.join(javaPath, fileName);
-      await downloadManager.downloadFromUrl(downloadUrl, filePath);
+      await downloadManager.downloadFromUrl(resolvedUrl, filePath);
 
       if (fileName.endsWith(".zip")) {
         const fileManager = new FileManager(javaPath, "UTF-8");
@@ -307,7 +397,7 @@ class JavaManager {
     }
 
     log?.($t("TXT_CODE_modpack.javaDownloading", { ver: String(major) }));
-    await this.downloadAndInstall(info, log);
+    await this.downloadAndInstall(info, undefined, log);
     return this.exists(info.fullname) ? info.fullname : undefined;
   }
 

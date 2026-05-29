@@ -1,34 +1,81 @@
 <script setup lang="ts">
-import JavaIcon from "@/assets/components/java.png";
 import { t } from "@/lang/i18n";
+import { javaMajors, javaVersions, type JavaReleaseItem } from "@/services/apis/javaManager";
 import type { DownloadJavaConfigItem } from "@/types/javaManager";
-import { Flex } from "ant-design-vue";
-import { computed, ref } from "vue";
-import type { MountComponent } from "../../types/index";
+import type { MountComponent } from "@/types/index";
+import { reportErrorMsg } from "@/tools/validator";
+import { onMounted, ref } from "vue";
 
-const props = defineProps<MountComponent>();
+const props = defineProps<MountComponent & { installedJavaList?: string[]; daemonId?: string }>();
 
 const open = ref(true);
-const selectedIndex = ref<number | null>(null);
 
-// 合并后的单一数据源
-const JAVA_OPTIONS: DownloadJavaConfigItem[] = [
-  { name: "zulu", version: "8" },
-  { name: "zulu", version: "11" },
-  { name: "zulu", version: "15" },
-  { name: "zulu", version: "17" },
-  { name: "zulu", version: "21" },
-  { name: "zulu", version: "25" }
+const vendors = [
+  { value: "adoptium", label: "Adoptium (Temurin)" },
+  { value: "zulu", label: "Azul Zulu" }
+];
+const vendor = ref("adoptium");
+const majors = ref<number[]>([]);
+const selectedMajor = ref<number | null>(null);
+const releases = ref<JavaReleaseItem[]>([]);
+const selected = ref<JavaReleaseItem | null>(null);
+const loadingMajors = ref(false);
+const loadingReleases = ref(false);
+
+const columns = [
+  { title: t("TXT_CODE_modpack_version"), dataIndex: "version", key: "version" },
+  { title: "Type", dataIndex: "type", key: "type", width: 90 }
 ];
 
-const selectedItem = computed(() => {
-  if (selectedIndex.value === null) return null;
-  return JAVA_OPTIONS[selectedIndex.value];
-});
+const selectRow = (r: JavaReleaseItem) => (selected.value = r);
+const isSelected = (r: JavaReleaseItem) => !!selected.value && selected.value.version === r.version;
 
-const handleSelect = (index: number) => {
-  selectedIndex.value = index;
+const fmtDate = (s?: string) => {
+  if (!s) return "";
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString();
 };
+
+const loadReleases = async () => {
+  if (selectedMajor.value == null) return;
+  selected.value = null;
+  releases.value = [];
+  loadingReleases.value = true;
+  try {
+    const { execute } = javaVersions();
+    const res = await execute({
+      params: { daemonId: props.daemonId ?? "", vendor: vendor.value, major: selectedMajor.value }
+    });
+    releases.value = res.value || [];
+    selected.value = releases.value[0] || null;
+  } catch (err: any) {
+    reportErrorMsg(err.message);
+  } finally {
+    loadingReleases.value = false;
+  }
+};
+
+const loadMajors = async () => {
+  majors.value = [];
+  selectedMajor.value = null;
+  releases.value = [];
+  selected.value = null;
+  loadingMajors.value = true;
+  try {
+    const { execute } = javaMajors();
+    const res = await execute({ params: { daemonId: props.daemonId ?? "", vendor: vendor.value } });
+    majors.value = (res.value || []).slice().sort((a, b) => b - a);
+    selectedMajor.value = majors.value[0] ?? null;
+    await loadReleases();
+  } catch (err: any) {
+    reportErrorMsg(err.message);
+  } finally {
+    loadingMajors.value = false;
+  }
+};
+
+const onVendorChange = () => loadMajors();
+const onMajorChange = () => loadReleases();
 
 const cancel = async () => {
   open.value = false;
@@ -36,56 +83,73 @@ const cancel = async () => {
 };
 
 const submit = async () => {
-  if (selectedItem.value) {
-    props.emitResult(selectedItem.value);
-  }
+  if (!selected.value) return;
+  const result: DownloadJavaConfigItem = {
+    name: selected.value.vendor,
+    version: selected.value.version,
+    downloadUrl: selected.value.downloadUrl
+  };
+  props.emitResult(result);
   await cancel();
 };
+
+onMounted(loadMajors);
 </script>
 
 <template>
   <a-modal
     v-model:open="open"
-    width="820px"
+    width="760px"
     centered
     :title="t('TXT_CODE_84588601')"
     :closable="false"
     :destroy-on-close="true"
     @cancel="cancel"
-    @ok="submit"
   >
-    <flex wrap="wrap" gap="middle" justify="flex-start">
-      <a-card
-        v-for="(item, index) in JAVA_OPTIONS"
-        :key="`${item.name}-${item.version}`"
-        hoverable
-        :class="['java-card', { 'java-card-selected': selectedIndex === index }]"
-        @click="handleSelect(index)"
+    <a-form layout="vertical">
+      <a-form-item label="Vendor">
+        <a-radio-group v-model:value="vendor" button-style="solid" @change="onVendorChange">
+          <a-radio-button v-for="v in vendors" :key="v.value" :value="v.value">
+            {{ v.label }}
+          </a-radio-button>
+        </a-radio-group>
+      </a-form-item>
+
+      <a-form-item :label="t('TXT_CODE_modpack_version')">
+        <a-select
+          v-model:value="selectedMajor"
+          :loading="loadingMajors"
+          style="width: 200px"
+          @change="onMajorChange"
+        >
+          <a-select-option v-for="m in majors" :key="m" :value="m">Java {{ m }}</a-select-option>
+        </a-select>
+      </a-form-item>
+    </a-form>
+
+    <a-spin :spinning="loadingReleases">
+      <a-table
+        :data-source="releases"
+        :columns="columns"
+        size="small"
+        :pagination="false"
+        :scroll="{ y: 280 }"
+        row-key="version"
+        :custom-row="(record: JavaReleaseItem) => ({ onClick: () => selectRow(record) })"
+        :row-class-name="(record: JavaReleaseItem) => (isSelected(record) ? 'java-row-selected' : '')"
       >
-        <template #cover>
-          <div justify="center" align="center" align-items="center" class="java-card-cover">
-            <a-image
-              :src="JavaIcon"
-              :preview="false"
-              :height="62"
-              style="object-fit: cover; border-radius: 0px"
-            />
-          </div>
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'version'">
+            <span>{{ record.version }}</span>
+            <span style="opacity: 0.55; margin-left: 10px">{{ fmtDate(record.releaseTime) }}</span>
+          </template>
         </template>
-        <a-card-meta>
-          <template #title>
-            <a-typography-text strong> Java {{ item.version.toUpperCase() }}</a-typography-text>
-          </template>
-          <template #description>
-            <a-tag color="blue">{{ item.name.toUpperCase() }}</a-tag>
-          </template>
-        </a-card-meta>
-      </a-card>
-    </flex>
+      </a-table>
+    </a-spin>
 
     <template #footer>
       <a-button @click="cancel">{{ t("TXT_CODE_a0451c97") }}</a-button>
-      <a-button type="primary" :disabled="selectedIndex === null" @click="submit">
+      <a-button type="primary" :disabled="!selected" @click="submit">
         {{ t("TXT_CODE_d507abff") }}
       </a-button>
     </template>
@@ -93,42 +157,10 @@ const submit = async () => {
 </template>
 
 <style scoped>
-.java-card {
-  width: 140px;
+:deep(.java-row-selected) > td {
+  background: var(--color-blue-1, #e6f4ff) !important;
+}
+:deep(.ant-table-tbody) > tr {
   cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 12px;
-  border: 1px solid var(--color-gray-5);
-  overflow: hidden;
-}
-
-.java-card:hover {
-  border-color: #1890ff;
-}
-
-.java-card-selected {
-  border-color: #1890ff;
-  background: linear-gradient(135deg, var(--color-gray-1) 0%, var(--color-gray-2) 100%);
-}
-
-.java-card-cover {
-  padding: 8px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, var(--color-gray-3) 0%, var(--color-gray-5) 100%);
-}
-
-.java-card :deep(.ant-card-body) {
-  padding: 12px;
-  text-align: center;
-}
-
-.java-card :deep(.ant-card-meta-title) {
-  margin-bottom: 4px !important;
-}
-
-.java-card :deep(.ant-card-meta-description) {
-  margin-top: 4px;
 }
 </style>

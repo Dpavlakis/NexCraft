@@ -39,12 +39,37 @@ export const downloadJava = useDefineApi<
     data: {
       name: string;
       version: string;
+      downloadUrl?: string;
     };
   },
   Boolean
 >({
   url: "/api/java_manager/download",
   method: "POST"
+});
+
+export interface JavaReleaseItem {
+  vendor: string;
+  version: string;
+  releaseName?: string;
+  releaseTime?: string;
+  downloadUrl: string;
+  type: string;
+}
+
+// Available major versions for a vendor (adoptium | zulu)
+export const javaMajors = useDefineApi<{ params: { daemonId: string; vendor: string } }, number[]>({
+  url: "/api/java_manager/list_majors",
+  method: "GET"
+});
+
+// Specific releases for a vendor + major version
+export const javaVersions = useDefineApi<
+  { params: { daemonId: string; vendor: string; major: number } },
+  JavaReleaseItem[]
+>({
+  url: "/api/java_manager/list_versions",
+  method: "GET"
 });
 
 export const usingJava = useDefineApi<

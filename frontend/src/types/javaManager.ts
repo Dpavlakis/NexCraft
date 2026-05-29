@@ -9,4 +9,5 @@ export interface AddJavaConfigItem {
 export interface DownloadJavaConfigItem {
   name: string;
   version: string;
+  downloadUrl?: string;
 }

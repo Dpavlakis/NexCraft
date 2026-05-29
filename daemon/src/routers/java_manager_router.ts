@@ -27,6 +27,25 @@ routerApp.on("java_manager/add", async (ctx, data) => {
   }
 });
 
+routerApp.on("java_manager/list_majors", async (ctx, data) => {
+  try {
+    protocol.response(ctx, await javaManager.listJavaMajors(String(data?.vendor || "adoptium")));
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
+routerApp.on("java_manager/list_versions", async (ctx, data) => {
+  try {
+    protocol.response(
+      ctx,
+      await javaManager.listJavaReleases(String(data?.vendor || "adoptium"), Number(data?.major))
+    );
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
 routerApp.on("java_manager/download", async (ctx, data) => {
   const info = new JavaInfo(data.name, Date.now(), data.version);
   if (javaManager.exists(info.fullname)) {
@@ -35,7 +54,7 @@ routerApp.on("java_manager/download", async (ctx, data) => {
   protocol.response(ctx, true);
 
   try {
-    await javaManager.downloadAndInstall(info);
+    await javaManager.downloadAndInstall(info, data.downloadUrl ? String(data.downloadUrl) : undefined);
   } catch (error: any) {
     protocol.responseError(ctx, error);
   }

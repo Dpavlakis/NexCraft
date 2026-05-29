@@ -84,7 +84,7 @@ const refreshJavaList = async (out: boolean = false) => {
 
 const handleDownloadJava = async () => {
   const installedList = javaList.value?.map((item) => item.info.fullname) ?? [];
-  const data = await useDownloadJavaDialog(installedList);
+  const data = await useDownloadJavaDialog(installedList, props.daemonId ?? "");
   if (!data) return;
 
   try {
@@ -96,7 +96,8 @@ const handleDownloadJava = async () => {
       },
       data: {
         name: data.name,
-        version: data.version
+        version: data.version,
+        downloadUrl: data.downloadUrl
       }
     });
     message.success(t("TXT_CODE_5e7a4c02"));

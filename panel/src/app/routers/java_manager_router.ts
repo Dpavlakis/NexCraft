@@ -59,6 +59,34 @@ router.post(
   }
 );
 
+router.get(
+  "/list_majors",
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, vendor: String } }),
+  async (ctx) => {
+    const remoteService = RemoteServiceSubsystem.getInstance(String(ctx.query.daemonId));
+    ctx.body = await new RemoteRequest(remoteService).request(
+      "java_manager/list_majors",
+      { vendor: String(ctx.query.vendor) },
+      20000
+    );
+  }
+);
+
+router.get(
+  "/list_versions",
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, vendor: String, major: String } }),
+  async (ctx) => {
+    const remoteService = RemoteServiceSubsystem.getInstance(String(ctx.query.daemonId));
+    ctx.body = await new RemoteRequest(remoteService).request(
+      "java_manager/list_versions",
+      { vendor: String(ctx.query.vendor), major: Number(ctx.query.major) },
+      25000
+    );
+  }
+);
+
 router.post(
   "/download",
   speedLimit(3),
@@ -80,7 +108,8 @@ router.post(
       "java_manager/download",
       {
         name: ctx.request.body.name,
-        version: ctx.request.body.version
+        version: ctx.request.body.version,
+        downloadUrl: ctx.request.body.downloadUrl
       },
       // azul's metadata API can be slow; allow more time than the daemon's 15s call
       // (kept under the frontend's 30s axios default so the chain is ordered)
