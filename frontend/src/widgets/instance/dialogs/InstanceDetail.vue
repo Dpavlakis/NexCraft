@@ -1015,7 +1015,7 @@ defineExpose({
             </a-row>
           </a-tab-pane>
           <a-tab-pane
-            v-if="!isGlobalTerminal"
+            v-if="!isGlobalTerminal && isDockerMode"
             :key="TabSettings.Docker"
             :tab="t('TXT_CODE_afb12200')"
           >
@@ -1364,7 +1364,7 @@ defineExpose({
             </a-row>
           </a-tab-pane>
           <a-tab-pane
-            v-if="!isGlobalTerminal"
+            v-if="!isGlobalTerminal && isDockerMode"
             :key="TabSettings.ResLimit"
             :tab="t('TXT_CODE_604d8d63')"
           >

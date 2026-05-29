@@ -17,6 +17,9 @@ export const useAppConfigStore = createGlobalState(() => {
     token: {
       colorPrimary: "#3179bd", // NexCraft logo blue
       colorLink: "#3179bd",
+      // Force a sans-serif stack everywhere (some titles were rendering serif)
+      fontFamily:
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
       fontSizeLG: 14,
       fontSizeSM: 12,
       fontSizeXL: 18

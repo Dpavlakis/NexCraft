@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
+import { useAppRouters } from "@/hooks/useAppRouters";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
@@ -19,6 +20,11 @@ const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
 const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
 
+const { toPage } = useAppRouters();
+const toConsole = () => {
+  toPage({ path: "/instances/terminal", query: { daemonId, instanceId } });
+};
+
 // Match the chart text to the rest of the UI instead of echarts' default font.
 const APP_FONT =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
@@ -27,11 +33,19 @@ const domId = "metrics-" + getRandomId();
 let chart: ECharts | undefined;
 let chartReady = false;
 const loading = ref(false);
-const range = ref(6 * 3600 * 1000); // default 6h
+const MIN = 60 * 1000;
+const HOUR = 3600 * 1000;
+const range = ref(6 * HOUR); // default 6h
 const rangeOptions = [
-  { value: 3600 * 1000, label: t("TXT_CODE_metrics_1h") },
-  { value: 6 * 3600 * 1000, label: t("TXT_CODE_metrics_6h") },
-  { value: 24 * 3600 * 1000, label: t("TXT_CODE_metrics_24h") }
+  { value: 1 * MIN, label: t("TXT_CODE_metrics_1m") },
+  { value: 5 * MIN, label: t("TXT_CODE_metrics_5m") },
+  { value: 15 * MIN, label: t("TXT_CODE_metrics_15m") },
+  { value: 30 * MIN, label: t("TXT_CODE_metrics_30m") },
+  { value: 1 * HOUR, label: t("TXT_CODE_metrics_1h") },
+  { value: 3 * HOUR, label: t("TXT_CODE_metrics_3h") },
+  { value: 6 * HOUR, label: t("TXT_CODE_metrics_6h") },
+  { value: 12 * HOUR, label: t("TXT_CODE_metrics_12h") },
+  { value: 24 * HOUR, label: t("TXT_CODE_metrics_24h") }
 ];
 
 const fmt = (ms: number) => {
@@ -162,6 +176,7 @@ onBeforeUnmount(() => {
             </a-typography-title>
           </template>
           <template #right>
+            <a-button @click="toConsole">{{ t("TXT_CODE_backup_to_console") }}</a-button>
             <a-popover placement="bottomRight">
               <template #title>{{ t("TXT_CODE_metrics_zoom_title") }}</template>
               <template #content>
