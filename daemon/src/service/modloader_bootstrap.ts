@@ -141,6 +141,25 @@ export class ModloaderBootstrap {
       const rel = path.relative(cwd, argsFile).split(path.sep).join("/");
       return `${javaExe} ${this.memArgs()} @user_jvm_args.txt @${rel} nogui`;
     }
+    // Start scripts shipped by the pack (most CF Forge/NeoForge server packs)
+    const scripts =
+      os.platform() === "win32"
+        ? ["run.bat", "start.bat", "startserver.bat", "serverstart.bat"]
+        : ["run.sh", "start.sh", "startserver.sh", "serverstart.sh"];
+    for (const s of scripts) {
+      const sp = path.join(cwd, s);
+      if (fs.existsSync(sp)) {
+        if (os.platform() !== "win32") {
+          try {
+            fs.chmodSync(sp, 0o755);
+          } catch {
+            // ignore
+          }
+          return `bash ${s}`;
+        }
+        return s;
+      }
+    }
     // Forge/NeoForge legacy universal/server jar
     const universal = findTopFile(cwd, /^(forge|neoforge)-.*\.jar$/i);
     if (universal && !/installer/i.test(path.basename(universal))) {
@@ -205,6 +224,12 @@ export class ModloaderBootstrap {
     const cwd = this.cwd();
     const mc = this.input.mcVersion;
     const lv = this.input.loaderVersion;
+    // We can only download an installer if we know the exact loader version.
+    // CurseForge doesn't give us one, so this path is only reached when the
+    // server pack shipped no runnable artifacts — surface a clear error.
+    if (!lv || (kind === "forge" && !mc)) {
+      throw new Error($t("TXT_CODE_modpack.unknownLoaderVersion"));
+    }
     const installerUrl =
       kind === "forge"
         ? `https://maven.minecraftforge.net/net/minecraftforge/forge/${mc}-${lv}/forge-${mc}-${lv}-installer.jar`

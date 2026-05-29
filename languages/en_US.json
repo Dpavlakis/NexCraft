@@ -3530,6 +3530,7 @@
   "TXT_CODE_modpack.installerExit": "The modloader installer exited with code {{code}}.",
   "TXT_CODE_modpack.cancelled": "The operation was cancelled.",
   "TXT_CODE_modpack.noStartArtifact": "The installer finished but no runnable server was found. Please set the start command manually in Config.",
+  "TXT_CODE_modpack.unknownLoaderVersion": "This server pack did not include a start script or installer, and the modloader version is unknown (CurseForge does not expose it). Install the modloader manually, or set the start command in Config.",
   "TXT_CODE_modpack.startDetected": "Start command set to: {{cmd}}",
   "TXT_CODE_modpack.javaWarn": "This pack targets Minecraft {{mc}}, which may need an older Java. Install a matching Java via the Java Manager if it fails to start.",
   "TXT_CODE_modpack.notModpack": "This instance was not installed from a modpack.",

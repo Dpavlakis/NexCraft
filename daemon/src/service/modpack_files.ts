@@ -154,31 +154,44 @@ export async function extractZipOverwrite(
   }
 }
 
-// Many CF server packs wrap everything in a single top-level folder; flatten it.
-export async function maybeFlatten(cwd: string, ignore: string[] = []) {
-  const entries = fs
-    .readdirSync(cwd, { withFileTypes: true })
-    .filter((e) => !ignore.includes(e.name));
-  const dirs = entries.filter((e) => e.isDirectory());
-  const files = entries.filter((e) => e.isFile());
-  if (dirs.length !== 1 || files.length !== 0) return;
-  const inner = path.join(cwd, dirs[0].name);
-  const innerEntries = fs.readdirSync(inner);
-  // Require server-defining markers, NOT just any .jar (a single top-level
-  // "mods" folder full of jars must not be hoisted/destroyed).
-  const looksLikeServer = innerEntries.some(
+// True if a directory's immediate children look like a runnable MC server root.
+export function hasServerMarkers(dir: string): boolean {
+  if (!fs.existsSync(dir)) return false;
+  let names: string[] = [];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return false;
+  }
+  return names.some(
     (n) =>
       /^(mods|libraries|config|defaultconfigs)$/i.test(n) ||
       /installer.*\.jar$/i.test(n) ||
       /^(forge|neoforge|fabric|quilt).*\.jar$/i.test(n) ||
-      /^(minecraft_server|server)\.?.*\.jar$/i.test(n) ||
-      /(run|start|startserver|serverstart)\.(sh|bat)$/i.test(n)
+      /^(minecraft_server|server)[^/]*\.jar$/i.test(n) ||
+      /(run|start|startserver|serverstart)\.(sh|bat)$/i.test(n) ||
+      /_args\.txt$/i.test(n) ||
+      n === "user_jvm_args.txt"
   );
-  if (!looksLikeServer) return;
-  for (const n of innerEntries) {
-    await fs.move(path.join(inner, n), path.join(cwd, n), { overwrite: true });
+}
+
+// CF server packs often wrap everything in one folder (sometimes alongside a
+// readme/license at the top). If the server root is one level down, hoist it.
+export async function maybeFlatten(cwd: string, ignore: string[] = []) {
+  if (hasServerMarkers(cwd)) return; // already at the root — never flatten
+  const dirs = fs
+    .readdirSync(cwd, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !ignore.includes(e.name));
+  for (const d of dirs) {
+    const inner = path.join(cwd, d.name);
+    if (hasServerMarkers(inner)) {
+      for (const n of fs.readdirSync(inner)) {
+        await fs.move(path.join(inner, n), path.join(cwd, n), { overwrite: true });
+      }
+      await fs.remove(inner);
+      return;
+    }
   }
-  await fs.remove(inner);
 }
 
 // Remove replaceable mod/config/loader artifacts before re-applying a pack on update.
