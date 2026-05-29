@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import logo from "@/assets/logo.png";
+import nexcraftLogo from "@/assets/nexcraft_logo.svg";
 import { useHeaderMenus } from "@/hooks/useHeaderMenus";
 import { useScreen } from "@/hooks/useScreen";
-import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
 import { MenuUnfoldOutlined } from "@ant-design/icons-vue";
 import { useScroll } from "@vueuse/core";
@@ -12,7 +11,6 @@ import CardPanel from "./CardPanel.vue";
 
 const route = useRoute();
 const { containerState } = useLayoutContainerStore();
-const { logoImage } = useAppConfigStore();
 
 const { menus, appMenus, handleToPage } = useHeaderMenus();
 
@@ -46,10 +44,9 @@ const openPhoneMenu = (b = false) => {
   <header class="app-header-wrapper" :style="headerStyle">
     <div v-if="!isPhone" class="app-header-content">
       <nav class="btns">
-        <a href="." style="margin-right: 12px">
-          <div class="logo">
-            <img :src="logoImage" style="height: 18px" />
-          </div>
+        <a href="." class="brand-link" style="margin-right: 16px">
+          <img :src="nexcraftLogo" class="brand-logo" alt="NexCraft" />
+          <span class="nexcraft-brand-text">NexCraft</span>
         </a>
 
         <div
@@ -131,8 +128,9 @@ const openPhoneMenu = (b = false) => {
               </a-dropdown>
             </div>
           </div>
-          <div>
-            <img :src="logo" style="height: 18px" />
+          <div class="brand-link">
+            <img :src="nexcraftLogo" class="brand-logo" alt="NexCraft" />
+            <span class="nexcraft-brand-text" style="font-size: 16px">NexCraft</span>
           </div>
           <div style="width: 100px" class="justify-end">
             <div v-for="(item, index) in appMenus" :key="index">
@@ -230,9 +228,29 @@ const openPhoneMenu = (b = false) => {
   }
 }
 
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.brand-logo {
+  height: 30px;
+  width: auto;
+  display: block;
+}
+
 .app-header-wrapper {
   box-shadow: 0 2px 4px 0 var(--card-shadow-color);
-  background-image: url("@/assets/side.png");
+  // NexCraft brand gradient (navy -> indigo -> purple -> teal, from the logo)
+  background-image: linear-gradient(
+    90deg,
+    #162961 0%,
+    #393f98 32%,
+    #5c469c 58%,
+    #1587ac 100%
+  );
   width: 100%;
   display: flex;
   justify-content: center;

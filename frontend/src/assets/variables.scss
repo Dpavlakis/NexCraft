@@ -1,7 +1,7 @@
 .app-light-theme {
   @extend .app-light-base-color;
 
-  --background-color: rgb(245, 245, 245);
+  --background-color: rgb(238, 241, 248); /* NexCraft: subtle cool tint from the logo */
   --background-color-white: var(--color-gray-1);
   --drag-background-color: rgb(212, 212, 212);
   --new-card-list-background-color: rgba(201, 200, 200, 0.2);
@@ -165,7 +165,7 @@
   --color-gray-12: #141414;
   --color-gray-13: #000000;
 
-  --color-primary: var(--color-blue-5);
+  --color-primary: #3179bd; /* NexCraft logo blue */
   --color-danger: var(--color-red-5);
   --color-warning: var(--color-orange-6);
   --color-success: var(--color-green-5);

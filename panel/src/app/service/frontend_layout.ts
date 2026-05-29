@@ -65,7 +65,7 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
       page: "__settings__",
       items: [],
       theme: {
-        pageTitle: "MCSManager Panel",
+        pageTitle: "NexCraft",
         logoImage: "",
         backgroundImage: "",
         sidebarPosition: "right"

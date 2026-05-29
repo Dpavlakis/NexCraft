@@ -15,6 +15,8 @@ export const useAppConfigStore = createGlobalState(() => {
   const theme: ThemeConfig = reactive({
     algorithm: antTheme.defaultAlgorithm,
     token: {
+      colorPrimary: "#3179bd", // NexCraft logo blue
+      colorLink: "#3179bd",
       fontSizeLG: 14,
       fontSizeSM: 12,
       fontSizeXL: 18

@@ -1,5 +1,27 @@
 @import "./xterm.scss";
 
+/* NexCraft brand font — place the Minecrafter .ttf at frontend/public/fonts/minecrafter.ttf
+   (download from https://www.fontspace.com/minecrafter-font-f123510). Falls back to a
+   system font until the file is present. */
+@font-face {
+  font-family: "Minecrafter";
+  /* Served from public/ so a missing file doesn't break the build (falls back) */
+  src: url("/fonts/minecrafter.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.nexcraft-brand-text {
+  font-family: "Minecrafter", "Trebuchet MS", system-ui, sans-serif;
+  font-size: 20px;
+  letter-spacing: 1px;
+  line-height: 1;
+  color: var(--color-always-white, #fff);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  user-select: none;
+}
+
 body,
 html {
   min-height: 100%;
