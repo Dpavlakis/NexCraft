@@ -22,7 +22,7 @@ import { dockerPortsArray } from "@/tools/common";
 import { reportErrorMsg } from "@/tools/validator";
 import type { DockerNetworkModes, InstanceDetail, QuickStartPackages } from "@/types";
 import { defaultQuickStartPackages, TERMINAL_CODE } from "@/types/const";
-import { CheckOutlined, CloseOutlined } from "@ant-design/icons-vue";
+import { CheckOutlined, CloseOutlined, PictureOutlined } from "@ant-design/icons-vue";
 import type { FormInstance } from "ant-design-vue";
 import { message } from "ant-design-vue";
 import type { Rule } from "ant-design-vue/es/form";
@@ -32,6 +32,7 @@ import { computed, defineComponent, ref, unref } from "vue";
 import { GLOBAL_INSTANCE_NAME } from "../../../config/const";
 import { dayjsToTimestamp, timestampToDayjs } from "../../../tools/time";
 import DockerImageSelect from "./components/DockerImageSelect.vue";
+import SetServerIcon from "./SetServerIcon.vue";
 
 interface FormDetail extends InstanceDetail {
   dayjsEndTime?: Dayjs;
@@ -254,6 +255,8 @@ const showMotd = computed(
 );
 const { execute: executeGetMotd } = getInstanceMotd();
 const { execute: executeSetMotd } = setInstanceMotd();
+
+const serverIconDialog = ref<InstanceType<typeof SetServerIcon>>();
 
 const loadMotd = async () => {
   motd.value = "";
@@ -966,6 +969,23 @@ defineExpose({
                     :maxlength="120"
                     :placeholder="t('TXT_CODE_motd_placeholder')"
                   />
+                </a-form-item>
+              </a-col>
+
+              <a-col v-if="showMotd" :xs="24" :offset="0">
+                <a-form-item>
+                  <a-typography-title :level="5">
+                    {{ t("TXT_CODE_server_icon_title") }}
+                  </a-typography-title>
+                  <a-typography-paragraph>
+                    <a-typography-text type="secondary" class="typography-text-ellipsis">
+                      {{ t("TXT_CODE_server_icon_desc") }}
+                    </a-typography-text>
+                  </a-typography-paragraph>
+                  <a-button @click="serverIconDialog?.openDialog()">
+                    <template #icon><PictureOutlined /></template>
+                    {{ t("TXT_CODE_server_icon_title") }}
+                  </a-button>
                 </a-form-item>
               </a-col>
             </a-row>
@@ -1769,6 +1789,12 @@ defineExpose({
       </a-form>
     </div>
   </a-modal>
+
+  <SetServerIcon
+    ref="serverIconDialog"
+    :daemon-id="daemonId ?? ''"
+    :instance-id="instanceId ?? ''"
+  />
 </template>
 
 <style scoped>

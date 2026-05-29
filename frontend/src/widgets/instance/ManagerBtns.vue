@@ -24,7 +24,6 @@ import {
   DashboardOutlined,
   FieldTimeOutlined,
   LineChartOutlined,
-  PictureOutlined,
   TeamOutlined,
   FolderOpenOutlined,
   UsbOutlined,
@@ -42,7 +41,6 @@ import JavaManager from "./dialogs/JavaManager.vue";
 import McPingSettings from "./dialogs/McPingSettings.vue";
 import PingConfig from "./dialogs/PingConfig.vue";
 import RconSettings from "./dialogs/RconSettings.vue";
-import SetServerIcon from "./dialogs/SetServerIcon.vue";
 import TermConfig from "./dialogs/TermConfig.vue";
 
 const terminalConfigDialog = ref<InstanceType<typeof TermConfig>>();
@@ -53,7 +51,6 @@ const eventConfigDialog = ref<InstanceType<typeof EventConfig>>();
 const pingConfigDialog = ref<InstanceType<typeof PingConfig>>();
 const instanceDetailsDialog = ref<InstanceType<typeof InstanceDetail>>();
 const instanceFundamentalDetailDialog = ref<InstanceType<typeof InstanceFundamentalDetail>>();
-const serverIconDialog = ref<InstanceType<typeof SetServerIcon>>();
 
 const { toPage: toOtherPager } = useAppRouters();
 
@@ -243,14 +240,6 @@ const btns = computed(() => {
       }
     },
     {
-      title: t("TXT_CODE_server_icon_title"),
-      icon: PictureOutlined,
-      condition: () => !isGlobalTerminal.value,
-      click: () => {
-        serverIconDialog.value?.openDialog();
-      }
-    },
-    {
       title: t("TXT_CODE_player_card_title"),
       icon: TeamOutlined,
       condition: () => !isGlobalTerminal.value,
@@ -407,12 +396,6 @@ watch(instanceInfo, (cfg, oldCfg) => {
     :daemon-id="daemonId"
     :instance-id="instanceId"
     @update="refreshInstanceInfo"
-  />
-
-  <SetServerIcon
-    ref="serverIconDialog"
-    :daemon-id="daemonId ?? ''"
-    :instance-id="instanceId ?? ''"
   />
 </template>
 
