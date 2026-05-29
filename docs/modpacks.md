@@ -21,6 +21,8 @@ If the update fails, the server is left stopped (the pre-update backup is your r
 
 ## Reset / Reinstall an instance
 
+![Reset / Reinstall dialog](images/reset-dialog.webp)
+
 The **Reset** button (on the instance terminal) rebuilds an instance using the same Minecraft builder. For a modpack instance it opens **straight to that pack's reinstall popup**; for a custom/vanilla instance it opens the builder so you can pick a version.
 
 You choose **what to do with existing files**:

@@ -29,6 +29,8 @@ In **Event Tasks** you can enable:
 
 ## Backups
 
+![Backups page](images/backups.webp)
+
 The **Backups** card supports:
 
 - **Manual** backups and **scheduled** backups (cron-style).

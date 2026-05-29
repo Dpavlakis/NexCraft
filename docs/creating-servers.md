@@ -2,6 +2,8 @@
 
 NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Minecraft builder**. Open the **Minecraft** menu (URL `/#/minecraft`) to get started. There are three sources in the left sidebar:
 
+![Custom server builder](images/builder-custom.webp)
+
 - **Custom** — build a fresh server for any Minecraft version.
 - **CurseForge** — search and install CurseForge modpacks.
 - **Modrinth** — search and install Modrinth modpacks.
@@ -19,6 +21,8 @@ NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Mine
 The daemon downloads the server, runs any loader bootstrap, assigns a free port, and writes the start command for you.
 
 ## CurseForge / Modrinth modpacks
+
+![CurseForge modpack browser](images/browser-curseforge.webp)
 
 1. Select **CurseForge** or **Modrinth** and search (or browse the popular list).
 2. Click a pack to open its detail dialog — description, tags, supported versions, and a **Version** picker.

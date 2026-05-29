@@ -11,6 +11,43 @@
 
   <sub>Built on <a href="https://github.com/MCSManager/MCSManager">MCSManager</a> — see <a href="#credits">Credits</a>.</sub>
 
+  <br />
+  <br />
+
+  <p><strong>Sources</strong></p>
+  <p>
+    <img src="frontend/src/assets/curseforge.svg" alt="CurseForge" height="34" />
+    &nbsp;&nbsp;&nbsp;
+    <img src="frontend/src/assets/modrinth.svg" alt="Modrinth" height="34" />
+  </p>
+
+  <p><strong>Loaders &amp; server software</strong></p>
+  <p>
+    <img src="frontend/src/assets/loaders/vanilla.svg" alt="Vanilla" height="40" title="Vanilla" />
+    &nbsp;
+    <img src="frontend/src/assets/loaders/paper.png" alt="Paper" height="40" title="Paper" />
+    &nbsp;
+    <img src="frontend/src/assets/loaders/purpur.png" alt="Purpur" height="40" title="Purpur" />
+    &nbsp;
+    <img src="frontend/src/assets/loaders/folia.png" alt="Folia" height="40" title="Folia" />
+    &nbsp;
+    <img src="frontend/src/assets/loaders/fabric.png" alt="Fabric" height="40" title="Fabric" />
+    &nbsp;
+    <img src="frontend/src/assets/loaders/forge.jpg" alt="Forge" height="40" title="Forge" />
+    &nbsp;
+    <img src="frontend/src/assets/loaders/neoforge.png" alt="NeoForge" height="40" title="NeoForge" />
+    &nbsp;
+    <img src="frontend/src/assets/loaders/quilt.png" alt="Quilt" height="40" title="Quilt" />
+  </p>
+
+</div>
+
+<br />
+
+<div align="center">
+  <img src="docs/images/terminal-overview.webp" alt="NexCraft instance console with a live modpack install and the Manage Instance grid" width="100%" />
+  <br />
+  <sub><em>The instance console — a live modpack install in progress, alongside Basic Info and the Manage Instance grid.</em></sub>
 </div>
 
 <br />
@@ -46,6 +83,43 @@ Everything is wrapped in the proven MCSManager foundation: a distributed multi-n
 - Multi-user with a granular permission system.
 - Customizable, drag-and-drop card dashboard.
 - Runs on Windows, Linux, and macOS. TypeScript end to end.
+
+<br />
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/builder-custom.webp" alt="Custom server builder" /><br />
+      <sub><em>Custom builder — pick a loader and an accurate Minecraft version.</em></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/browser-curseforge.webp" alt="CurseForge modpack browser" /><br />
+      <sub><em>CurseForge modpack browser.</em></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/browser-modrinth.webp" alt="Modrinth modpack browser" /><br />
+      <sub><em>Modrinth modpack browser.</em></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/instances.webp" alt="Instances list" /><br />
+      <sub><em>Instances list with live status.</em></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/reset-dialog.webp" alt="Reset / Reinstall dialog" /><br />
+      <sub><em>Reset / Reinstall — choose backup-then-wipe, full wipe, or preserve world.</em></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/backups.webp" alt="Backups page" /><br />
+      <sub><em>Backups — manual &amp; scheduled, with restore and exclusions.</em></sub>
+    </td>
+  </tr>
+</table>
 
 <br />
 
