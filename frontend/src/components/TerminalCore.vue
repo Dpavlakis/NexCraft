@@ -8,7 +8,8 @@ import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
 import { CodeOutlined, DeleteOutlined, LoadingOutlined } from "@ant-design/icons-vue";
 import { Terminal } from "@xterm/xterm";
 import { message } from "ant-design-vue";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
+import { INSTANCE_STATUS_CODE } from "@/types/const";
 import { encodeConsoleColor, type UseTerminalHook } from "../hooks/useTerminal";
 import { getRandomId } from "../tools/randId";
 
@@ -74,11 +75,52 @@ const initTerminal = async () => {
   throw new Error(t("TXT_CODE_42bcfe0c"));
 };
 
-events.on("opened", () => {
+// Start/run notifications:
+//  - "opened" means the process just launched -> show "Instance is starting…".
+//  - Only show "Instance Running" once the status actually reaches RUNNING
+//    (the daemon holds Minecraft instances at STARTING until the server logs
+//    that it's ready), so the running toast confirms a real, up server.
+let startPhase: "idle" | "starting" | "running" = "idle";
+
+const notifyStarting = () => {
+  if (startPhase !== "starting") {
+    startPhase = "starting";
+    message.success(t("TXT_CODE_instance_starting"));
+  }
+};
+
+const notifyRunning = () => {
+  startPhase = "running";
   message.success(t("TXT_CODE_e13abbb1"));
+};
+
+events.on("opened", () => {
+  // If a non-Minecraft instance comes up immediately, confirm running now;
+  // otherwise announce starting and wait for the RUNNING status transition.
+  if (state.value?.status === INSTANCE_STATUS_CODE.RUNNING) {
+    notifyRunning();
+  } else {
+    notifyStarting();
+  }
 });
 
+watch(
+  () => state.value?.status,
+  (s) => {
+    if (s === INSTANCE_STATUS_CODE.STARTING) {
+      notifyStarting();
+    } else if (s === INSTANCE_STATUS_CODE.RUNNING) {
+      // Only confirm running if we were tracking a start (avoids a toast when
+      // simply opening the console of an already-running instance).
+      if (startPhase === "starting") notifyRunning();
+    } else if (s === INSTANCE_STATUS_CODE.STOPPED) {
+      startPhase = "idle";
+    }
+  }
+);
+
 events.on("stopped", () => {
+  startPhase = "idle";
   message.success(t("TXT_CODE_efb6d377"));
 });
 

@@ -59,7 +59,7 @@ const actions = {
     const flag = await verifyEULA(instanceId ?? "", daemonId ?? "");
     if (!flag) return;
     await executeOpen(operationConfig);
-    message.success(t("TXT_CODE_e13abbb1"));
+    message.success(t("TXT_CODE_instance_starting"));
   },
   stop: async () => {
     await executeStop(operationConfig);
