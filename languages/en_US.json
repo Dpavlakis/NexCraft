@@ -1,5 +1,5 @@
 {
-  "TXT_CODE_00000001": "Welcome to the MCSManager Control Panel",
+  "TXT_CODE_00000001": "Welcome to NexCraft",
   "TXT_CODE_10088738": "Confirm deletion",
   "TXT_CODE_10150756": "Event-Triggered Task",
   "TXT_CODE_10194e6a": "Network Aliases",
@@ -902,7 +902,7 @@
   "TXT_CODE_5b323a2": "Maximum Players Allowed for the Entire BungeeCord Instance, use -1 for no limit",
   "TXT_CODE_5b364aef": "Remote Download",
   "TXT_CODE_5b5d6f04": "Discard Changes",
-  "TXT_CODE_5b60ad00": "Login to MCSManager Control Panel",
+  "TXT_CODE_5b60ad00": "Login to NexCraft",
   "TXT_CODE_5b6f3691": "Server Configuration File of a NeoForge Server",
   "TXT_CODE_5b719d7b": "Set to true to allow sleep even if there are mobs nearby",
   "TXT_CODE_5b990e2e": "Rename successful.",
@@ -3566,5 +3566,14 @@
   "TXT_CODE_player.noRcon": "RCON is not configured for this instance.",
   "TXT_CODE_player.rconAuthFailed": "RCON authentication failed.",
   "TXT_CODE_player.invalidName": "Invalid player name.",
-  "TXT_CODE_player.invalidAction": "Invalid player action."
+  "TXT_CODE_player.invalidAction": "Invalid player action.",
+  "TXT_CODE_metrics_card_title": "Metrics",
+  "TXT_CODE_metrics_cpu": "CPU %",
+  "TXT_CODE_metrics_ram": "RAM GB",
+  "TXT_CODE_metrics_players": "Players",
+  "TXT_CODE_metrics_count_gb": "GB / Count",
+  "TXT_CODE_metrics_1h": "Last 1 hour",
+  "TXT_CODE_metrics_6h": "Last 6 hours",
+  "TXT_CODE_metrics_24h": "Last 24 hours",
+  "TXT_CODE_metrics_hint": "Sampled every 60s while the daemon runs. CPU/RAM are 0 when the server is stopped; player count needs the status ping configured."
 }

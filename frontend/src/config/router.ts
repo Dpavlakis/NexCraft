@@ -179,6 +179,14 @@ const originRouterConfig: RouterConfig[] = [
             meta: {
               permission: ROLE.USER
             }
+          },
+          {
+            path: `/instances/metrics`,
+            name: t("TXT_CODE_metrics_card_title"),
+            component: LayoutContainer,
+            meta: {
+              permission: ROLE.USER
+            }
           }
         ]
       }

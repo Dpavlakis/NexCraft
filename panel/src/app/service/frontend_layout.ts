@@ -398,6 +398,28 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
       ]
     },
     {
+      page: "/instances/metrics",
+      items: [
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "InstanceMetrics",
+          title: t("TXT_CODE_metrics_card_title"),
+          width: 12,
+          height: LayoutCardHeight.AUTO,
+          disableDelete: true
+        },
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "EmptyCard",
+          title: "",
+          width: 12,
+          height: LayoutCardHeight.MINI
+        }
+      ]
+    },
+    {
       page: "/instances/players",
       items: [
         {

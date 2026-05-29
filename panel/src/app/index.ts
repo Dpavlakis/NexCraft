@@ -7,6 +7,7 @@ import "./service/user_statistics";
 import "./service/visual_data";
 
 import backupRouter from "./routers/backup_router";
+import metricsRouter from "./routers/metrics_router";
 import modpackRouter from "./routers/modpack_router";
 import playerRouter from "./routers/player_router";
 import serviceRouter from "./routers/daemon_router";
@@ -41,6 +42,7 @@ export function mountRouters(app: Koa<Koa.DefaultState, Koa.DefaultContext>) {
   apiRouter.use(backupRouter.routes()).use(backupRouter.allowedMethods());
   apiRouter.use(modpackRouter.routes()).use(modpackRouter.allowedMethods());
   apiRouter.use(playerRouter.routes()).use(playerRouter.allowedMethods());
+  apiRouter.use(metricsRouter.routes()).use(metricsRouter.allowedMethods());
   apiRouter.use(settingsRouter.routes()).use(settingsRouter.allowedMethods());
   apiRouter.use(ssoRouter.routes()).use(ssoRouter.allowedMethods());
   apiRouter.use(environmentRouter.routes()).use(environmentRouter.allowedMethods());

@@ -22,6 +22,7 @@ import {
   ControlOutlined,
   DashboardOutlined,
   FieldTimeOutlined,
+  LineChartOutlined,
   PictureOutlined,
   TeamOutlined,
   FolderOpenOutlined,
@@ -238,6 +239,20 @@ const btns = computed(() => {
       click: () => {
         toPage({
           path: "/instances/players",
+          query: {
+            instanceId,
+            daemonId
+          }
+        });
+      }
+    },
+    {
+      title: t("TXT_CODE_metrics_card_title"),
+      icon: LineChartOutlined,
+      condition: () => !isGlobalTerminal.value,
+      click: () => {
+        toPage({
+          path: "/instances/metrics",
           query: {
             instanceId,
             daemonId
