@@ -30,6 +30,27 @@ routerApp.on("modpack/update", (ctx, data) => {
   }
 });
 
+// Reinstall/reset an existing instance: stop + (optional backup) + clear, then
+// install the chosen pack/server into the SAME instance. resetMode controls the
+// pre-install file handling ("backup_wipe" | "wipe" | "preserve_world").
+routerApp.on("modpack/reinstall", (ctx, data) => {
+  try {
+    const instance = InstanceSubsystem.getInstance(data.instanceUuid);
+    if (!instance) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
+    const resetMode = data.resetMode || "backup_wipe";
+    const task = new ModpackInstallTask(
+      instance.config.nickname,
+      data.descriptor,
+      instance,
+      resetMode
+    );
+    TaskCenter.addTask(task);
+    protocol.response(ctx, { taskId: task.taskId, instanceUuid: instance.instanceUuid });
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
 // Poll a modpack install/update task
 routerApp.on("modpack/task_status", (ctx, data) => {
   try {

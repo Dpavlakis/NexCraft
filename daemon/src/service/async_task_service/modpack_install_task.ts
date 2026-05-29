@@ -12,6 +12,7 @@ import javaManager from "../java_manager";
 import { assignFreeMcPort } from "../mc_port";
 import { ModloaderBootstrap, staticJavaMajor, type ModLoader } from "../modloader_bootstrap";
 import {
+  clearForReset,
   downloadMrpackFiles,
   extractMrpackOverrides,
   extractZipOverwrite,
@@ -20,8 +21,16 @@ import {
   removeKnownClientMods,
   resolveLoader
 } from "../modpack_files";
+import backupManager from "../backup_service";
+import { sleep } from "../../utils/sleep";
 import InstanceSubsystem from "../system_instance";
 import { AsyncTask, IAsyncTaskJSON } from "./index";
+
+// Reinstall/reset behaviour selected by the user:
+//  - "backup_wipe":   back up first, then wipe everything and install fresh
+//  - "wipe":          wipe everything and install fresh (no backup)
+//  - "preserve_world": keep world + server config, replace mods/loader/etc.
+export type ResetMode = "backup_wipe" | "wipe" | "preserve_world";
 
 export interface IModpackInstallDescriptor {
   source: "curseforge" | "modrinth" | "vanilla" | "serverjar";
@@ -62,10 +71,15 @@ export class ModpackInstallTask extends AsyncTask {
   private tmpFiles: string[] = [];
   private lastProgressOutput = 0;
 
+  // When reinstalling into an existing instance, this controls the pre-install
+  // file handling. Undefined for a normal (new-instance) install.
+  public resetMode?: ResetMode;
+
   constructor(
     public instanceName: string,
     public descriptor: IModpackInstallDescriptor,
-    curInstance?: Instance
+    curInstance?: Instance,
+    resetMode?: ResetMode
   ) {
     super();
     const config = new InstanceConfig();
@@ -83,6 +97,7 @@ export class ModpackInstallTask extends AsyncTask {
     } else {
       this.instance = curInstance;
       this.isInitInstance = false;
+      this.resetMode = resetMode;
     }
 
     this.taskId = `${ModpackInstallTask.TYPE}-${this.instance.instanceUuid}-${v4()}`;
@@ -219,6 +234,42 @@ export class ModpackInstallTask extends AsyncTask {
     return `${javaToken} -Xmx${mem}M -Xms${Math.min(mem, 1024)}M -jar server.jar nogui`;
   }
 
+  private async waitForStop(timeoutMs = 5 * 60 * 1000) {
+    const start = Date.now();
+    while (this.instance.status() !== Instance.STATUS_STOP) {
+      if (Date.now() - start > timeoutMs) throw new Error($t("TXT_CODE_backup.stopTimeout"));
+      await sleep(500);
+    }
+  }
+
+  // Reinstall preparation: stop the server, optionally back up, then clear the
+  // instance folder according to the chosen reset mode. Runs only when this task
+  // targets an existing instance with a resetMode (not a fresh install).
+  private async prepareReset() {
+    const inst = this.instance;
+    if (inst.status() !== Instance.STATUS_STOP) {
+      inst.println("INFO", $t("TXT_CODE_modpack.resetStopping"));
+      try {
+        await inst.execPreset("kill");
+      } catch {
+        // ignore — we'll still wait for it to stop
+      }
+      await this.waitForStop();
+    }
+    inst.status(Instance.STATUS_BUSY);
+    if (this.resetMode === "backup_wipe") {
+      inst.println("INFO", $t("TXT_CODE_modpack.resetBackup"));
+      await backupManager.startBackupTask(inst.instanceUuid).wait();
+    }
+    inst.println(
+      "INFO",
+      this.resetMode === "preserve_world"
+        ? $t("TXT_CODE_modpack.resetPreserve")
+        : $t("TXT_CODE_modpack.resetWipe")
+    );
+    await clearForReset(inst.absoluteCwdPath(), this.resetMode === "preserve_world");
+  }
+
   async onStart() {
     const inst = this.instance;
     inst.print("\n");
@@ -230,6 +281,10 @@ export class ModpackInstallTask extends AsyncTask {
       inst.println("WARN", $t("TXT_CODE_modpack.dockerWarn"));
     }
     try {
+      // Reinstall into an existing instance: stop + (backup) + clear first.
+      if (!this.isInitInstance && this.resetMode) {
+        await this.prepareReset();
+      }
       inst.status(Instance.STATUS_BUSY);
       if (this.isInitInstance) {
         if (inst.asynchronousTask) throw new Error($t("TXT_CODE_5b0e93b5"));

@@ -11,6 +11,7 @@ import type { AddJavaConfigItem, DownloadJavaConfigItem } from "@/types/javaMana
 import DeleteInstanceDialog from "@/widgets/instance/dialogs/DeleteInstanceDialog.vue";
 import ImageViewerDialog from "@/widgets/instance/dialogs/ImageViewer.vue";
 import MarketDialog from "@/widgets/instance/dialogs/MarketDialog.vue";
+import ResetInstanceDialog from "@/widgets/instance/dialogs/ResetInstanceDialog.vue";
 import AddJavaDialog from "./AddJavaDialog.vue";
 import DockerCapabilityDialogVue from "./DockerCapabilityDialog.vue";
 import DockerDeviceDialogVue from "./DockerDeviceDialog.vue";
@@ -272,6 +273,21 @@ export async function openMarketDialog(
     instanceId,
     ...options
   }).load<InstanceType<typeof MarketDialog>>(MarketDialog);
+  return dialog!.openDialog();
+}
+
+// Open the Prism-style builder in "reinstall mode" to reset/reinstall an
+// existing instance (CurseForge / Modrinth / Custom) with a chosen reset mode.
+export async function openResetInstanceDialog(
+  daemonId?: string,
+  instanceId?: string,
+  instanceName?: string
+) {
+  const dialog = useMountComponent({
+    daemonId,
+    instanceId,
+    instanceName
+  }).load<InstanceType<typeof ResetInstanceDialog>>(ResetInstanceDialog);
   return dialog!.openDialog();
 }
 

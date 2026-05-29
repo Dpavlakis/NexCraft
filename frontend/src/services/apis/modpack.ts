@@ -125,6 +125,48 @@ export const updateModpack = useDefineApi<
   method: "POST"
 });
 
+export type ResetMode = "backup_wipe" | "wipe" | "preserve_world";
+
+// Reinstall/reset an existing instance with a CurseForge/Modrinth modpack
+export const reinstallModpack = useDefineApi<
+  {
+    params: { daemonId: string; uuid: string };
+    data: {
+      source: string;
+      projectId: string;
+      projectName: string;
+      fileId: string;
+      versionName?: string;
+      iconUrl?: string;
+      maxMemoryMB?: number;
+      acceptEula?: boolean;
+      resetMode: ResetMode;
+    };
+  },
+  { taskId: string; instanceUuid: string }
+>({
+  url: "/api/protected_modpack/reinstall",
+  method: "POST"
+});
+
+// Reinstall/reset an existing instance with a fresh vanilla/loader/server build
+export const reinstallServer = useDefineApi<
+  {
+    params: { daemonId: string; uuid: string };
+    data: {
+      mcVersion: string;
+      loader: string;
+      maxMemoryMB?: number;
+      acceptEula?: boolean;
+      resetMode: ResetMode;
+    };
+  },
+  { taskId: string; instanceUuid: string }
+>({
+  url: "/api/protected_modpack/reinstall_server",
+  method: "POST"
+});
+
 export interface McVersion {
   id: string;
   type: string; // release | snapshot | old_beta | old_alpha

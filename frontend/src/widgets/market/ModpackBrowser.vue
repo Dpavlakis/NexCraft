@@ -11,11 +11,14 @@ import {
   modpackDetail,
   modpackSearch,
   modpackVersions,
+  reinstallModpack,
+  reinstallServer,
   serverVersionsGet,
   type McVersion,
   type ModpackDetail,
   type ModpackHit,
-  type ModpackVersion
+  type ModpackVersion,
+  type ResetMode
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard, NodeStatus } from "@/types";
@@ -33,7 +36,17 @@ import quiltIcon from "@/assets/loaders/quilt.png";
 import { message } from "ant-design-vue";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
-defineProps<{ card: LayoutCard }>();
+const props = defineProps<{
+  card: LayoutCard;
+  // When set, the browser operates in "reinstall mode": instead of creating a
+  // new instance, the chosen pack/build is reinstalled into this instance.
+  reinstallTarget?: { instanceId: string; daemonId: string; instanceName?: string };
+}>();
+const emit = defineEmits<{ (e: "close"): void }>();
+
+const isReinstall = computed(() => !!props.reinstallTarget);
+// Reset behaviour chosen by the user (only used in reinstall mode).
+const resetMode = ref<ResetMode>("backup_wipe");
 
 const { toPage } = useAppRouters();
 
@@ -269,7 +282,7 @@ const currentLoaderLabel = () =>
 
 const openInstall = (item: ResultItem) => {
   dialog.item = item;
-  dialog.daemonId = nodes.value[0]?.uuid || "";
+  dialog.daemonId = props.reinstallTarget?.daemonId || nodes.value[0]?.uuid || "";
   dialog.selectedVersion = "";
   dialog.versions = [];
   dialog.detail = null;
@@ -321,7 +334,10 @@ const formatDownloads = (n?: number) => {
 };
 
 const canInstall = computed(() => {
-  if (!dialog.instanceName || !dialog.daemonId) return false;
+  // In reinstall mode the instance already exists (no name needed); otherwise a
+  // name + target node are required.
+  if (!dialog.daemonId) return false;
+  if (!isReinstall.value && !dialog.instanceName) return false;
   // custom (built-in versions) auto-accept the EULA; the MC version is the row
   if (source.value === "custom") return !!dialog.item?.id;
   return dialog.acceptEula && !!dialog.selectedVersion;
@@ -332,7 +348,45 @@ const doInstall = async () => {
   dialog.installing = true;
   try {
     let instanceUuid = "";
-    if (source.value === "custom") {
+    const target = props.reinstallTarget;
+    const v =
+      source.value === "custom"
+        ? undefined
+        : dialog.versions.find((x) => versionId(x) === dialog.selectedVersion);
+
+    if (target) {
+      // ---- Reinstall into the existing instance ----
+      if (source.value === "custom") {
+        const { execute } = reinstallServer();
+        await execute({
+          params: { daemonId: target.daemonId, uuid: target.instanceId },
+          data: {
+            mcVersion: dialog.item.id,
+            loader: customLoader.value,
+            maxMemoryMB: dialog.maxMemoryMB,
+            acceptEula: true,
+            resetMode: resetMode.value
+          }
+        });
+      } else {
+        const { execute } = reinstallModpack();
+        await execute({
+          params: { daemonId: target.daemonId, uuid: target.instanceId },
+          data: {
+            source: source.value,
+            projectId: dialog.item.id,
+            projectName: dialog.item.title,
+            fileId: dialog.selectedVersion,
+            versionName: v ? versionLabel(v) : "",
+            iconUrl: dialog.item.icon,
+            maxMemoryMB: dialog.maxMemoryMB,
+            acceptEula: dialog.acceptEula,
+            resetMode: resetMode.value
+          }
+        });
+      }
+      instanceUuid = target.instanceId;
+    } else if (source.value === "custom") {
       const { execute } = installServer();
       const res = await execute({
         params: { daemonId: dialog.daemonId },
@@ -346,7 +400,6 @@ const doInstall = async () => {
       });
       instanceUuid = res.value?.instanceUuid || "";
     } else {
-      const v = dialog.versions.find((x) => versionId(x) === dialog.selectedVersion);
       const { execute } = installModpack();
       const res = await execute({
         params: { daemonId: dialog.daemonId },
@@ -364,8 +417,9 @@ const doInstall = async () => {
       });
       instanceUuid = res.value?.instanceUuid || "";
     }
-    message.success(t("TXT_CODE_modpack_install_started"));
+    message.success(t(target ? "TXT_CODE_modpack_reset_started" : "TXT_CODE_modpack_install_started"));
     dialog.open = false;
+    if (target) emit("close");
     if (instanceUuid) {
       toPage({
         path: "/instances/terminal",
@@ -559,16 +613,49 @@ onBeforeUnmount(() => {
     </div>
 
     <a-form layout="vertical">
-      <a-form-item :label="t('TXT_CODE_modpack_name')">
-        <a-input v-model:value="dialog.instanceName" />
-      </a-form-item>
-      <a-form-item :label="t('TXT_CODE_modpack_node')">
-        <a-select v-model:value="dialog.daemonId">
-          <a-select-option v-for="n in nodes" :key="n.uuid" :value="n.uuid">
-            {{ nodeLabel(n) }}
-          </a-select-option>
-        </a-select>
-      </a-form-item>
+      <!-- Reinstall mode: instance is fixed; let the user pick how to treat existing files -->
+      <template v-if="isReinstall">
+        <a-form-item :label="t('TXT_CODE_modpack_reset_target')">
+          <a-input :value="reinstallTarget?.instanceName || reinstallTarget?.instanceId" disabled />
+        </a-form-item>
+        <a-form-item :label="t('TXT_CODE_modpack_reset_mode')">
+          <a-radio-group v-model:value="resetMode" class="reset-radio">
+            <a-radio value="backup_wipe">{{ t("TXT_CODE_modpack_reset_backup_wipe") }}</a-radio>
+            <a-radio value="wipe">{{ t("TXT_CODE_modpack_reset_wipe") }}</a-radio>
+            <a-radio value="preserve_world">{{ t("TXT_CODE_modpack_reset_preserve") }}</a-radio>
+          </a-radio-group>
+          <div class="reset-mode-hint">
+            <a-typography-text type="secondary">
+              {{
+                resetMode === "backup_wipe"
+                  ? t("TXT_CODE_modpack_reset_backup_wipe_desc")
+                  : resetMode === "wipe"
+                    ? t("TXT_CODE_modpack_reset_wipe_desc")
+                    : t("TXT_CODE_modpack_reset_preserve_desc")
+              }}
+            </a-typography-text>
+          </div>
+          <a-alert
+            v-if="resetMode === 'wipe'"
+            class="mt-8"
+            type="warning"
+            show-icon
+            :message="t('TXT_CODE_modpack_reset_wipe_warn')"
+          />
+        </a-form-item>
+      </template>
+      <template v-else>
+        <a-form-item :label="t('TXT_CODE_modpack_name')">
+          <a-input v-model:value="dialog.instanceName" />
+        </a-form-item>
+        <a-form-item :label="t('TXT_CODE_modpack_node')">
+          <a-select v-model:value="dialog.daemonId">
+            <a-select-option v-for="n in nodes" :key="n.uuid" :value="n.uuid">
+              {{ nodeLabel(n) }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+      </template>
       <a-form-item v-if="source === 'custom'" :label="t('TXT_CODE_modpack_version')">
         <a-input :value="`${currentLoaderLabel()}  —  ${dialog.item?.id || ''}`" disabled />
       </a-form-item>
@@ -612,6 +699,17 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 .mb-12 {
   margin-bottom: 12px;
+}
+.mt-8 {
+  margin-top: 8px;
+}
+.reset-mode-hint {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.reset-radio :deep(.ant-radio-wrapper) {
+  display: flex;
+  margin-bottom: 6px;
 }
 .search-row {
   display: flex;

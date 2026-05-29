@@ -246,6 +246,27 @@ export async function maybeFlatten(cwd: string, ignore: string[] = []) {
 }
 
 // Remove replaceable mod/config/loader artifacts before re-applying a pack on update.
+// Clear an instance folder for a reinstall/reset.
+//  - preserveWorld=false: remove EVERYTHING (a clean, fresh install).
+//  - preserveWorld=true:  keep world/player data + server config (makeShouldPreserve),
+//    removing mods/config/loader artifacts so a new pack installs over the world.
+// Backups live outside the instance cwd (data/backups), so they're never touched here.
+export async function clearForReset(cwd: string, preserveWorld: boolean) {
+  if (!fs.existsSync(cwd)) {
+    await fs.ensureDir(cwd);
+    return;
+  }
+  const skip = preserveWorld ? makeShouldPreserve() : null;
+  for (const name of fs.readdirSync(cwd)) {
+    if (skip && skip(name)) continue;
+    try {
+      await fs.remove(path.join(cwd, name));
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export async function clearReplaceableArtifacts(cwd: string) {
   for (const d of MODPACK_REPLACE_DIRS) {
     try {

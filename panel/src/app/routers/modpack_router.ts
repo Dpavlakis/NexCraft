@@ -246,6 +246,43 @@ router.get(
   }
 );
 
+// Build the install descriptor for a vanilla/loader/server-jar server build.
+async function buildServerDescriptor(b: any) {
+  const loader = String(b.loader || "vanilla").toLowerCase();
+  const mcVersion = String(b.mcVersion);
+  const packInfoBase = {
+    projectId: `${loader}:${mcVersion}`,
+    projectName: String(b.instanceName || loader),
+    fileId: "",
+    versionName: mcVersion,
+    mcVersion,
+    loader,
+    loaderVersion: ""
+  };
+  if (SERVER_SOFTWARE.includes(loader)) {
+    const serverJarUrl = await resolveServerJarUrl(loader, mcVersion);
+    if (!serverJarUrl) throw new Error($t("TXT_CODE_modpack.noServerJar", { mc: mcVersion }));
+    return {
+      source: "serverjar",
+      mcVersion,
+      loader,
+      serverJarUrl,
+      maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
+      acceptEula: !!b.acceptEula,
+      packInfo: { ...packInfoBase, source: "serverjar" }
+    };
+  }
+  return {
+    source: "vanilla",
+    mcVersion,
+    loader,
+    loaderVersion: "",
+    maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
+    acceptEula: !!b.acceptEula,
+    packInfo: { ...packInfoBase, source: "vanilla" }
+  };
+}
+
 // Build a fresh server for any Minecraft version: vanilla / a mod loader
 // (daemon ModloaderBootstrap), or a server jar (Paper/Purpur/Folia).
 router.post(
@@ -259,53 +296,80 @@ router.post(
     try {
       const daemonId = String(ctx.query.daemonId);
       const b = ctx.request.body;
-      const loader = String(b.loader || "vanilla").toLowerCase();
-      const mcVersion = String(b.mcVersion);
-
-      const packInfoBase = {
-        projectId: `${loader}:${mcVersion}`,
-        projectName: String(b.instanceName || loader),
-        fileId: "",
-        versionName: mcVersion,
-        mcVersion,
-        loader,
-        loaderVersion: ""
-      };
-
-      let descriptor: any;
-      if (SERVER_SOFTWARE.includes(loader)) {
-        const serverJarUrl = await resolveServerJarUrl(loader, mcVersion);
-        if (!serverJarUrl) throw new Error($t("TXT_CODE_modpack.noServerJar", { mc: mcVersion }));
-        descriptor = {
-          source: "serverjar",
-          mcVersion,
-          loader,
-          serverJarUrl,
-          maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
-          acceptEula: !!b.acceptEula,
-          packInfo: { ...packInfoBase, source: "serverjar" }
-        };
-      } else {
-        descriptor = {
-          source: "vanilla",
-          mcVersion,
-          loader,
-          loaderVersion: "",
-          maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
-          acceptEula: !!b.acceptEula,
-          packInfo: { ...packInfoBase, source: "vanilla" }
-        };
-      }
-
+      const descriptor = await buildServerDescriptor(b);
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],
         daemon_id: daemonId,
-        pack_name: `${loader} ${mcVersion}`
+        pack_name: `${descriptor.loader} ${descriptor.mcVersion}`
       });
       ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
         "modpack/install",
         { instanceName: String(b.instanceName), descriptor }
+      );
+    } catch (err: any) {
+      ctx.body = err;
+    }
+  }
+);
+
+// Reinstall/reset an existing instance with a CurseForge/Modrinth modpack.
+// resetMode: "backup_wipe" | "wipe" | "preserve_world".
+router.post(
+  "/reinstall",
+  permission({ level: ROLE.ADMIN }),
+  validator({
+    query: { daemonId: String, uuid: String },
+    body: { source: String, projectId: String, fileId: String }
+  }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      const descriptor: any = await buildDescriptor(ctx.request.body);
+      descriptor.acceptEula = !!ctx.request.body.acceptEula;
+      const resetMode = String(ctx.request.body.resetMode || "backup_wipe");
+      operationLogger.log("instance_modpack_install", {
+        operator_ip: ctx.ip,
+        operator_name: ctx.session?.["userName"],
+        instance_id: instanceUuid,
+        daemon_id: daemonId,
+        pack_name: String(ctx.request.body.projectName || ctx.request.body.projectId)
+      });
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "modpack/reinstall",
+        { instanceUuid, descriptor, resetMode }
+      );
+    } catch (err: any) {
+      ctx.body = err;
+    }
+  }
+);
+
+// Reinstall/reset an existing instance with a fresh vanilla/loader/server build.
+router.post(
+  "/reinstall_server",
+  permission({ level: ROLE.ADMIN }),
+  validator({
+    query: { daemonId: String, uuid: String },
+    body: { mcVersion: String, loader: String }
+  }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      const descriptor = await buildServerDescriptor(ctx.request.body);
+      const resetMode = String(ctx.request.body.resetMode || "backup_wipe");
+      operationLogger.log("instance_modpack_install", {
+        operator_ip: ctx.ip,
+        operator_name: ctx.session?.["userName"],
+        instance_id: instanceUuid,
+        daemon_id: daemonId,
+        pack_name: `${descriptor.loader} ${descriptor.mcVersion}`
+      });
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "modpack/reinstall",
+        { instanceUuid, descriptor, resetMode }
       );
     } catch (err: any) {
       ctx.body = err;
