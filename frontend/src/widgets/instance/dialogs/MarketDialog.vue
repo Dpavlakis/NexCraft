@@ -86,6 +86,7 @@ defineExpose({
       :title="dialogTitle"
       :show-custom-btn="showCustomBtn"
       :only-docker-template="onlyDockerTemplate"
+      force-game-type="Minecraft"
       @handle-select-category="handleSelectCategory"
       @handle-select-template="handleSelectTemplate"
       @handle-back-to-category="() => {}"

@@ -27,6 +27,9 @@ export interface SearchForm {
 
 export interface UseMarketPackagesOptions {
   onlyDockerTemplate?: boolean;
+  // When set, the gallery opens straight into this game type (skips the
+  // all-games category grid) — used to keep the reinstall picker Minecraft-only.
+  forceGameType?: string;
 }
 
 /**
@@ -38,13 +41,13 @@ export function useMarketPackages(options: UseMarketPackagesOptions = {}) {
   // game whose packages each have their own logo (e.g. Minecraft loaders) can
   // still show a single banner when grouped.
   const gameTypeImages = ref<Record<string, string>>({});
-  const { onlyDockerTemplate = false } = options;
+  const { onlyDockerTemplate = false, forceGameType } = options;
 
   // Search form state
   const searchForm = reactive<SearchForm>({
     language: getCurrentLang(),
     category: SEARCH_ALL_KEY,
-    gameType: SEARCH_ALL_KEY,
+    gameType: forceGameType || SEARCH_ALL_KEY,
     platform: SEARCH_ALL_KEY,
     keyword: "",
     isSupportDocker: false,

@@ -12,6 +12,7 @@ const props = defineProps<{
   btnText?: string;
   showCustomBtn?: boolean;
   onlyDockerTemplate?: boolean;
+  forceGameType?: string;
 }>();
 
 const emit = defineEmits<{
@@ -28,7 +29,8 @@ const {
   handleSelectTopCategory,
   fetchTemplate
 } = useMarketPackages({
-  onlyDockerTemplate: props.onlyDockerTemplate
+  onlyDockerTemplate: props.onlyDockerTemplate,
+  forceGameType: props.forceGameType
 });
 
 /** Whether we are in category view (category cards); otherwise in detail list view */
