@@ -347,6 +347,36 @@ export const updateConfigFile = useDefineApi<
   url: "/api/protected_instance/process_config/file"
 });
 
+// Easy Minecraft MOTD editor (reads/writes the motd line in server.properties)
+export const getInstanceMotd = useDefineApi<
+  {
+    params: {
+      uuid: string;
+      daemonId: string;
+    };
+  },
+  string
+>({
+  method: "GET",
+  url: "/api/protected_instance/motd"
+});
+
+export const setInstanceMotd = useDefineApi<
+  {
+    params: {
+      uuid: string;
+      daemonId: string;
+    };
+    data: {
+      motd: string;
+    };
+  },
+  boolean
+>({
+  method: "PUT",
+  url: "/api/protected_instance/motd"
+});
+
 export const batchStart = useDefineApi<
   {
     data: {

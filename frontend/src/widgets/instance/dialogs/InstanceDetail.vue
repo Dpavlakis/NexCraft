@@ -13,7 +13,11 @@ import { SEARCH_ALL_KEY, useMarketPackages, type FilterOption } from "@/hooks/us
 import { useScreen } from "@/hooks/useScreen";
 import { isCN, t } from "@/lang/i18n";
 import { getNetworkModeList } from "@/services/apis/envImage";
-import { updateAnyInstanceConfig } from "@/services/apis/instance";
+import {
+  getInstanceMotd,
+  setInstanceMotd,
+  updateAnyInstanceConfig
+} from "@/services/apis/instance";
 import { dockerPortsArray } from "@/tools/common";
 import { reportErrorMsg } from "@/tools/validator";
 import type { DockerNetworkModes, InstanceDetail, QuickStartPackages } from "@/types";
@@ -238,6 +242,34 @@ const isGlobalTerminal = computed(() => {
 
 const isDockerMode = computed(() => formData?.value?.instance?.config?.processType === "docker");
 
+// MOTD easy-editor (reads/writes the motd line in server.properties).
+// Only relevant for Minecraft Java Edition servers.
+const motd = ref("");
+const originalMotd = ref("");
+const isMinecraftJava = computed(() =>
+  Boolean(formData?.value?.instance?.config?.type?.startsWith("minecraft/java"))
+);
+const showMotd = computed(
+  () => !isTemplateMode.value && !isGlobalTerminal.value && isMinecraftJava.value
+);
+const { execute: executeGetMotd } = getInstanceMotd();
+const { execute: executeSetMotd } = setInstanceMotd();
+
+const loadMotd = async () => {
+  motd.value = "";
+  originalMotd.value = "";
+  if (!props.instanceId || !props.daemonId) return;
+  try {
+    const res = await executeGetMotd({
+      params: { uuid: props.instanceId, daemonId: props.daemonId }
+    });
+    motd.value = res.value ?? "";
+    originalMotd.value = motd.value;
+  } catch {
+    // server.properties may not exist yet — leave blank
+  }
+};
+
 // GPU allocation mode: "all" | "count" | "deviceIds"
 const gpuAllocMode = ref<"all" | "count" | "deviceIds">("all");
 
@@ -308,7 +340,7 @@ const openDialog = async ({ item, i }: { item?: QuickStartPackages; i?: number }
     formType.value = "template";
     activeKey.value = TabSettings.Template;
   } else {
-    await Promise.all([loadNetworkModes()]);
+    await Promise.all([loadNetworkModes(), loadMotd()]);
   }
   initFormDetail();
   open.value = true;
@@ -334,6 +366,21 @@ const submit = async () => {
         },
         data: postData?.config!
       });
+      // Persist MOTD separately (server.properties) when it changed
+      if (showMotd.value && motd.value !== originalMotd.value) {
+        try {
+          await executeSetMotd({
+            params: {
+              uuid: props.instanceId ?? "",
+              daemonId: props.daemonId ?? ""
+            },
+            data: { motd: motd.value }
+          });
+          originalMotd.value = motd.value;
+        } catch (e: any) {
+          reportErrorMsg(e?.message ?? String(e));
+        }
+      }
       emit("update");
       open.value = false;
       return message.success(t("TXT_CODE_d3de39b4"));
@@ -900,6 +947,25 @@ defineExpose({
                       :placeholder="t('TXT_CODE_83053cd5')"
                     />
                   </a-input-group>
+                </a-form-item>
+              </a-col>
+
+              <a-col v-if="showMotd" :xs="24" :offset="0">
+                <a-form-item>
+                  <a-typography-title :level="5">
+                    {{ t("TXT_CODE_motd_title") }}
+                  </a-typography-title>
+                  <a-typography-paragraph>
+                    <a-typography-text type="secondary" class="typography-text-ellipsis">
+                      {{ t("TXT_CODE_motd_desc") }}
+                    </a-typography-text>
+                  </a-typography-paragraph>
+                  <a-textarea
+                    v-model:value="motd"
+                    :rows="2"
+                    :maxlength="120"
+                    :placeholder="t('TXT_CODE_motd_placeholder')"
+                  />
                 </a-form-item>
               </a-col>
             </a-row>

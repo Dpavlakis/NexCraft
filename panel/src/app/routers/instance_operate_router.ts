@@ -347,6 +347,50 @@ router.put(
 );
 
 // [Low-level Permission]
+// Read the current Minecraft MOTD (server.properties) for easy editing
+router.get(
+  "/motd",
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, uuid: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+      const result = await new RemoteRequest(remoteService).request("instance/motd", {
+        instanceUuid
+      });
+      ctx.body = result;
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// [Low-level Permission]
+// Update the Minecraft MOTD (server.properties)
+router.put(
+  "/motd",
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, uuid: String }, body: {} }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      const motd = String(ctx.request.body?.motd ?? "");
+      const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+      const result = await new RemoteRequest(remoteService).request("instance/motd", {
+        instanceUuid,
+        motd
+      });
+      ctx.body = result;
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// [Low-level Permission]
 // Update instance low-privilege configuration data (normal user)
 router.put(
   "/instance_update",

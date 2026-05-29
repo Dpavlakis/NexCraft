@@ -17,6 +17,7 @@ import {
 } from "../service/async_task_service/quick_install";
 import downloadManager from "../service/download_manager";
 import { IInstanceDetail, IJson } from "../service/interfaces";
+import { getMotd, setMotd } from "../service/mc_motd";
 import { modService } from "../service/mod_service";
 import { ROLE } from "../service/protocol";
 import FileManager from "../service/system_file";
@@ -553,6 +554,23 @@ routerApp.on("instance/process_config/file", (ctx, data) => {
       const json = processConfig.read();
       return protocol.response(ctx, json);
     }
+  } catch (err: any) {
+    protocol.responseError(ctx, err);
+  }
+});
+
+// Get or set the Minecraft MOTD line in server.properties (easy editor).
+// data.motd undefined => read and return the current MOTD; otherwise write it.
+routerApp.on("instance/motd", (ctx, data) => {
+  const instanceUuid = data.instanceUuid;
+  try {
+    const instance = InstanceSubsystem.getInstance(instanceUuid);
+    if (!instance) throw new Error($t("TXT_CODE_3bfb9e04"));
+    if (data.motd == null) {
+      return protocol.response(ctx, getMotd(instance));
+    }
+    setMotd(instance, String(data.motd));
+    return protocol.response(ctx, true);
   } catch (err: any) {
     protocol.responseError(ctx, err);
   }
