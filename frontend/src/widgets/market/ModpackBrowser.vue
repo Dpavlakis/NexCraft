@@ -107,14 +107,14 @@ const results = ref<ResultItem[]>([]);
 // release version (from Mojang), then the daemon bootstraps it.
 const customLoaders = [
   { value: "vanilla", label: "Vanilla" },
+  { value: "bedrock", label: "Bedrock" },
   { value: "paper", label: "PaperMC" },
   { value: "purpur", label: "Purpur" },
   { value: "folia", label: "Folia" },
   { value: "fabric", label: "Fabric" },
   { value: "forge", label: "Forge" },
   { value: "neoforge", label: "NeoForge" },
-  { value: "quilt", label: "Quilt" },
-  { value: "bedrock", label: "Bedrock" }
+  { value: "quilt", label: "Quilt" }
 ];
 const customLoader = ref("vanilla");
 const showSnapshots = ref(false);
@@ -171,8 +171,11 @@ const fmtDate = (s?: string) => {
 // Apply the search box + snapshot toggle to the fetched Mojang version list.
 const applyCustomFilter = () => {
   const q = searchText.value.trim().toLowerCase();
+  // Server-software lists (Paper/Purpur/Folia/Bedrock) are already curated, so
+  // show every entry — this also surfaces the Bedrock "preview" build.
+  const showAll = showSnapshots.value || isServerSoftware(customLoader.value);
   results.value = mcVersionsRaw.value
-    .filter((v) => showSnapshots.value || v.type === "release")
+    .filter((v) => showAll || v.type === "release")
     .filter((v) => !q || v.id.toLowerCase().includes(q))
     .map((v) => ({
       id: v.id,
