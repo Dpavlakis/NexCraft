@@ -292,7 +292,9 @@ const openInstall = (item: ResultItem) => {
   dialog.selectedVersion = "";
   dialog.versions = [];
   dialog.detail = null;
-  dialog.acceptEula = false;
+  // On a reset the instance already exists (EULA was accepted before), so
+  // pre-tick it for convenience; a fresh install still requires explicit consent.
+  dialog.acceptEula = isReinstall.value;
   dialog.open = true;
   if (source.value === "custom") {
     // item.id is the chosen Minecraft version; loader comes from the radio.
