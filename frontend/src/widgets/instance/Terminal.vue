@@ -116,7 +116,8 @@ const quickOperations = computed(() =>
     {
       title: t("TXT_CODE_57245e94"),
       icon: PlayCircleOutlined,
-      noConfirm: false,
+      // Starting is non-destructive — no confirmation needed (stop/restart/kill still confirm)
+      noConfirm: true,
       type: "default",
       class: "button-color-success",
       click: toOpenInstance,
