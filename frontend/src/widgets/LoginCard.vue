@@ -239,8 +239,12 @@ onMounted(async () => {
                     v-html="markdownToHTML(pageInfoResult?.loginInfo || '')"
                   ></div>
                   Powered by
-                  <a href="https://github.com/Dpavlakis/MCSManager" target="_blank" rel="noopener noreferrer">
-                    NexCraft
+                  <a
+                    href="https://github.com/MCSManager/MCSManager"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    MCSManager
                   </a>
                 </div>
                 <div v-else></div>
