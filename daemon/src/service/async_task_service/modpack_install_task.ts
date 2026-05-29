@@ -7,6 +7,7 @@ import { getCommonHeaders } from "../../common/network";
 import Instance from "../../entity/instance/instance";
 import InstanceConfig from "../../entity/instance/Instance_config";
 import { $t } from "../../i18n";
+import downloadManager from "../download_manager";
 import { ModloaderBootstrap, type ModLoader } from "../modloader_bootstrap";
 import {
   downloadMrpackFiles,
@@ -212,6 +213,20 @@ export class ModpackInstallTask extends AsyncTask {
           fs.writeFileSync(path.join(inst.absoluteCwdPath(), "eula.txt"), "eula=true\n");
         } catch {
           // ignore
+        }
+      }
+
+      // Generate server-icon.png from the pack logo (resized to 64x64 via wsrv.nl).
+      const iconSrc = this.descriptor.packInfo?.iconUrl;
+      const iconTarget = path.join(inst.absoluteCwdPath(), "server-icon.png");
+      if (iconSrc && !fs.existsSync(iconTarget)) {
+        try {
+          const url = `https://wsrv.nl/?url=${encodeURIComponent(
+            iconSrc
+          )}&w=64&h=64&fit=cover&output=png`;
+          await downloadManager.downloadFromUrl(url, iconTarget);
+        } catch {
+          // non-fatal — server just won't have an icon
         }
       }
 
