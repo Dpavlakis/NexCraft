@@ -81,6 +81,8 @@ declare global {
     path?: string;
     installTime: number;
     downloading: boolean;
+    name?: string;
+    version?: string;
   }
 
   interface IJavaRuntime {
