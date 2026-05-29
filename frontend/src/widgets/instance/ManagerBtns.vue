@@ -283,17 +283,6 @@ const btns = computed(() => {
       }
     },
     {
-      title: t("TXT_CODE_40241d8e"),
-      icon: UsergroupDeleteOutlined,
-      click: () => {
-        mcSettingsDialog.value?.openDialog();
-      },
-      condition: () =>
-        (instanceInfo.value?.config.type.includes(TYPE_MINECRAFT_JAVA) ||
-          instanceInfo.value?.config.type === TYPE_MINECRAFT_MCDR) ??
-        false
-    },
-    {
       title: t("TXT_CODE_4f34fc28"),
       icon: AppstoreAddOutlined,
       condition: () =>
