@@ -11,6 +11,7 @@ import { $t } from "../../i18n";
 import { getFileManager } from "../file_router_service";
 import { InstanceUpdateAction } from "../instance_update_action";
 import { assignFreeMcPort } from "../mc_port";
+import { detectDirectJavaStart, isShellWrapperStart } from "../mc_start";
 import logger from "../log";
 import InstanceSubsystem from "../system_instance";
 import { AsyncTask, IAsyncTaskJSON, TaskCenter } from "./index";
@@ -256,6 +257,25 @@ ${error?.message}
         }
       } else {
         this.instance.println("INFO", $t("TXT_CODE_1562f6cf"));
+      }
+
+      // Forge/NeoForge packs ship a `sh run.sh` start command, which makes the
+      // daemon monitor the shell wrapper (≈0 CPU/RAM) instead of Java. If the
+      // installed server exposes the args files, switch to launching Java
+      // directly so CPU/RAM stats (and Metrics) are accurate.
+      try {
+        if (
+          String(this.instance.config.type || "").includes("minecraft") &&
+          isShellWrapperStart(this.instance.config.startCommand)
+        ) {
+          const direct = detectDirectJavaStart(this.instance.absoluteCwdPath());
+          if (direct) {
+            this.instance.parameters({ startCommand: direct }, true);
+            this.instance.println("INFO", $t("TXT_CODE_modpack.directStart", { cmd: direct }));
+          }
+        }
+      } catch {
+        // non-fatal — keep the pack's original start command
       }
 
       this.stop();
