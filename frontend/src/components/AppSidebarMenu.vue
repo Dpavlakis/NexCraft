@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import nexcraftLogo from "@/assets/nexcraft_logo.svg";
 import {
   useHeaderMenus,
   type SidebarAppDropdownEntry,
   type SidebarEntry
 } from "@/hooks/useHeaderMenus";
-import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import {
   ApartmentOutlined,
   AppstoreOutlined,
@@ -24,7 +24,6 @@ import { useRoute } from "vue-router";
 
 const route = useRoute();
 const { sidebarItems, handleToPage } = useHeaderMenus();
-const { logoImage } = useAppConfigStore();
 
 /** Whether route menu item is active (current path equals or is child of this path) */
 const isRouteActive = (path: string): boolean => {
@@ -65,7 +64,8 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
 <template>
   <aside class="left-sidebar">
     <a href="." class="logo">
-      <img :src="logoImage" />
+      <img :src="nexcraftLogo" alt="NexCraft" />
+      <span class="nexcraft-brand-text sidebar-brand-text">NexCraft</span>
     </a>
     <nav class="sidebar-menu">
       <template v-for="(entry, index) in sidebarItems" :key="getItemKey(entry, index)">
@@ -115,13 +115,19 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
 
 <style lang="scss" scoped>
 .logo {
-  display: block;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
   padding-top: 10px;
   padding-bottom: 18px;
   img {
-    height: 20px;
+    height: 30px;
     animation: MasterLogoWobble 10s ease infinite;
+  }
+  .sidebar-brand-text {
+    font-size: 18px;
   }
 }
 
@@ -135,8 +141,18 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
   flex-direction: column;
   flex: 0 0 240px;
   text-align: left;
-  border-right: 1px solid var(--color-gray-5);
-  background-image: url("@/assets/side.png");
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  // NexCraft: tint the block texture with the logo gradient (keeps the blocks)
+  background-color: #182142;
+  background-image: linear-gradient(
+      160deg,
+      rgba(22, 41, 97, 0.92) 0%,
+      rgba(57, 63, 152, 0.88) 40%,
+      rgba(92, 70, 156, 0.85) 65%,
+      rgba(21, 135, 172, 0.85) 100%
+    ),
+    url("@/assets/side.png");
+  background-blend-mode: overlay;
   padding: 20px 12px;
   transition: all 0.3s ease;
   background-position-x: -80px;
