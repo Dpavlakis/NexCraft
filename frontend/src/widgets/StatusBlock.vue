@@ -216,7 +216,8 @@ const breakInNeed = (a: number, b: number = 0) => {
   font-weight: 500;
   letter-spacing: -0.1em;
   color: #606060;
-  font-family: auto;
+  // `auto` is not a valid font-family (browsers fall back to serif); inherit the app's sans font
+  font-family: inherit;
 
   &__highlight {
     font-size: 3rem;
