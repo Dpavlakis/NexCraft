@@ -1,8 +1,8 @@
 # NexCraft — project guide for Claude
 
-Personal fork of **MCSManager**, rebranded **NexCraft** — a Minecraft-server control panel.
-Repo: `github.com/Dpavlakis/MCSManager`. Working branch: **`feat/instance-backups`** (push remote alias `fork`).
-The original MCSManager is credited (login footer). Keep changes Minecraft-focused.
+**NexCraft** — a Minecraft-server control panel, built on (originally forked from) **MCSManager**.
+Repo: `github.com/Dpavlakis/NexCraft` (standalone, **not** a fork anymore). Default/working branch: **`main`** (push remote alias `nexcraft`; `origin` still points at upstream `MCSManager/MCSManager` for reference).
+The original MCSManager is credited (login footer + Settings → About). Keep changes Minecraft-focused.
 
 ## Monorepo layout
 - `daemon/` — per-node agent. Socket RPC: `routerApp.on("ns/action", (ctx,data)=>{ protocol.response/responseError })`, registered via imports in `daemon/src/service/router.ts`. Async work in `src/service/async_task_service/`.
@@ -12,7 +12,7 @@ The original MCSManager is credited (login footer). Keep changes Minecraft-focus
 - `languages/*.json` — i18n; en_US.json is source of truth. Daemon uses `{{var}}`; frontend uses `{var}`.
 
 ## Build & deploy (IMPORTANT)
-- **No local Node toolchain — the Docker build is the typechecker.** Make changes, commit, push to `fork feat/instance-backups`; the user pulls on Unraid and rebuilds. If a build fails, fix from the pasted error.
+- **No local Node toolchain — the Docker build is the typechecker.** Make changes, commit, push to `nexcraft main`; the user pulls on Unraid and rebuilds. If a build fails, fix from the pasted error.
 - **Always give the full `docker run` commands in any rebuild instructions**, and say which image changed:
   - daemon (`daemon/`, `common/`) → `mcsm-daemon:backup-test`
   - web (`frontend/`, `panel/`, `languages/`) → `mcsm-web:backup-test`
