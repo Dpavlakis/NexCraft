@@ -33,7 +33,7 @@ import { AsyncTask, IAsyncTaskJSON } from "./index";
 export type ResetMode = "backup_wipe" | "wipe" | "preserve_world";
 
 export interface IModpackInstallDescriptor {
-  source: "curseforge" | "modrinth" | "vanilla" | "serverjar";
+  source: "curseforge" | "modrinth" | "vanilla" | "serverjar" | "bedrock";
   // CurseForge server-pack path:
   serverPackUrl?: string;
   serverPackFileName?: string;
@@ -41,6 +41,8 @@ export interface IModpackInstallDescriptor {
   mrpackUrl?: string;
   // Server-jar path (Paper / Purpur / Folia): a single runnable jar URL.
   serverJarUrl?: string;
+  // Bedrock path: the Bedrock Dedicated Server zip URL.
+  bedrockUrl?: string;
   // Metadata / bootstrap hints (panel supplies what it knows):
   mcVersion?: string;
   loader?: ModLoader | string;
@@ -84,8 +86,8 @@ export class ModpackInstallTask extends AsyncTask {
     super();
     const config = new InstanceConfig();
     config.nickname = instanceName;
-    config.stopCommand = "stop";
-    config.type = "minecraft/java";
+    config.stopCommand = "stop"; // both BDS and Java servers accept "stop"
+    config.type = descriptor.source === "bedrock" ? "minecraft/bedrock" : "minecraft/java";
     if (descriptor.buildParams?.processType) config.processType = descriptor.buildParams.processType;
     if (descriptor.buildParams?.docker)
       config.docker = { ...config.docker, ...descriptor.buildParams.docker };
@@ -234,6 +236,35 @@ export class ModpackInstallTask extends AsyncTask {
     return `${javaToken} -Xmx${mem}M -Xms${Math.min(mem, 1024)}M -jar server.jar nogui`;
   }
 
+  // Download + unzip the Bedrock Dedicated Server (native Linux binary) and
+  // return its start command. No Java involved.
+  private async installBedrock(): Promise<string> {
+    const inst = this.instance;
+    if (!this.descriptor.bedrockUrl) throw new Error($t("TXT_CODE_modpack.noServerPack"));
+    const cwd = inst.absoluteCwdPath();
+    const tmp = path.join(cwd, ".mcsm_bedrock.zip");
+    this.tmpFiles.push(tmp);
+
+    this.phase = "download";
+    await this.downloadWithProgress(this.descriptor.bedrockUrl, tmp);
+
+    this.phase = "extract";
+    inst.println("INFO", $t("TXT_CODE_modpack.extracting"));
+    await extractZipOverwrite(tmp, cwd);
+
+    // The Bedrock server binary must be executable; libs load from the cwd.
+    const bin = path.join(cwd, "bedrock_server");
+    try {
+      if (fs.existsSync(bin)) await fs.chmod(bin, 0o755);
+    } catch {
+      // non-fatal
+    }
+    // The daemon spawns argv[0] directly, so wrap in `sh -c` to set
+    // LD_LIBRARY_PATH; `exec` replaces the shell so stdin (the "stop" command)
+    // and the pid map straight to bedrock_server.
+    return 'sh -c "LD_LIBRARY_PATH=. exec ./bedrock_server"';
+  }
+
   private async waitForStop(timeoutMs = 5 * 60 * 1000) {
     const start = Date.now();
     while (this.instance.status() !== Instance.STATUS_STOP) {
@@ -292,78 +323,93 @@ export class ModpackInstallTask extends AsyncTask {
       }
       inst.println("INFO", $t("TXT_CODE_modpack.start"));
 
-      const resolved =
-        this.descriptor.source === "curseforge"
-          ? await this.installCurseForge()
-          : this.descriptor.source === "modrinth"
-            ? await this.installModrinth()
-            : {
-                // "vanilla": build a fresh server (vanilla or a loader) from
-                // scratch — no files to download, just bootstrap the loader.
-                mc: this.descriptor.mcVersion || "",
-                loader: this.descriptor.loader || "vanilla",
-                loaderVersion: this.descriptor.loaderVersion || ""
-              };
-
-      // Strip client-only mods that would crash a dedicated server (e.g. e4mc
-      // shipped in client optimization packs like Fabulously Optimized).
-      try {
-        const removed = await removeKnownClientMods(inst.absoluteCwdPath());
-        if (removed.length) {
-          inst.println(
-            "INFO",
-            $t("TXT_CODE_modpack.removedClientMods", { mods: removed.join(", ") })
-          );
-        }
-      } catch {
-        // non-fatal
-      }
-
-      // Accept the Minecraft EULA on the user's behalf (they checked the box).
-      if (this.descriptor.acceptEula) {
-        try {
-          fs.writeFileSync(path.join(inst.absoluteCwdPath(), "eula.txt"), "eula=true\n");
-        } catch {
-          // ignore
-        }
-      }
-
-      // Generate server-icon.png from the pack logo (resized to 64x64 via wsrv.nl).
-      const iconSrc = this.descriptor.packInfo?.iconUrl;
-      const iconTarget = path.join(inst.absoluteCwdPath(), "server-icon.png");
-      if (iconSrc && !fs.existsSync(iconTarget)) {
-        try {
-          const url = `https://wsrv.nl/?url=${encodeURIComponent(
-            iconSrc
-          )}&w=64&h=64&fit=cover&output=png`;
-          await downloadManager.downloadFromUrl(url, iconTarget);
-        } catch {
-          // non-fatal — server just won't have an icon
-        }
-      }
-
-      // Auto-assign a free port so multiple servers don't all sit on 25565
-      try {
-        const port = await assignFreeMcPort(inst);
-        inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
-      } catch {
-        // non-fatal — user can set the port manually
-      }
-
-      this.phase = "bootstrap";
       let startCommand: string;
-      if (this.descriptor.source === "serverjar") {
-        // Paper / Purpur / Folia: a single runnable server jar.
-        startCommand = await this.installServerJar(resolved.mc, this.descriptor.maxMemoryMB);
+      let resolvedMc = this.descriptor.mcVersion || "";
+      let resolvedLoader: ModLoader | string = this.descriptor.loader || "vanilla";
+      let resolvedLoaderVersion = this.descriptor.loaderVersion || "";
+
+      if (this.descriptor.source === "bedrock") {
+        // Bedrock Dedicated Server: a native binary, not Java — just download +
+        // unzip it. No mods, no eula.txt, no Java/port provisioning.
+        startCommand = await this.installBedrock();
+        resolvedLoader = "bedrock";
+        resolvedLoaderVersion = "";
       } else {
-        this.bootstrap = new ModloaderBootstrap({
-          instance: inst,
-          mcVersion: resolved.mc,
-          loader: resolved.loader as ModLoader,
-          loaderVersion: resolved.loaderVersion,
-          maxMemoryMB: this.descriptor.maxMemoryMB
-        });
-        startCommand = (await this.bootstrap.run()).startCommand;
+        const resolved =
+          this.descriptor.source === "curseforge"
+            ? await this.installCurseForge()
+            : this.descriptor.source === "modrinth"
+              ? await this.installModrinth()
+              : {
+                  // "vanilla": build a fresh server (vanilla or a loader) from
+                  // scratch — no files to download, just bootstrap the loader.
+                  mc: this.descriptor.mcVersion || "",
+                  loader: this.descriptor.loader || "vanilla",
+                  loaderVersion: this.descriptor.loaderVersion || ""
+                };
+        resolvedMc = resolved.mc;
+        resolvedLoader = resolved.loader;
+        resolvedLoaderVersion = resolved.loaderVersion;
+
+        // Strip client-only mods that would crash a dedicated server (e.g. e4mc
+        // shipped in client optimization packs like Fabulously Optimized).
+        try {
+          const removed = await removeKnownClientMods(inst.absoluteCwdPath());
+          if (removed.length) {
+            inst.println(
+              "INFO",
+              $t("TXT_CODE_modpack.removedClientMods", { mods: removed.join(", ") })
+            );
+          }
+        } catch {
+          // non-fatal
+        }
+
+        // Accept the Minecraft EULA on the user's behalf (they checked the box).
+        if (this.descriptor.acceptEula) {
+          try {
+            fs.writeFileSync(path.join(inst.absoluteCwdPath(), "eula.txt"), "eula=true\n");
+          } catch {
+            // ignore
+          }
+        }
+
+        // Generate server-icon.png from the pack logo (resized to 64x64 via wsrv.nl).
+        const iconSrc = this.descriptor.packInfo?.iconUrl;
+        const iconTarget = path.join(inst.absoluteCwdPath(), "server-icon.png");
+        if (iconSrc && !fs.existsSync(iconTarget)) {
+          try {
+            const url = `https://wsrv.nl/?url=${encodeURIComponent(
+              iconSrc
+            )}&w=64&h=64&fit=cover&output=png`;
+            await downloadManager.downloadFromUrl(url, iconTarget);
+          } catch {
+            // non-fatal — server just won't have an icon
+          }
+        }
+
+        // Auto-assign a free port so multiple servers don't all sit on 25565
+        try {
+          const port = await assignFreeMcPort(inst);
+          inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
+        } catch {
+          // non-fatal — user can set the port manually
+        }
+
+        this.phase = "bootstrap";
+        if (this.descriptor.source === "serverjar") {
+          // Paper / Purpur / Folia: a single runnable server jar.
+          startCommand = await this.installServerJar(resolved.mc, this.descriptor.maxMemoryMB);
+        } else {
+          this.bootstrap = new ModloaderBootstrap({
+            instance: inst,
+            mcVersion: resolved.mc,
+            loader: resolved.loader as ModLoader,
+            loaderVersion: resolved.loaderVersion,
+            maxMemoryMB: this.descriptor.maxMemoryMB
+          });
+          startCommand = (await this.bootstrap.run()).startCommand;
+        }
       }
 
       inst.parameters(
@@ -372,9 +418,9 @@ export class ModpackInstallTask extends AsyncTask {
           stopCommand: "stop",
           packInfo: {
             ...this.descriptor.packInfo,
-            mcVersion: resolved.mc,
-            loader: resolved.loader,
-            loaderVersion: resolved.loaderVersion,
+            mcVersion: resolvedMc,
+            loader: resolvedLoader,
+            loaderVersion: resolvedLoaderVersion,
             installedAt: Date.now()
           }
         },

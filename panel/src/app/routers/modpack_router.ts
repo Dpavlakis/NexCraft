@@ -196,7 +196,46 @@ const PAPER_API = "https://api.papermc.io/v2/projects";
 const PURPUR_API = "https://api.purpurmc.org/v2/purpur";
 const SERVER_SOFTWARE = ["paper", "purpur", "folia"];
 
+// Bedrock Dedicated Server download links (Mojang exposes the current stable +
+// preview builds via this JSON API). Cached for an hour.
+const BEDROCK_LINKS_API =
+  "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links";
+let bedrockCache: { at: number; stable?: { version: string; url: string }; preview?: { version: string; url: string } } | null = null;
+
+async function getBedrockLinks() {
+  const now = Date.now();
+  if (bedrockCache && now - bedrockCache.at < 60 * 60 * 1000) return bedrockCache;
+  const { data } = await axios.get(BEDROCK_LINKS_API, {
+    timeout: 15000,
+    headers: { "User-Agent": "Mozilla/5.0 (NexCraft)" }
+  });
+  const links: any[] = data?.result?.links || data?.links || [];
+  const find = (type: string) => links.find((l) => l.downloadType === type)?.downloadUrl as string | undefined;
+  const verOf = (url?: string) => url?.match(/bedrock-server-([\d.]+)\.zip/i)?.[1];
+  const stableUrl = find("serverBedrockLinux");
+  const previewUrl = find("serverBedrockPreviewLinux");
+  bedrockCache = {
+    at: now,
+    stable: stableUrl ? { version: verOf(stableUrl) || "latest", url: stableUrl } : undefined,
+    preview: previewUrl ? { version: verOf(previewUrl) || "preview", url: previewUrl } : undefined
+  };
+  return bedrockCache;
+}
+
+async function resolveBedrockUrl(version: string): Promise<string> {
+  const links = await getBedrockLinks();
+  if (links.preview && version === links.preview.version) return links.preview.url;
+  return links.stable?.url || "";
+}
+
 async function listServerVersions(software: string) {
+  if (software === "bedrock") {
+    const links = await getBedrockLinks();
+    const out: any[] = [];
+    if (links.stable) out.push({ id: links.stable.version, type: "release" });
+    if (links.preview) out.push({ id: links.preview.version, type: "preview" });
+    return out;
+  }
   if (software === "paper" || software === "folia") {
     const { data } = await axios.get(`${PAPER_API}/${software}`, { timeout: 15000 });
     return (data?.versions || [])
@@ -259,6 +298,19 @@ async function buildServerDescriptor(b: any) {
     loader,
     loaderVersion: ""
   };
+  if (loader === "bedrock") {
+    const bedrockUrl = await resolveBedrockUrl(mcVersion);
+    if (!bedrockUrl) throw new Error($t("TXT_CODE_modpack.noServerJar", { mc: mcVersion }));
+    return {
+      source: "bedrock",
+      mcVersion,
+      loader: "bedrock",
+      bedrockUrl,
+      maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
+      acceptEula: !!b.acceptEula,
+      packInfo: { ...packInfoBase, source: "bedrock" }
+    };
+  }
   if (SERVER_SOFTWARE.includes(loader)) {
     const serverJarUrl = await resolveServerJarUrl(loader, mcVersion);
     if (!serverJarUrl) throw new Error($t("TXT_CODE_modpack.noServerJar", { mc: mcVersion }));

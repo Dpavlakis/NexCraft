@@ -26,6 +26,7 @@ import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/ico
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
 import vanillaIcon from "@/assets/loaders/vanilla.svg";
+import bedrockIcon from "@/assets/loaders/bedrock.svg";
 import paperIcon from "@/assets/loaders/paper.png";
 import purpurIcon from "@/assets/loaders/purpur.png";
 import foliaIcon from "@/assets/loaders/folia.png";
@@ -112,7 +113,8 @@ const customLoaders = [
   { value: "fabric", label: "Fabric" },
   { value: "forge", label: "Forge" },
   { value: "neoforge", label: "NeoForge" },
-  { value: "quilt", label: "Quilt" }
+  { value: "quilt", label: "Quilt" },
+  { value: "bedrock", label: "Bedrock" }
 ];
 const customLoader = ref("vanilla");
 const showSnapshots = ref(false);
@@ -126,12 +128,13 @@ const LOADER_ICON: Record<string, string> = {
   fabric: fabricIcon,
   forge: forgeIcon,
   neoforge: neoforgeIcon,
-  quilt: quiltIcon
+  quilt: quiltIcon,
+  bedrock: bedrockIcon
 };
 const loaderIcon = computed(() => LOADER_ICON[customLoader.value] || "");
 const mcVersionsRaw = ref<McVersion[]>([]);
-// Paper/Purpur/Folia have their own version lists; the rest use Mojang's.
-const SERVER_SOFTWARE = ["paper", "purpur", "folia"];
+// Paper/Purpur/Folia/Bedrock have their own version lists; the rest use Mojang's.
+const SERVER_SOFTWARE = ["paper", "purpur", "folia", "bedrock"];
 const isServerSoftware = (l: string) => SERVER_SOFTWARE.includes(l);
 const versionCache: Record<string, McVersion[]> = {};
 
