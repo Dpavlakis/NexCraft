@@ -9,6 +9,8 @@ import { getInstanceInfo } from "@/services/apis/instance";
 import {
   modpackVersions,
   modpackTaskStatus,
+  reinstallServer,
+  serverVersionsGet,
   updateModpack,
   type ModpackVersion
 } from "@/services/apis/modpack";
@@ -44,10 +46,19 @@ const toConsole = () => {
 const packInfo = ref<IModpackInfo>();
 const infoLoading = ref(false);
 
-// Only CurseForge/Modrinth packs can be updated from a source; "vanilla"
-// (custom server builds) have no remote version list to update against.
+const isBedrock = computed(() => packInfo.value?.source === "bedrock");
+// CurseForge/Modrinth packs update from their source; Bedrock updates to a new
+// Bedrock Dedicated Server release. Other custom (vanilla/loader) builds have no
+// single "update" target.
 const isUpdatable = computed(
-  () => packInfo.value?.source === "curseforge" || packInfo.value?.source === "modrinth"
+  () =>
+    packInfo.value?.source === "curseforge" ||
+    packInfo.value?.source === "modrinth" ||
+    isBedrock.value
+);
+// Bedrock is a server version, not a modpack — relabel the card accordingly.
+const cardTitle = computed(() =>
+  isBedrock.value ? t("TXT_CODE_version_update_card_title") : t("TXT_CODE_modpack_update_card_title")
 );
 
 const loadInfo = async () => {
@@ -79,10 +90,16 @@ const versionLabel = (v: ModpackVersion) =>
 const isInstallable = (v: ModpackVersion) =>
   packInfo.value?.source === "curseforge" ? v.hasServerPack !== false && !!v.fileId : true;
 
+// What identifies the currently-installed version: Bedrock keys off the MC
+// version string, modpacks key off the file id.
+const currentVersionKey = computed(() =>
+  isBedrock.value ? packInfo.value?.mcVersion : packInfo.value?.fileId
+);
+
 const versionOptions = computed(() =>
   versions.value.filter(isInstallable).map((v) => {
     const id = versionId(v);
-    const isCurrent = id === packInfo.value?.fileId;
+    const isCurrent = id === currentVersionKey.value;
     const mc = v.mcVersion || (v.game_versions && v.game_versions[0]) || "";
     return {
       value: id,
@@ -95,14 +112,22 @@ const versionOptions = computed(() =>
 
 const loadVersions = async () => {
   if (!packInfo.value) return;
-  const { execute } = modpackVersions();
   try {
     versionsLoading.value = true;
-    const res = await execute({
-      params: { source: packInfo.value.source, projectId: packInfo.value.projectId },
-      forceRequest: true
-    });
-    versions.value = res.value || [];
+    if (isBedrock.value) {
+      // Bedrock: list the available Bedrock Dedicated Server releases.
+      const res = await serverVersionsGet().execute({
+        params: { software: "bedrock" },
+        forceRequest: true
+      });
+      versions.value = (res.value || []).map((v) => ({ id: v.id, name: v.id }));
+    } else {
+      const res = await modpackVersions().execute({
+        params: { source: packInfo.value.source, projectId: packInfo.value.projectId },
+        forceRequest: true
+      });
+      versions.value = res.value || [];
+    }
     // Default the picker to the newest installable version
     const first = versions.value.find(isInstallable);
     selectedVersion.value = first ? versionId(first) : "";
@@ -114,7 +139,7 @@ const loadVersions = async () => {
 };
 
 const isCurrentSelected = computed(
-  () => !!selectedVersion.value && selectedVersion.value === packInfo.value?.fileId
+  () => !!selectedVersion.value && selectedVersion.value === currentVersionKey.value
 );
 
 const formatTime = (ms?: number) => (ms ? new Date(ms).toLocaleString() : "-");
@@ -173,22 +198,37 @@ const pollTask = (taskId: string, onDone: () => void) => {
 
 const runUpdate = async () => {
   if (taskRunning.value || !packInfo.value || !selectedVersion.value) return;
-  const chosen = versions.value.find((v) => versionId(v) === selectedVersion.value);
-  const { execute } = updateModpack();
   try {
-    const res = await execute({
-      params: { daemonId, uuid: instanceId },
-      data: {
-        source: packInfo.value.source,
-        projectId: packInfo.value.projectId,
-        projectName: packInfo.value.projectName,
-        fileId: selectedVersion.value,
-        versionName: chosen ? versionLabel(chosen) : ""
-      }
-    });
-    if (!res.value?.taskId) throw new Error(t("TXT_CODE_modpack_update_failed"));
+    let taskId = "";
+    if (isBedrock.value) {
+      // Reinstall the new Bedrock Dedicated Server, preserving the world.
+      const res = await reinstallServer().execute({
+        params: { daemonId, uuid: instanceId },
+        data: {
+          mcVersion: selectedVersion.value,
+          loader: "bedrock",
+          acceptEula: true,
+          resetMode: "preserve_world"
+        }
+      });
+      taskId = res.value?.taskId || "";
+    } else {
+      const chosen = versions.value.find((v) => versionId(v) === selectedVersion.value);
+      const res = await updateModpack().execute({
+        params: { daemonId, uuid: instanceId },
+        data: {
+          source: packInfo.value.source,
+          projectId: packInfo.value.projectId,
+          projectName: packInfo.value.projectName,
+          fileId: selectedVersion.value,
+          versionName: chosen ? versionLabel(chosen) : ""
+        }
+      });
+      taskId = res.value?.taskId || "";
+    }
+    if (!taskId) throw new Error(t("TXT_CODE_modpack_update_failed"));
     message.success(t("TXT_CODE_modpack_update_started"));
-    pollTask(res.value.taskId, () => {
+    pollTask(taskId, () => {
       message.success(t("TXT_CODE_modpack_update_done"));
       loadInfo();
     });
@@ -214,7 +254,7 @@ onBeforeUnmount(() => {
           <template v-if="!isPhone" #left>
             <a-typography-title class="mb-0" :level="4">
               <CloudDownloadOutlined />
-              {{ card.title }}
+              {{ cardTitle }}
             </a-typography-title>
           </template>
           <template #right>
@@ -241,7 +281,7 @@ onBeforeUnmount(() => {
 
       <a-col :span="24">
         <CardPanel style="height: 100%">
-          <template #title>{{ t("TXT_CODE_modpack_update_title") }}</template>
+          <template #title>{{ cardTitle }}</template>
           <template #body>
             <a-spin :spinning="infoLoading">
               <!-- Not a modpack instance -->
@@ -311,7 +351,11 @@ onBeforeUnmount(() => {
                       option-filter-prop="label"
                     />
                     <a-popconfirm
-                      :title="t('TXT_CODE_modpack_update_confirm')"
+                      :title="
+                        isBedrock
+                          ? t('TXT_CODE_version_update_confirm')
+                          : t('TXT_CODE_modpack_update_confirm')
+                      "
                       :ok-text="t('TXT_CODE_modpack_update_btn')"
                       @confirm="runUpdate"
                     >
@@ -327,7 +371,11 @@ onBeforeUnmount(() => {
                   </a-space>
                   <div class="mt-8">
                     <a-typography-text type="secondary">
-                      {{ t("TXT_CODE_modpack_update_backup_note") }}
+                      {{
+                        isBedrock
+                          ? t("TXT_CODE_version_update_note")
+                          : t("TXT_CODE_modpack_update_backup_note")
+                      }}
                     </a-typography-text>
                   </div>
                 </template>

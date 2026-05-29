@@ -223,7 +223,10 @@ const btns = computed(() => {
       }
     },
     {
-      title: t("TXT_CODE_modpack_update_card_title"),
+      title:
+        instanceInfo.value?.config?.packInfo?.source === "bedrock"
+          ? t("TXT_CODE_version_update_card_title")
+          : t("TXT_CODE_modpack_update_card_title"),
       icon: CloudDownloadOutlined,
       // Only meaningful for instances installed from a modpack/server source;
       // updating is admin-only (matches the /update route permission).
