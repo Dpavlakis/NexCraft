@@ -19,20 +19,17 @@ import {
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard, NodeStatus } from "@/types";
-import {
-  AppstoreAddOutlined,
-  AppstoreOutlined,
-  BlockOutlined,
-  BuildOutlined,
-  CodeSandboxOutlined,
-  FireOutlined,
-  SearchOutlined,
-  SendOutlined,
-  ToolOutlined
-} from "@ant-design/icons-vue";
-import type { Component } from "vue";
+import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
+import vanillaIcon from "@/assets/loaders/vanilla.png";
+import paperIcon from "@/assets/loaders/paper.png";
+import purpurIcon from "@/assets/loaders/purpur.png";
+import foliaIcon from "@/assets/loaders/folia.png";
+import fabricIcon from "@/assets/loaders/fabric.png";
+import forgeIcon from "@/assets/loaders/forge.jpg";
+import neoforgeIcon from "@/assets/loaders/neoforge.png";
+import quiltIcon from "@/assets/loaders/quilt.png";
 import { message } from "ant-design-vue";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
@@ -95,19 +92,18 @@ const customLoaders = [
 const customLoader = ref("vanilla");
 const showSnapshots = ref(false);
 
-// Per-loader icon + brand colour shown on the Custom version rows.
-const LOADER_ICON: Record<string, { icon: Component; color: string }> = {
-  vanilla: { icon: AppstoreOutlined, color: "#5a9e3f" },
-  paper: { icon: SendOutlined, color: "#3a3a3a" },
-  purpur: { icon: CodeSandboxOutlined, color: "#9b59b6" },
-  folia: { icon: SendOutlined, color: "#16a085" },
-  fabric: { icon: BuildOutlined, color: "#b08d57" },
-  forge: { icon: ToolOutlined, color: "#37516b" },
-  neoforge: { icon: FireOutlined, color: "#e6772e" },
-  quilt: { icon: AppstoreAddOutlined, color: "#cf4d8f" }
+// Per-loader logo (bundled local asset) shown on the Custom version rows.
+const LOADER_ICON: Record<string, string> = {
+  vanilla: vanillaIcon,
+  paper: paperIcon,
+  purpur: purpurIcon,
+  folia: foliaIcon,
+  fabric: fabricIcon,
+  forge: forgeIcon,
+  neoforge: neoforgeIcon,
+  quilt: quiltIcon
 };
-const loaderIcon = computed(() => LOADER_ICON[customLoader.value]?.icon || AppstoreOutlined);
-const loaderColor = computed(() => LOADER_ICON[customLoader.value]?.color || "#888");
+const loaderIcon = computed(() => LOADER_ICON[customLoader.value] || "");
 const mcVersionsRaw = ref<McVersion[]>([]);
 // Paper/Purpur/Folia have their own version lists; the rest use Mojang's.
 const SERVER_SOFTWARE = ["paper", "purpur", "folia"];
@@ -487,13 +483,12 @@ onBeforeUnmount(() => {
                       <template #avatar>
                         <a-avatar v-if="item.icon" :src="item.icon" shape="square" :size="44" />
                         <a-avatar
-                          v-else-if="source === 'custom'"
+                          v-else-if="source === 'custom' && loaderIcon"
+                          :src="loaderIcon"
                           shape="square"
                           :size="44"
-                          :style="{ background: '#fff', color: loaderColor, border: '1px solid #eee' }"
-                        >
-                          <template #icon><component :is="loaderIcon" /></template>
-                        </a-avatar>
+                          :style="{ background: '#fff', border: '1px solid #eee' }"
+                        />
                         <a-avatar v-else shape="square" :size="44">
                           <template #icon><AppstoreOutlined /></template>
                         </a-avatar>
