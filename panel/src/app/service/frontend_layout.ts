@@ -172,7 +172,7 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
           id: getRandomId(),
           meta: {},
           type: "Market",
-          title: t("TXT_CODE_88249aee"),
+          title: t("TXT_CODE_minecraft_menu"),
           width: 12,
           height: LayoutCardHeight.AUTO,
           disableDelete: true
@@ -427,28 +427,6 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
           meta: {},
           type: "InstancePlayers",
           title: t("TXT_CODE_player_card_title"),
-          width: 12,
-          height: LayoutCardHeight.AUTO,
-          disableDelete: true
-        },
-        {
-          id: getRandomId(),
-          meta: {},
-          type: "EmptyCard",
-          title: "",
-          width: 12,
-          height: LayoutCardHeight.MINI
-        }
-      ]
-    },
-    {
-      page: "/modpacks",
-      items: [
-        {
-          id: getRandomId(),
-          meta: {},
-          type: "ModpackBrowser",
-          title: t("TXT_CODE_modpack_menu"),
           width: 12,
           height: LayoutCardHeight.AUTO,
           disableDelete: true

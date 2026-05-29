@@ -7,18 +7,16 @@ import { t } from "@/lang/i18n";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import type { LayoutCard } from "@/types";
 import InstallOptionButton from "@/widgets/market/InstallOptionButton.vue";
+import ModpackBrowser from "@/widgets/market/ModpackBrowser.vue";
 import { useMarketTour } from "@/widgets/market/useMarketTour";
 import CreateInstanceForm from "@/widgets/setupApp/CreateInstanceForm.vue";
-import McPreset from "@/widgets/setupApp/McPreset.vue";
 import {
   AppstoreAddOutlined,
   BlockOutlined,
-  DatabaseOutlined,
   FileZipOutlined,
   FolderOpenOutlined
 } from "@ant-design/icons-vue";
-import { Divider, Flex, Tour } from "ant-design-vue";
-import Link from "ant-design-vue/es/typography/Link";
+import { Tour } from "ant-design-vue";
 import { ref } from "vue";
 
 const props = defineProps<{
@@ -97,9 +95,6 @@ const manualInstallOptions = [
   }
 ];
 
-const openEditor = () => {
-  router.push("/market/editor");
-};
 </script>
 
 <template>
@@ -129,30 +124,8 @@ const openEditor = () => {
         </a-row>
       </div>
     </div>
-    <div>
-      <div ref="step3Ref">
-        <a-typography-title :level="4" style="margin-bottom: 8px">
-          <DatabaseOutlined />
-          {{ t("TXT_CODE_88249aee") }}
-        </a-typography-title>
-        <a-typography-paragraph>
-          <Flex justify="space-between" align="flex-start">
-            <p style="opacity: 0.6">
-              <span>{{ t("TXT_CODE_c9ce7427") }}</span>
-            </p>
-            <p style="opacity: 0.6">
-              <Link target="_blank" @click="openEditor">
-                {{ t("TXT_CODE_85c10fde") }}
-              </Link>
-              <Divider type="vertical" />
-              <Link href="https://github.com/MCSManager/Script/issues/77" target="_blank">
-                {{ t("TXT_CODE_709c2db4") }}
-              </Link>
-            </p>
-          </Flex>
-        </a-typography-paragraph>
-      </div>
-      <McPreset :card="card" />
+    <div ref="step3Ref">
+      <ModpackBrowser :card="card" />
     </div>
 
     <Tour

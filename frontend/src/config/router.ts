@@ -194,7 +194,7 @@ const originRouterConfig: RouterConfig[] = [
   },
   {
     path: "/market",
-    name: t("TXT_CODE_27594db8"),
+    name: t("TXT_CODE_minecraft_menu"),
     component: LayoutContainer,
     meta: {
       mainMenu: true,
@@ -210,15 +210,6 @@ const originRouterConfig: RouterConfig[] = [
         }
       }
     ]
-  },
-  {
-    path: "/modpacks",
-    name: t("TXT_CODE_modpack_menu"),
-    component: LayoutContainer,
-    meta: {
-      mainMenu: true,
-      permission: ROLE.ADMIN
-    }
   },
   {
     path: "/overview",

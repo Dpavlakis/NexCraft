@@ -482,7 +482,9 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .results-scroll {
-  max-height: 560px; /* ~8 rows */
+  /* Use the available vertical space (~12 rows on a typical screen) */
+  max-height: calc(100vh - 260px);
+  min-height: 520px;
   overflow-y: auto;
   padding-right: 4px;
 }
