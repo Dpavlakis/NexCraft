@@ -115,7 +115,9 @@ const selectSource = (s: Source) => {
   source.value = s;
   results.value = [];
   searchText.value = "";
+  // Custom loads the local catalog; CF/Modrinth load popular packs (empty query).
   if (s === "custom") loadCustom();
+  else search();
 };
 
 // ---- install dialog ----
