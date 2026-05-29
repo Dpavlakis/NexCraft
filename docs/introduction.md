@@ -1,12 +1,8 @@
-<div align="center">
-  <img src="../frontend/src/assets/nexcraft_logo.svg" alt="NexCraft" width="140px" />
-  <h1>NexCraft Documentation</h1>
-  <p><em>A Minecraft-focused server control panel with a built-in modpack installer &amp; manager.</em></p>
-</div>
+# Introduction
 
 Welcome to the NexCraft docs. NexCraft is a self-hosted web panel for running **Minecraft** servers — search and install modpacks from **CurseForge** and **Modrinth**, build custom servers (Vanilla / Paper / Purpur / Folia / Fabric / Forge / NeoForge / Quilt), and manage everything from one dashboard.
 
-> NexCraft is built on the open-source [MCSManager](https://github.com/MCSManager/MCSManager) panel. For a general-purpose, multi-game/commercial panel, see upstream MCSManager and its docs at https://docs.mcsmanager.com/.
+> NexCraft is built on the open-source [MCSManager](https://github.com/MCSManager/MCSManager) panel. For a general-purpose, multi-game/commercial panel, see upstream MCSManager and its docs at <https://docs.mcsmanager.com/>.
 
 ## Contents
 

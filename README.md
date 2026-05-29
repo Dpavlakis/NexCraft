@@ -125,7 +125,9 @@ Everything is wrapped in the proven MCSManager foundation: a distributed multi-n
 
 ## Documentation
 
-Full usage docs live in **[`docs/`](docs/README.md)**:
+📖 **Read the docs site: [dpavlakis.github.io/NexCraft](https://dpavlakis.github.io/NexCraft/)**
+
+The same content lives in **[`docs/`](docs/)** as Markdown:
 
 - [Installation](docs/installation.md)
 - [Creating Minecraft Servers](docs/creating-servers.md)

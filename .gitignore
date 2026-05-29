@@ -5,6 +5,12 @@ logs
 # Stray large dependency bundle — never track (purged from history)
 install-dependents.zip
 
+# VitePress docs site build artifacts / deps
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/node_modules/
+docs/package-lock.json
+
 # Temporary screenshot staging folders
 .shots_stage/
 .shots*/
