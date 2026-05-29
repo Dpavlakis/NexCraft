@@ -12,7 +12,11 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
 - `languages/*.json` — i18n; en_US.json is source of truth. Daemon uses `{{var}}`; frontend uses `{var}`.
 
 ## Build & deploy (IMPORTANT)
-- **No local Node toolchain — the Docker build is the typechecker.** Make changes, commit, push to `nexcraft main`; the user pulls on Unraid and rebuilds. If a build fails, fix from the pasted error.
+- **Local dev repo: `D:\NexCraft`** (moved off OneDrive). Node 24 LTS + npm installed; deps installed in all workspaces. **Type-check locally before every push** (catches errors without a slow Docker round-trip):
+  - daemon: `npm run build --prefix daemon` · panel: `npm run build --prefix panel` · frontend: `npm run type-check --prefix frontend` (full: `npm run build --prefix frontend`).
+  - PowerShell gotcha: each shell starts with a **stale PATH** and cwd resets — prefix commands with `$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` then `Set-Location D:\NexCraft`.
+  - The OneDrive copy at `C:\Users\dimit\OneDrive\Documents\MCS` is the old location — work in `D:\NexCraft`.
+- After local checks pass, commit + push to `nexcraft main`; the user pulls on Unraid (`/mnt/user/appdata/nexcraft-src`) and rebuilds the Docker image(s). The Docker build remains the final gate.
 - **Always give the full `docker run` commands in any rebuild instructions**, and say which image changed:
   - daemon (`daemon/`, `common/`) → `nexcraft-daemon` (container `nexcraft-daemon`)
   - web (`frontend/`, `panel/`, `languages/`) → `nexcraft-web` (container `nexcraft-web`)
