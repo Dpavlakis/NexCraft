@@ -10,6 +10,7 @@ import InstanceBaseInfo from "@/widgets/instance/BaseInfo.vue";
 import InstanceFileManager from "@/widgets/instance/FileManager.vue";
 import InstanceManagerBtns from "@/widgets/instance/ManagerBtns.vue";
 import InstanceModManager from "@/widgets/instance/ModManager.vue";
+import InstancePlayers from "@/widgets/instance/Players.vue";
 import Schedule from "@/widgets/instance/Schedule.vue";
 import InstanceServerConfigFile from "@/widgets/instance/ServerConfigFile.vue";
 import InstanceServerConfigOverview from "@/widgets/instance/ServerConfigOverview.vue";
@@ -76,6 +77,7 @@ export const LAYOUT_CARD_TYPES: { [key: string]: any } = {
   InstanceServerConfigFile,
   InstanceFileManager,
   InstanceBackups,
+  InstancePlayers,
   InstanceModManager,
   UserAccessSettings,
   ImageBox,

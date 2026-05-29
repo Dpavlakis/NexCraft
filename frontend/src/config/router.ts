@@ -171,6 +171,14 @@ const originRouterConfig: RouterConfig[] = [
             meta: {
               permission: ROLE.USER
             }
+          },
+          {
+            path: `/instances/players`,
+            name: t("TXT_CODE_player_card_title"),
+            component: LayoutContainer,
+            meta: {
+              permission: ROLE.USER
+            }
           }
         ]
       }

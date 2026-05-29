@@ -23,6 +23,7 @@ import {
   DashboardOutlined,
   FieldTimeOutlined,
   PictureOutlined,
+  TeamOutlined,
   FolderOpenOutlined,
   UsbOutlined,
   UsergroupDeleteOutlined
@@ -228,6 +229,20 @@ const btns = computed(() => {
       condition: () => !isGlobalTerminal.value,
       click: () => {
         serverIconDialog.value?.openDialog();
+      }
+    },
+    {
+      title: t("TXT_CODE_player_card_title"),
+      icon: TeamOutlined,
+      condition: () => !isGlobalTerminal.value,
+      click: () => {
+        toPage({
+          path: "/instances/players",
+          query: {
+            instanceId,
+            daemonId
+          }
+        });
       }
     },
     {

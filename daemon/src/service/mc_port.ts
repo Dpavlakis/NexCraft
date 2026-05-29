@@ -1,10 +1,12 @@
+import { randomBytes } from "crypto";
 import fs from "fs-extra";
 import net from "net";
 import path from "path";
+import StorageSubsystem from "../common/system_storage";
 import type Instance from "../entity/instance/instance";
 import InstanceSubsystem from "./system_instance";
 
-const PORT_KEYS = ["server-port", "query.port"];
+const PORT_KEYS = ["server-port", "query.port", "rcon.port"];
 
 function readPortsFromProps(file: string): number[] {
   if (!fs.existsSync(file)) return [];
@@ -70,6 +72,11 @@ function upsertProp(txt: string, key: string, value: string): string {
 export async function assignFreeMcPort(instance: Instance): Promise<number> {
   const used = getUsedMcPorts(instance.instanceUuid);
   const port = await findFreeMcPort(25565, used);
+  used.add(port);
+  // Distinct free port for RCON (default base 25575)
+  const rconPort = await findFreeMcPort(25575, used);
+  const rconPassword = randomBytes(12).toString("hex");
+
   const file = path.join(instance.absoluteCwdPath(), "server.properties");
   let txt = "";
   if (fs.existsSync(file)) {
@@ -82,11 +89,20 @@ export async function assignFreeMcPort(instance: Instance): Promise<number> {
   txt = upsertProp(txt, "server-port", String(port));
   txt = upsertProp(txt, "query.port", String(port));
   txt = upsertProp(txt, "enable-query", "true");
+  // Enable RCON so the player manager can list/kick/ban/op players
+  txt = upsertProp(txt, "enable-rcon", "true");
+  txt = upsertProp(txt, "rcon.port", String(rconPort));
+  txt = upsertProp(txt, "rcon.password", rconPassword);
   fs.writeFileSync(file, txt);
 
-  // Keep the MCSManager status ping pointed at the right port too
+  // Persist the matching settings on the instance config
   try {
     if (instance.config.pingConfig) instance.config.pingConfig.port = port;
+    instance.config.enableRcon = true;
+    instance.config.rconPort = rconPort;
+    instance.config.rconPassword = rconPassword;
+    instance.config.rconIp = instance.config.rconIp || "";
+    StorageSubsystem.store("InstanceConfig", instance.instanceUuid, instance.config);
   } catch {
     // ignore
   }
