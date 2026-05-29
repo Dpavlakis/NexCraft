@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CardPanel from "@/components/CardPanel.vue";
+import nexcraftLogo from "@/assets/nexcraft_logo.svg";
 import { router } from "@/config/router";
 import { t } from "@/lang/i18n";
 import { loginPageInfo, loginUser, ssoConfig, type SsoPublicConfig } from "@/services/apis";
@@ -147,6 +148,10 @@ onMounted(async () => {
     <CardPanel class="login-panel">
       <template #body>
         <div v-show="loginStep === 0" class="login-panel-body">
+          <div class="brand-header">
+            <img :src="nexcraftLogo" alt="NexCraft" class="brand-logo" />
+            <span class="brand-name">NexCraft</span>
+          </div>
           <a-typography-title :level="3" class="mb-20 glitch-wrapper">
             <div
               class="glitch"
@@ -350,6 +355,27 @@ onMounted(async () => {
     padding: 28px 24px;
     min-height: 322px;
   }
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.brand-name {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #162961, #3179bd 55%, #1587ac);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .mcsmanager-link {

@@ -121,6 +121,12 @@ export default class Instance extends EventEmitter {
   private mcReadinessActive = false;
   private mcReadinessTail = "";
   private mcReadinessTimer?: NodeJS.Timeout;
+  // Auto-Java-on-launch: if a Minecraft server fails to boot with an
+  // UnsupportedClassVersionError, parse the required Java major from the output
+  // and, on exit, auto-provision that JRE and restart once.
+  private javaFixMajor = 0;
+  private javaErrTail = "";
+  private autoJavaFixAttempted = false;
   // Lines a Minecraft server (vanilla/Paper/Spigot/Forge/NeoForge/Fabric/Quilt
   // and Bedrock) prints when it has finished starting up.
   private static readonly MC_READY_PATTERNS: RegExp[] = [
@@ -385,7 +391,10 @@ export default class Instance extends EventEmitter {
     process.on("data", (text: any) => {
       const decoded = iconv.decode(text, outputCode);
       this.pushOutput(decoded);
-      if (this.mcReadinessActive) this.checkMcReadiness(decoded);
+      if (this.mcReadinessActive) {
+        this.checkMcReadiness(decoded);
+        this.checkJavaError(decoded);
+      }
     });
     process.on("exit", (code: number) => this.stopped(code));
     this.process = process;
@@ -415,6 +424,7 @@ export default class Instance extends EventEmitter {
   private beginMcReadinessWatch() {
     this.mcReadinessActive = true;
     this.mcReadinessTail = "";
+    this.javaErrTail = "";
     if (this.mcReadinessTimer) clearTimeout(this.mcReadinessTimer);
     this.mcReadinessTimer = setTimeout(() => {
       // Safety net: server never printed a recognizable ready line.
@@ -429,18 +439,66 @@ export default class Instance extends EventEmitter {
     const text = (this.mcReadinessTail + chunk).slice(-1024);
     this.mcReadinessTail = text;
     if (Instance.MC_READY_PATTERNS.some((re) => re.test(text))) {
-      this.markMcReady();
+      this.markMcReady(true);
+    }
+  }
+
+  // Watch startup output for a Java-version mismatch and record the required
+  // major version (class-file version - 44). Consumed in stopped().
+  private checkJavaError(chunk: string) {
+    if (this.javaFixMajor > 0) return; // already detected this start
+    const text = (this.javaErrTail + chunk).slice(-2048);
+    this.javaErrTail = text;
+    if (!/UnsupportedClassVersionError/i.test(text)) return;
+    const m = text.match(/class file version (\d+)/i);
+    if (!m) return;
+    const major = parseInt(m[1], 10) - 44; // 52->8, 61->17, 65->21, 69->25
+    if (major >= 8 && major <= 99) this.javaFixMajor = major;
+  }
+
+  // Auto-provision the required Java, bind it to the instance, and restart once.
+  private async tryAutoJavaFix(major: number) {
+    try {
+      this.println("WARN", $t("TXT_CODE_autojava.detected", { major }));
+      const id = await javaManager.ensureJavaMajor(major, (msg) => this.println("INFO", msg));
+      if (!id) {
+        this.println("ERROR", $t("TXT_CODE_autojava.failed", { major }));
+        return;
+      }
+      this.config.java.id = id;
+      // Make sure the start command runs through the managed Java ({mcsm_java}).
+      const cmd = (this.config.startCommand || "").trim();
+      if (cmd && !cmd.startsWith("{mcsm_java}")) {
+        const replaced = cmd.replace(
+          /^("[^"]*?java(?:\.exe)?"|[^\s"]*java(?:\.exe)?)(?=\s|$)/i,
+          "{mcsm_java}"
+        );
+        if (replaced !== cmd) this.config.startCommand = replaced;
+      }
+      StorageSubsystem.store("InstanceConfig", this.instanceUuid, this.config);
+      this.println("INFO", $t("TXT_CODE_autojava.retry", { major }));
+      await this.execPreset("start");
+    } catch (err: any) {
+      this.println("ERROR", String(err?.message ?? err));
     }
   }
 
   // Transition a starting Minecraft instance to RUNNING (idempotent).
-  private markMcReady() {
+  // `genuine` is true only when a real ready line matched (not the safety-net
+  // timeout) — so the auto-Java guard is re-armed only after a confirmed boot.
+  private markMcReady(genuine = false) {
     if (this.mcReadinessTimer) {
       clearTimeout(this.mcReadinessTimer);
       this.mcReadinessTimer = undefined;
     }
     this.mcReadinessActive = false;
     this.mcReadinessTail = "";
+    if (genuine) {
+      // A confirmed successful start clears the auto-Java guard so a future
+      // genuine mismatch can be fixed again.
+      this.javaFixMajor = 0;
+      this.autoJavaFixAttempted = false;
+    }
     if (this.instanceStatus === Instance.STATUS_STARTING) {
       this.instanceStatus = Instance.STATUS_RUNNING;
     }
@@ -469,6 +527,17 @@ export default class Instance extends EventEmitter {
     }
 
     this.lifeCycleTaskManager.execLifeCycleTask(0);
+
+    // Auto-Java-on-launch: the server exited right after an UnsupportedClassVersionError.
+    // Provision the required Java and restart once (takes priority over auto-restart).
+    if (this.javaFixMajor > 0 && !this.autoJavaFixAttempted && this.isMcReadinessTracked()) {
+      const major = this.javaFixMajor;
+      this.javaFixMajor = 0;
+      this.autoJavaFixAttempted = true;
+      this.config.eventTask.ignore = false;
+      this.tryAutoJavaFix(major);
+      return;
+    }
 
     // If automatic restart is enabled, the startup operation is performed immediately
     if (!this.config.eventTask.ignore && this.config.eventTask.autoRestart) {
