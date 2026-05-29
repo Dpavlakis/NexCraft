@@ -18,19 +18,28 @@ export function getFrontendLayoutConfig(): string {
     layoutConfig = storage.readFile(LAYOUT_CONFIG_NAME);
   }
   if (layoutConfig) {
-    if (GlobalVariable.get("versionChange")) {
-      const latestLayoutConfig = getDefaultFrontendLayoutConfig();
+    try {
       const currentLayoutConfig = JSON.parse(layoutConfig) as IPageLayoutConfig[];
+      const latestLayoutConfig = getDefaultFrontendLayoutConfig();
+      // Always merge in any default pages the stored layout is missing (e.g.
+      // new feature pages added by an update). This only ADDS missing pages —
+      // it never overwrites a page the user has already customised.
+      let changed = false;
       for (const page of latestLayoutConfig) {
         if (!currentLayoutConfig.find((item) => item.page === page.page)) {
           currentLayoutConfig.push(page);
+          changed = true;
         }
       }
-      GlobalVariable.set("versionChange", null);
-      setFrontendLayoutConfig(currentLayoutConfig);
+      if (GlobalVariable.get("versionChange")) {
+        GlobalVariable.set("versionChange", null);
+      }
+      if (changed) setFrontendLayoutConfig(currentLayoutConfig);
       return JSON.stringify(currentLayoutConfig);
+    } catch {
+      // Malformed stored layout — return it as-is rather than crashing.
+      return layoutConfig as string;
     }
-    return layoutConfig as string;
   } else {
     return JSON.stringify(getDefaultFrontendLayoutConfig());
   }
