@@ -4,14 +4,18 @@
 #   docker build -f dockerfile/daemon.dockerfile -t mcsm-daemon:backup-test .
 # Then:  docker compose -f docker-compose.test.yml up -d
 #
-# Adjust the appdata paths below to your Unraid share if needed.
+# This joins your existing Unraid macvlan network "br0.2" with FIXED IPs that
+# do NOT collide with your production pair (.41 daemon / .42 web).
+#   - Confirm the network name with:  docker network ls   (it should list br0.2)
+#   - Test data lives in a SEPARATE appdata dir so production is untouched.
 services:
   web:
     image: mcsm-web:backup-test
     container_name: mcsm-web-test
     restart: unless-stopped
-    ports:
-      - "23333:23333"
+    networks:
+      br0.2:
+        ipv4_address: 192.168.2.43 # web UI -> http://192.168.2.43:23333
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /mnt/user/appdata/mcsm-test/web/data:/opt/mcsmanager/web/data
@@ -21,7 +25,9 @@ services:
     image: mcsm-daemon:backup-test
     container_name: mcsm-daemon-test
     restart: unless-stopped
-    network_mode: host # daemon listens on host :24444 and can run instances
+    networks:
+      br0.2:
+        ipv4_address: 192.168.2.44 # register this in the panel as 192.168.2.44:24444
     environment:
       - MCSM_DOCKER_WORKSPACE_PATH=/mnt/user/appdata/mcsm-test/daemon/data/InstanceData
     volumes:
@@ -30,3 +36,7 @@ services:
       - /mnt/user/appdata/mcsm-test/daemon/data:/opt/mcsmanager/daemon/data
       - /mnt/user/appdata/mcsm-test/daemon/logs:/opt/mcsmanager/daemon/logs
       - /var/run/docker.sock:/var/run/docker.sock
+
+networks:
+  br0.2:
+    external: true
