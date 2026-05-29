@@ -114,6 +114,10 @@ onMounted(async () => {
         <span>{{ t("TXT_CODE_68831be6") }}</span>
         <span>{{ instanceTypeText }}</span>
       </a-typography-paragraph>
+      <a-typography-paragraph v-if="Number(instanceInfo?.config?.pingConfig?.port) > 0">
+        <span>{{ t("TXT_CODE_baseinfo_port") }}</span>
+        <span>{{ instanceInfo?.config?.pingConfig?.port }}</span>
+      </a-typography-paragraph>
       <a-typography-paragraph>
         <span>
           {{ t("TXT_CODE_ad30f3c5") }}

@@ -3567,6 +3567,7 @@
   "TXT_CODE_player.rconAuthFailed": "RCON authentication failed.",
   "TXT_CODE_player.invalidName": "Invalid player name.",
   "TXT_CODE_player.invalidAction": "Invalid player action.",
+  "TXT_CODE_baseinfo_port": "Server Port: ",
   "TXT_CODE_metrics_card_title": "Metrics",
   "TXT_CODE_metrics_cpu": "CPU %",
   "TXT_CODE_metrics_ram": "RAM GB",
