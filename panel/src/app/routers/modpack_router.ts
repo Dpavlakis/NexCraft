@@ -191,8 +191,63 @@ router.get("/minecraft_versions", permission({ level: ROLE.USER }), async (ctx) 
   }
 });
 
-// Build a fresh server (vanilla, or vanilla + a mod loader) for any Minecraft
-// version. The daemon's ModloaderBootstrap downloads/installs the loader.
+// Server-software (Paper / Purpur / Folia) version lists from their official APIs.
+const PAPER_API = "https://api.papermc.io/v2/projects";
+const PURPUR_API = "https://api.purpurmc.org/v2/purpur";
+const SERVER_SOFTWARE = ["paper", "purpur", "folia"];
+
+async function listServerVersions(software: string) {
+  if (software === "paper" || software === "folia") {
+    const { data } = await axios.get(`${PAPER_API}/${software}`, { timeout: 15000 });
+    return (data?.versions || [])
+      .slice()
+      .reverse()
+      .map((v: string) => ({ id: v, type: "release" }));
+  }
+  if (software === "purpur") {
+    const { data } = await axios.get(PURPUR_API, { timeout: 15000 });
+    return (data?.versions || [])
+      .slice()
+      .reverse()
+      .map((v: string) => ({ id: v, type: "release" }));
+  }
+  return [];
+}
+
+async function resolveServerJarUrl(software: string, version: string): Promise<string> {
+  if (software === "paper" || software === "folia") {
+    const { data } = await axios.get(`${PAPER_API}/${software}/versions/${version}/builds`, {
+      timeout: 15000
+    });
+    const builds = data?.builds || [];
+    const last = builds[builds.length - 1];
+    const name = last?.downloads?.application?.name;
+    if (!last || !name) return "";
+    return `${PAPER_API}/${software}/versions/${version}/builds/${last.build}/downloads/${name}`;
+  }
+  if (software === "purpur") {
+    const { data } = await axios.get(`${PURPUR_API}/${version}`, { timeout: 15000 });
+    const build = data?.builds?.latest;
+    return build ? `${PURPUR_API}/${version}/${build}/download` : "";
+  }
+  return "";
+}
+
+router.get(
+  "/server_versions",
+  permission({ level: ROLE.USER }),
+  validator({ query: { software: String } }),
+  async (ctx) => {
+    try {
+      ctx.body = await listServerVersions(String(ctx.query.software).toLowerCase());
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// Build a fresh server for any Minecraft version: vanilla / a mod loader
+// (daemon ModloaderBootstrap), or a server jar (Paper/Purpur/Folia).
 router.post(
   "/install_server",
   permission({ level: ROLE.ADMIN }),
@@ -204,26 +259,44 @@ router.post(
     try {
       const daemonId = String(ctx.query.daemonId);
       const b = ctx.request.body;
-      const loader = String(b.loader || "vanilla");
+      const loader = String(b.loader || "vanilla").toLowerCase();
       const mcVersion = String(b.mcVersion);
-      const descriptor: any = {
-        source: "vanilla",
+
+      const packInfoBase = {
+        projectId: `${loader}:${mcVersion}`,
+        projectName: String(b.instanceName || loader),
+        fileId: "",
+        versionName: mcVersion,
         mcVersion,
         loader,
-        loaderVersion: "",
-        maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
-        acceptEula: !!b.acceptEula,
-        packInfo: {
-          source: "vanilla",
-          projectId: `${loader}:${mcVersion}`,
-          projectName: String(b.instanceName || loader),
-          fileId: "",
-          versionName: mcVersion,
+        loaderVersion: ""
+      };
+
+      let descriptor: any;
+      if (SERVER_SOFTWARE.includes(loader)) {
+        const serverJarUrl = await resolveServerJarUrl(loader, mcVersion);
+        if (!serverJarUrl) throw new Error($t("TXT_CODE_modpack.noServerJar", { mc: mcVersion }));
+        descriptor = {
+          source: "serverjar",
           mcVersion,
           loader,
-          loaderVersion: ""
-        }
-      };
+          serverJarUrl,
+          maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
+          acceptEula: !!b.acceptEula,
+          packInfo: { ...packInfoBase, source: "serverjar" }
+        };
+      } else {
+        descriptor = {
+          source: "vanilla",
+          mcVersion,
+          loader,
+          loaderVersion: "",
+          maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
+          acceptEula: !!b.acceptEula,
+          packInfo: { ...packInfoBase, source: "vanilla" }
+        };
+      }
+
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],

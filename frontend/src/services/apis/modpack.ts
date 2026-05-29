@@ -137,6 +137,15 @@ export const mcVersionsGet = useDefineApi<Record<string, never>, McVersion[]>({
   method: "GET"
 });
 
+// Server-software (Paper/Purpur/Folia) version list from their official APIs
+export const serverVersionsGet = useDefineApi<
+  { params: { software: string } },
+  McVersion[]
+>({
+  url: "/api/protected_modpack/server_versions",
+  method: "GET"
+});
+
 // Build a fresh server (vanilla or a loader) for any Minecraft version
 export const installServer = useDefineApi<
   {

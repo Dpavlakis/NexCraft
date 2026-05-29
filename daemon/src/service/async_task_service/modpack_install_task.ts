@@ -8,8 +8,9 @@ import Instance from "../../entity/instance/instance";
 import InstanceConfig from "../../entity/instance/Instance_config";
 import { $t } from "../../i18n";
 import downloadManager from "../download_manager";
+import javaManager from "../java_manager";
 import { assignFreeMcPort } from "../mc_port";
-import { ModloaderBootstrap, type ModLoader } from "../modloader_bootstrap";
+import { ModloaderBootstrap, staticJavaMajor, type ModLoader } from "../modloader_bootstrap";
 import {
   downloadMrpackFiles,
   extractMrpackOverrides,
@@ -23,15 +24,17 @@ import InstanceSubsystem from "../system_instance";
 import { AsyncTask, IAsyncTaskJSON } from "./index";
 
 export interface IModpackInstallDescriptor {
-  source: "curseforge" | "modrinth" | "vanilla";
+  source: "curseforge" | "modrinth" | "vanilla" | "serverjar";
   // CurseForge server-pack path:
   serverPackUrl?: string;
   serverPackFileName?: string;
   // Modrinth path:
   mrpackUrl?: string;
+  // Server-jar path (Paper / Purpur / Folia): a single runnable jar URL.
+  serverJarUrl?: string;
   // Metadata / bootstrap hints (panel supplies what it knows):
   mcVersion?: string;
-  loader?: ModLoader;
+  loader?: ModLoader | string;
   loaderVersion?: string;
   packInfo: IModpackInfo;
   maxMemoryMB?: number;
@@ -186,6 +189,36 @@ export class ModpackInstallTask extends AsyncTask {
     return { mc, loader, loaderVersion };
   }
 
+  // Download a single server jar (Paper/Purpur/Folia) and build a Java start
+  // command, auto-provisioning a matching Java version when needed.
+  private async installServerJar(mc: string, memMB?: number): Promise<string> {
+    const inst = this.instance;
+    if (!this.descriptor.serverJarUrl) throw new Error($t("TXT_CODE_modpack.noServerPack"));
+    this.phase = "download";
+    await this.downloadWithProgress(
+      this.descriptor.serverJarUrl,
+      path.join(inst.absoluteCwdPath(), "server.jar")
+    );
+
+    let javaToken = "java";
+    try {
+      const major = staticJavaMajor(mc);
+      const sys = await javaManager.getSystemJavaMajor();
+      if (major && (!sys || sys !== major)) {
+        const id = await javaManager.ensureJavaMajor(major, (m) => inst.println("INFO", m));
+        if (id) {
+          inst.config.java = { ...(inst.config.java || {}), id };
+          javaToken = "{mcsm_java}";
+        }
+      }
+    } catch {
+      // non-fatal — fall back to system Java
+    }
+
+    const mem = memMB && memMB > 0 ? memMB : 4096;
+    return `${javaToken} -Xmx${mem}M -Xms${Math.min(mem, 1024)}M -jar server.jar nogui`;
+  }
+
   async onStart() {
     const inst = this.instance;
     inst.print("\n");
@@ -263,14 +296,20 @@ export class ModpackInstallTask extends AsyncTask {
       }
 
       this.phase = "bootstrap";
-      this.bootstrap = new ModloaderBootstrap({
-        instance: inst,
-        mcVersion: resolved.mc,
-        loader: resolved.loader,
-        loaderVersion: resolved.loaderVersion,
-        maxMemoryMB: this.descriptor.maxMemoryMB
-      });
-      const { startCommand } = await this.bootstrap.run();
+      let startCommand: string;
+      if (this.descriptor.source === "serverjar") {
+        // Paper / Purpur / Folia: a single runnable server jar.
+        startCommand = await this.installServerJar(resolved.mc, this.descriptor.maxMemoryMB);
+      } else {
+        this.bootstrap = new ModloaderBootstrap({
+          instance: inst,
+          mcVersion: resolved.mc,
+          loader: resolved.loader as ModLoader,
+          loaderVersion: resolved.loaderVersion,
+          maxMemoryMB: this.descriptor.maxMemoryMB
+        });
+        startCommand = (await this.bootstrap.run()).startCommand;
+      }
 
       inst.parameters(
         {

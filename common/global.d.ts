@@ -64,7 +64,7 @@ declare global {
     fileId: string;
     versionName: string;
     mcVersion: string;
-    loader: "vanilla" | "forge" | "neoforge" | "fabric" | "quilt";
+    loader: string; // vanilla|forge|neoforge|fabric|quilt|paper|purpur|folia
     loaderVersion: string;
     iconUrl?: string;
     installedAt?: number;

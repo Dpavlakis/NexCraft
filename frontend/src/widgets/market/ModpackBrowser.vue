@@ -11,6 +11,7 @@ import {
   modpackDetail,
   modpackSearch,
   modpackVersions,
+  serverVersionsGet,
   type McVersion,
   type ModpackDetail,
   type ModpackHit,
@@ -72,6 +73,9 @@ const results = ref<ResultItem[]>([]);
 // release version (from Mojang), then the daemon bootstraps it.
 const customLoaders = [
   { value: "vanilla", label: "Vanilla" },
+  { value: "paper", label: "PaperMC" },
+  { value: "purpur", label: "Purpur" },
+  { value: "folia", label: "Folia" },
   { value: "fabric", label: "Fabric" },
   { value: "forge", label: "Forge" },
   { value: "neoforge", label: "NeoForge" },
@@ -80,6 +84,10 @@ const customLoaders = [
 const customLoader = ref("vanilla");
 const showSnapshots = ref(false);
 const mcVersionsRaw = ref<McVersion[]>([]);
+// Paper/Purpur/Folia have their own version lists; the rest use Mojang's.
+const SERVER_SOFTWARE = ["paper", "purpur", "folia"];
+const isServerSoftware = (l: string) => SERVER_SOFTWARE.includes(l);
+const versionCache: Record<string, McVersion[]> = {};
 
 const loading = ref(false);
 const searchText = ref("");
@@ -129,10 +137,17 @@ const applyCustomFilter = () => {
 const loadCustom = async () => {
   loading.value = true;
   try {
-    if (!mcVersionsRaw.value.length) {
-      const res = await mcVersionsGet().execute();
-      mcVersionsRaw.value = res.value || [];
+    const key = isServerSoftware(customLoader.value) ? customLoader.value : "mojang";
+    if (!versionCache[key]) {
+      if (key === "mojang") {
+        const res = await mcVersionsGet().execute();
+        versionCache[key] = res.value || [];
+      } else {
+        const res = await serverVersionsGet().execute({ params: { software: customLoader.value } });
+        versionCache[key] = res.value || [];
+      }
     }
+    mcVersionsRaw.value = versionCache[key];
     applyCustomFilter();
   } catch (err: any) {
     reportErrorMsg(err.message);
@@ -345,6 +360,10 @@ const doInstall = async () => {
 
 // The search row shows/hides with the source, which shifts the list's top edge.
 watch(source, () => nextTick(recomputeHeight));
+// Switching the Custom mod loader changes which version list applies.
+watch(customLoader, () => {
+  if (source.value === "custom") loadCustom();
+});
 
 onMounted(() => {
   loadNodes();
@@ -403,6 +422,7 @@ onBeforeUnmount(() => {
                   <template #prefix><SearchOutlined /></template>
                 </a-input-search>
                 <a-checkbox
+                  v-if="!isServerSoftware(customLoader)"
                   v-model:checked="showSnapshots"
                   class="snap-check"
                   @change="applyCustomFilter"
