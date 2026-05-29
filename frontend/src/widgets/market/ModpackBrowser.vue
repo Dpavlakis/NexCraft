@@ -16,7 +16,9 @@ import {
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard, NodeStatus } from "@/types";
-import { AppstoreOutlined, SearchOutlined } from "@ant-design/icons-vue";
+import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
+import curseforgeIcon from "@/assets/curseforge.svg";
+import modrinthIcon from "@/assets/modrinth.svg";
 import { message } from "ant-design-vue";
 import { computed, onMounted, reactive, ref } from "vue";
 
@@ -26,10 +28,10 @@ const { toPage } = useAppRouters();
 
 type Source = "custom" | "curseforge" | "modrinth";
 const source = ref<Source>("custom");
-const sources: { key: Source; label: string }[] = [
+const sources: { key: Source; label: string; img?: string }[] = [
   { key: "custom", label: t("TXT_CODE_modpack_custom") },
-  { key: "curseforge", label: "CurseForge" },
-  { key: "modrinth", label: "Modrinth" }
+  { key: "curseforge", label: "CurseForge", img: curseforgeIcon },
+  { key: "modrinth", label: "Modrinth", img: modrinthIcon }
 ];
 
 // ---- nodes ----
@@ -315,6 +317,10 @@ onMounted(() => {
           <template #body>
             <a-menu :selected-keys="[source]" mode="vertical" style="border: none">
               <a-menu-item v-for="s in sources" :key="s.key" @click="selectSource(s.key)">
+                <template #icon>
+                  <img v-if="s.img" :src="s.img" class="source-icon" alt="" />
+                  <BlockOutlined v-else />
+                </template>
                 {{ s.label }}
               </a-menu-item>
             </a-menu>
@@ -480,6 +486,12 @@ onMounted(() => {
 .sort-select {
   width: 200px;
   flex-shrink: 0;
+}
+.source-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+  object-fit: contain;
 }
 .results-scroll {
   /* Use the available vertical space (~12 rows on a typical screen) */
