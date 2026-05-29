@@ -62,7 +62,14 @@ export default class StorageSubsystem {
         continue;
       }
       if (objectValue instanceof Object && typeof objectValue === "object") {
-        this.defineAttr(target[v], objectValue);
+        // Can't deep-merge into a missing target (e.g. packInfo defaults to
+        // undefined); recursing into undefined throws and would drop the whole
+        // instance on load. Assign the stored object directly instead.
+        if (target[v] === undefined || target[v] === null) {
+          target[v] = objectValue;
+        } else {
+          this.defineAttr(target[v], objectValue);
+        }
         continue;
       }
       target[v] = objectValue;
