@@ -3,8 +3,11 @@ import CardPanel from "@/components/CardPanel.vue";
 import { openInstanceTagsEditor, useDeleteInstanceDialog } from "@/components/fc/index";
 import { useAppRouters } from "@/hooks/useAppRouters";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
+import { getFileConfigAddr } from "@/hooks/useFileManager";
 import { useInstanceInfo, verifyEULA } from "@/hooks/useInstance";
 import { t } from "@/lang/i18n";
+import { downloadAddress } from "@/services/apis/fileManager";
+import { parseForwardAddress } from "@/tools/protocol";
 import {
   killInstance,
   openInstance,
@@ -34,7 +37,7 @@ import {
 import { message, Modal } from "ant-design-vue";
 import _ from "lodash";
 import prettyBytes, { type Options as PrettyOptions } from "pretty-bytes";
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 const props = defineProps<{
   card: LayoutCard;
@@ -134,6 +137,26 @@ const actions = {
     message.success(t("TXT_CODE_b1600db0"));
   }
 };
+
+// Minecraft server-icon.png shown in the card's top-right corner (if present).
+const serverIconUrl = ref("");
+const loadServerIcon = async () => {
+  if (!instanceId || !daemonId) return;
+  const type = instanceInfo.value?.config?.type || "";
+  if (!type.includes("minecraft")) return; // only Minecraft instances have server-icon.png
+  try {
+    const { execute } = downloadAddress();
+    const res = await execute({
+      params: { file_name: "server-icon.png", daemonId: String(daemonId), uuid: String(instanceId) }
+    });
+    if (!res.value) return;
+    const addr = parseForwardAddress(getFileConfigAddr(res.value), "http");
+    serverIconUrl.value = `${addr}/download/${res.value.password}/server-icon.png`;
+  } catch (e) {
+    // No icon / daemon unreachable -> simply show no icon
+  }
+};
+onMounted(loadServerIcon);
 
 const execInstanceAction = async (
   event: MouseEvent,
@@ -283,7 +306,15 @@ const instanceOperations = computed(() =>
     <template #title>
       {{ instanceInfo?.config.nickname }}
     </template>
-    <template #operator> </template>
+    <template #operator>
+      <img
+        v-if="serverIconUrl"
+        :src="serverIconUrl"
+        class="server-icon"
+        alt=""
+        @error="serverIconUrl = ''"
+      />
+    </template>
     <template #body>
       <div class="instance-card-body">
         <a-typography-paragraph>
@@ -426,6 +457,14 @@ const instanceOperations = computed(() =>
   flex-direction: column;
   justify-content: space-between;
   height: 100%;
+}
+
+.server-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  image-rendering: pixelated;
 }
 
 .instance-info-line {
