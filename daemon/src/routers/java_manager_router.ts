@@ -65,14 +65,19 @@ routerApp.on("java_manager/using", async (ctx, data) => {
     const instance = instanceManager.getInstance(data.instanceId);
     if (!instance) throw new Error($t("TXT_CODE_ef6b54fb"));
 
+    // Only rewrite the launcher token when the command actually starts with a
+    // Java invocation (`java`, a path to java, or an existing {mcsm_java}).
+    // Script starts (e.g. `bash startserver.sh`) must NOT be mangled into
+    // `{mcsm_java} startserver.sh`, which would try to run a shell script as Java.
     const startCommandList = commandStringToArray(instance.config.startCommand);
-    startCommandList[0] = "{mcsm_java}";
-    instance.parameters({
-      java: {
-        id: data.id
-      },
-      startCommand: startCommandList.join(" ")
-    });
+    const first = (startCommandList[0] || "").replace(/^"|"$/g, "");
+    const isJavaLauncher = first === "{mcsm_java}" || /(^|[/\\])java(\.exe)?$/i.test(first);
+    const params: Record<string, any> = { java: { id: data.id } };
+    if (isJavaLauncher) {
+      startCommandList[0] = "{mcsm_java}";
+      params.startCommand = startCommandList.join(" ");
+    }
+    instance.parameters(params);
 
     protocol.response(ctx, true);
   } catch (error: any) {
