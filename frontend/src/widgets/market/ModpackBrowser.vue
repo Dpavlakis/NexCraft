@@ -150,7 +150,8 @@ const dialog = reactive({
   selectedVersion: "" as string,
   installing: false,
   detail: null as ModpackDetail | null,
-  detailLoading: false
+  detailLoading: false,
+  acceptEula: false
 });
 
 const loadDetail = async (item: ResultItem) => {
@@ -189,6 +190,7 @@ const openInstall = (item: ResultItem) => {
   dialog.selectedVersion = "";
   dialog.versions = [];
   dialog.detail = null;
+  dialog.acceptEula = false;
   dialog.open = true;
   if (source.value !== "custom") {
     // fetch detail + versions in parallel
@@ -226,12 +228,11 @@ const formatDownloads = (n?: number) => {
   return String(n);
 };
 
-const canInstall = computed(
-  () =>
-    !!dialog.instanceName &&
-    !!dialog.daemonId &&
-    (source.value === "custom" || !!dialog.selectedVersion)
-);
+const canInstall = computed(() => {
+  if (!dialog.instanceName || !dialog.daemonId) return false;
+  if (source.value === "custom") return true; // custom packs use the built-in EULA prompt on start
+  return dialog.acceptEula && !!dialog.selectedVersion;
+});
 
 const doInstall = async () => {
   if (!dialog.item || !canInstall.value) return;
@@ -263,7 +264,8 @@ const doInstall = async () => {
           versionName: v ? versionLabel(v) : "",
           iconUrl: dialog.item.icon,
           instanceName: dialog.instanceName,
-          maxMemoryMB: dialog.maxMemoryMB
+          maxMemoryMB: dialog.maxMemoryMB,
+          acceptEula: dialog.acceptEula
         }
       });
       instanceUuid = res.value?.instanceUuid || "";
@@ -442,6 +444,14 @@ onMounted(() => {
       </a-form-item>
       <a-form-item v-if="source !== 'custom'" :label="t('TXT_CODE_modpack_memory')">
         <a-input-number v-model:value="dialog.maxMemoryMB" :min="1024" :step="1024" style="width: 100%" />
+      </a-form-item>
+      <a-form-item v-if="source !== 'custom'">
+        <a-checkbox v-model:checked="dialog.acceptEula">
+          {{ t("TXT_CODE_modpack_eula") }}
+          <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener" @click.stop>
+            {{ t("TXT_CODE_modpack_eula_link") }}
+          </a>
+        </a-checkbox>
       </a-form-item>
     </a-form>
   </a-modal>

@@ -98,6 +98,7 @@ export const installModpack = useDefineApi<
       iconUrl?: string;
       instanceName: string;
       maxMemoryMB?: number;
+      acceptEula?: boolean;
     };
   },
   { taskId: string; instanceUuid: string }

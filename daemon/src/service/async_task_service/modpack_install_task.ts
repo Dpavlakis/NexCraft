@@ -32,6 +32,7 @@ export interface IModpackInstallDescriptor {
   loaderVersion?: string;
   packInfo: IModpackInfo;
   maxMemoryMB?: number;
+  acceptEula?: boolean;
   buildParams?: Partial<IGlobalInstanceConfig>;
 }
 
@@ -204,6 +205,15 @@ export class ModpackInstallTask extends AsyncTask {
         this.descriptor.source === "curseforge"
           ? await this.installCurseForge()
           : await this.installModrinth();
+
+      // Accept the Minecraft EULA on the user's behalf (they checked the box).
+      if (this.descriptor.acceptEula) {
+        try {
+          fs.writeFileSync(path.join(inst.absoluteCwdPath(), "eula.txt"), "eula=true\n");
+        } catch {
+          // ignore
+        }
+      }
 
       this.phase = "bootstrap";
       this.bootstrap = new ModloaderBootstrap({

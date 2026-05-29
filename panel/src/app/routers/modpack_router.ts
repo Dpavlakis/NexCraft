@@ -119,7 +119,8 @@ router.post(
     try {
       const daemonId = String(ctx.query.daemonId);
       const body = ctx.request.body;
-      const descriptor = await buildDescriptor(body);
+      const descriptor: any = await buildDescriptor(body);
+      descriptor.acceptEula = !!body.acceptEula;
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],
