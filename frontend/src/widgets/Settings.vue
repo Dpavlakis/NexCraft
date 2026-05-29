@@ -183,7 +183,7 @@ const contacts = arrayFilter([
   {
     title: t("TXT_CODE_74c3d3e5"),
     icon: BookOutlined,
-    url: "https://docs.mcsmanager.com/"
+    url: "https://dpavlakis.github.io/NexCraft/"
   },
   {
     title: t("TXT_CODE_26407d1f"),
