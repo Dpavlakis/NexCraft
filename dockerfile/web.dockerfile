@@ -4,17 +4,24 @@ FROM --platform=${BUILDPLATFORM} node:lts-alpine AS builder
 WORKDIR /src
 
 # 1) Dependency manifests only — install layer stays cached across rebuilds when
-#    package*.json files are unchanged. Only common + panel + frontend are needed
-#    for this image (the daemon belongs to the daemon image).
+#    package*.json files are unchanged.
+#    Root deps (e.g. async-mutex) resolve from /src/node_modules, and the panel
+#    bundles some daemon source (settings_router -> daemon system_file), so the
+#    daemon must be installed/present here too — but it is NOT webpack-built.
+COPY package*.json ./
 COPY common/package*.json ./common/
+COPY daemon/package*.json ./daemon/
 COPY panel/package*.json ./panel/
 COPY frontend/package*.json ./frontend/
-RUN npm install --prefix common --no-audit --no-fund &&\
+RUN npm install --ignore-scripts --no-audit --no-fund &&\
+    npm install --prefix common --no-audit --no-fund &&\
+    npm install --prefix daemon --no-audit --no-fund &&\
     npm install --prefix panel --no-audit --no-fund &&\
     npm install --prefix frontend --no-audit --no-fund
 
 # 2) Source (node_modules excluded via .dockerignore, so cached installs persist).
 COPY common/ ./common/
+COPY daemon/ ./daemon/
 COPY panel/ ./panel/
 COPY frontend/ ./frontend/
 COPY languages/ ./languages/
