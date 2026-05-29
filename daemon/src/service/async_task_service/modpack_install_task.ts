@@ -23,7 +23,7 @@ import InstanceSubsystem from "../system_instance";
 import { AsyncTask, IAsyncTaskJSON } from "./index";
 
 export interface IModpackInstallDescriptor {
-  source: "curseforge" | "modrinth";
+  source: "curseforge" | "modrinth" | "vanilla";
   // CurseForge server-pack path:
   serverPackUrl?: string;
   serverPackFileName?: string;
@@ -207,7 +207,15 @@ export class ModpackInstallTask extends AsyncTask {
       const resolved =
         this.descriptor.source === "curseforge"
           ? await this.installCurseForge()
-          : await this.installModrinth();
+          : this.descriptor.source === "modrinth"
+            ? await this.installModrinth()
+            : {
+                // "vanilla": build a fresh server (vanilla or a loader) from
+                // scratch — no files to download, just bootstrap the loader.
+                mc: this.descriptor.mcVersion || "",
+                loader: this.descriptor.loader || "vanilla",
+                loaderVersion: this.descriptor.loaderVersion || ""
+              };
 
       // Strip client-only mods that would crash a dedicated server (e.g. e4mc
       // shipped in client optimization packs like Fabulously Optimized).

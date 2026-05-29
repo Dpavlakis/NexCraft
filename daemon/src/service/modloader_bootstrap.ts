@@ -111,6 +111,46 @@ export class ModloaderBootstrap {
     return res.data as T;
   }
 
+  // Resolve the latest stable loader version for the chosen Minecraft version
+  // when one wasn't supplied (e.g. building a fresh server from scratch).
+  private async resolveLoaderVersion(): Promise<string> {
+    const mc = this.input.mcVersion;
+    const loader = this.input.loader;
+    try {
+      if (loader === "fabric") {
+        const arr = await this.fetchJson<any[]>(`https://meta.fabricmc.net/v2/versions/loader/${mc}`);
+        return arr?.[0]?.loader?.version || "";
+      }
+      if (loader === "quilt") {
+        const arr = await this.fetchJson<any[]>(`https://meta.quiltmc.org/v3/versions/loader/${mc}`);
+        return arr?.[0]?.loader?.version || "";
+      }
+      if (loader === "neoforge") {
+        const data = await this.fetchJson<any>(
+          "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge"
+        );
+        const versions: string[] = data?.versions || [];
+        // mc "1.21.1" -> neoforge "21.1."; mc "1.21" -> "21.0."
+        const parts = String(mc).split(".");
+        const prefix = `${parts[1] || ""}.${parts[2] || "0"}.`;
+        const matching = versions.filter((v) => v.startsWith(prefix));
+        const stable = matching.filter((v) => !/beta|alpha|rc/i.test(v));
+        const pick = stable.length ? stable : matching;
+        return pick.length ? pick[pick.length - 1] : "";
+      }
+      if (loader === "forge") {
+        const data = await this.fetchJson<any>(
+          "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"
+        );
+        const promos = data?.promos || {};
+        return promos[`${mc}-recommended`] || promos[`${mc}-latest`] || "";
+      }
+    } catch {
+      // fall through
+    }
+    return "";
+  }
+
   // The java token to embed in the generated start command. When we've assigned
   // a managed runtime, use the {mcsm_java} placeholder so it resolves to that
   // runtime at launch (and survives Java path changes); otherwise plain "java".
@@ -295,7 +335,8 @@ export class ModloaderBootstrap {
   private async bootstrapFabricLike(kind: "fabric" | "quilt"): Promise<IBootstrapResult> {
     const cwd = this.cwd();
     const mc = this.input.mcVersion;
-    const loaderVer = this.input.loaderVersion;
+    const loaderVer = this.input.loaderVersion || (await this.resolveLoaderVersion());
+    if (!loaderVer) throw new Error($t("TXT_CODE_modpack.unknownLoaderVersion"));
     const launchJar = kind === "fabric" ? "fabric-server-launch.jar" : "quilt-server-launch.jar";
     const meta = kind === "fabric" ? "https://meta.fabricmc.net/v2" : "https://meta.quiltmc.org/v3";
 
@@ -316,10 +357,9 @@ export class ModloaderBootstrap {
   private async bootstrapForgeLike(kind: "forge" | "neoforge"): Promise<IBootstrapResult> {
     const cwd = this.cwd();
     const mc = this.input.mcVersion;
-    const lv = this.input.loaderVersion;
-    // We can only download an installer if we know the exact loader version.
-    // CurseForge doesn't give us one, so this path is only reached when the
-    // server pack shipped no runnable artifacts — surface a clear error.
+    // Use the supplied loader version, or resolve the latest for this MC version
+    // (CurseForge doesn't give one; fresh server builds don't either).
+    const lv = this.input.loaderVersion || (await this.resolveLoaderVersion());
     if (!lv || (kind === "forge" && !mc)) {
       throw new Error($t("TXT_CODE_modpack.unknownLoaderVersion"));
     }

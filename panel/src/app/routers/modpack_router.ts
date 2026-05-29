@@ -1,4 +1,5 @@
 import Router from "@koa/router";
+import axios from "axios";
 import { ROLE } from "../entity/user";
 import { $t } from "../i18n";
 import { requestConcurrencyLimiter } from "../middleware/limit";
@@ -162,6 +163,78 @@ router.post(
         { instanceUuid, descriptor }
       );
     } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// Accurate Minecraft version list (Mojang manifest), cached for 6h.
+let mcVersionsCache: { at: number; data: any[] } | null = null;
+router.get("/minecraft_versions", permission({ level: ROLE.USER }), async (ctx) => {
+  try {
+    const now = Date.now();
+    if (!mcVersionsCache || now - mcVersionsCache.at > 6 * 60 * 60 * 1000) {
+      const res = await axios.get(
+        "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json",
+        { timeout: 20000 }
+      );
+      const versions = (res.data?.versions || []).map((v: any) => ({
+        id: v.id,
+        type: v.type,
+        releaseTime: v.releaseTime
+      }));
+      mcVersionsCache = { at: now, data: versions };
+    }
+    ctx.body = mcVersionsCache.data;
+  } catch (err) {
+    ctx.body = err;
+  }
+});
+
+// Build a fresh server (vanilla, or vanilla + a mod loader) for any Minecraft
+// version. The daemon's ModloaderBootstrap downloads/installs the loader.
+router.post(
+  "/install_server",
+  permission({ level: ROLE.ADMIN }),
+  validator({
+    query: { daemonId: String },
+    body: { mcVersion: String, loader: String, instanceName: String }
+  }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const b = ctx.request.body;
+      const loader = String(b.loader || "vanilla");
+      const mcVersion = String(b.mcVersion);
+      const descriptor: any = {
+        source: "vanilla",
+        mcVersion,
+        loader,
+        loaderVersion: "",
+        maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
+        acceptEula: !!b.acceptEula,
+        packInfo: {
+          source: "vanilla",
+          projectId: `${loader}:${mcVersion}`,
+          projectName: String(b.instanceName || loader),
+          fileId: "",
+          versionName: mcVersion,
+          mcVersion,
+          loader,
+          loaderVersion: ""
+        }
+      };
+      operationLogger.log("instance_modpack_install", {
+        operator_ip: ctx.ip,
+        operator_name: ctx.session?.["userName"],
+        daemon_id: daemonId,
+        pack_name: `${loader} ${mcVersion}`
+      });
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "modpack/install",
+        { instanceName: String(b.instanceName), descriptor }
+      );
+    } catch (err: any) {
       ctx.body = err;
     }
   }

@@ -125,6 +125,36 @@ export const updateModpack = useDefineApi<
   method: "POST"
 });
 
+export interface McVersion {
+  id: string;
+  type: string; // release | snapshot | old_beta | old_alpha
+  releaseTime?: string;
+}
+
+// Accurate Minecraft version list (Mojang manifest)
+export const mcVersionsGet = useDefineApi<Record<string, never>, McVersion[]>({
+  url: "/api/protected_modpack/minecraft_versions",
+  method: "GET"
+});
+
+// Build a fresh server (vanilla or a loader) for any Minecraft version
+export const installServer = useDefineApi<
+  {
+    params: { daemonId: string };
+    data: {
+      mcVersion: string;
+      loader: string; // vanilla | fabric | forge | neoforge | quilt
+      instanceName: string;
+      maxMemoryMB?: number;
+      acceptEula?: boolean;
+    };
+  },
+  { taskId: string; instanceUuid: string }
+>({
+  url: "/api/protected_modpack/install_server",
+  method: "POST"
+});
+
 // Poll a modpack install/update task
 export const modpackTaskStatus = useDefineApi<
   {

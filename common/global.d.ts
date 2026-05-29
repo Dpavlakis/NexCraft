@@ -58,7 +58,7 @@ declare global {
   }
 
   interface IModpackInfo {
-    source: "curseforge" | "modrinth";
+    source: "curseforge" | "modrinth" | "vanilla";
     projectId: string;
     projectName: string;
     fileId: string;
