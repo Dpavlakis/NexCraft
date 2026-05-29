@@ -16,7 +16,7 @@ const vendors = [
 ];
 const vendor = ref("adoptium");
 const majors = ref<number[]>([]);
-const selectedMajor = ref<number | null>(null);
+const selectedMajor = ref<number | undefined>(undefined);
 const releases = ref<JavaReleaseItem[]>([]);
 const selected = ref<JavaReleaseItem | null>(null);
 const loadingMajors = ref(false);
@@ -37,14 +37,15 @@ const fmtDate = (s?: string) => {
 };
 
 const loadReleases = async () => {
-  if (selectedMajor.value == null) return;
+  const major = selectedMajor.value;
+  if (major == null) return;
   selected.value = null;
   releases.value = [];
   loadingReleases.value = true;
   try {
     const { execute } = javaVersions();
     const res = await execute({
-      params: { daemonId: props.daemonId ?? "", vendor: vendor.value, major: selectedMajor.value }
+      params: { daemonId: props.daemonId ?? "", vendor: vendor.value, major }
     });
     releases.value = res.value || [];
     selected.value = releases.value[0] || null;
@@ -65,7 +66,7 @@ const loadMajors = async () => {
     const { execute } = javaMajors();
     const res = await execute({ params: { daemonId: props.daemonId ?? "", vendor: vendor.value } });
     majors.value = (res.value || []).slice().sort((a, b) => b - a);
-    selectedMajor.value = majors.value[0] ?? null;
+    selectedMajor.value = majors.value[0] ?? undefined;
     await loadReleases();
   } catch (err: any) {
     reportErrorMsg(err.message);
