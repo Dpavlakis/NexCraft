@@ -20,7 +20,7 @@ import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/ico
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
 import { message } from "ant-design-vue";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
 defineProps<{ card: LayoutCard }>();
 
@@ -69,6 +69,18 @@ const results = ref<ResultItem[]>([]);
 const loading = ref(false);
 const searchText = ref("");
 const sortField = ref("featured");
+
+// Auto-size the results list to the window, leaving padding at the bottom.
+const resultsScrollEl = ref<HTMLElement>();
+const scrollMaxHeight = ref("520px");
+const BOTTOM_PADDING = 24;
+const recomputeHeight = () => {
+  const el = resultsScrollEl.value;
+  if (!el) return;
+  const top = el.getBoundingClientRect().top;
+  const h = window.innerHeight - top - BOTTOM_PADDING;
+  scrollMaxHeight.value = Math.max(320, Math.round(h)) + "px";
+};
 const sortOptions = [
   { value: "featured", label: t("TXT_CODE_modpack_sort_featured") },
   { value: "popularity", label: t("TXT_CODE_modpack_sort_popularity") },
@@ -292,9 +304,18 @@ const doInstall = async () => {
   }
 };
 
+// The search row shows/hides with the source, which shifts the list's top edge.
+watch(source, () => nextTick(recomputeHeight));
+
 onMounted(() => {
   loadNodes();
   loadCustom();
+  nextTick(recomputeHeight);
+  window.addEventListener("resize", recomputeHeight);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", recomputeHeight);
 });
 </script>
 
@@ -349,7 +370,7 @@ onMounted(() => {
               />
             </div>
             <a-spin :spinning="loading">
-              <div class="results-scroll">
+              <div ref="resultsScrollEl" class="results-scroll" :style="{ maxHeight: scrollMaxHeight }">
                 <a-list item-layout="horizontal" :data-source="results">
                 <template #renderItem="{ item }">
                   <a-list-item class="result-row" @click="openInstall(item)">
@@ -494,9 +515,8 @@ onMounted(() => {
   object-fit: contain;
 }
 .results-scroll {
-  /* Use the available vertical space (~12 rows on a typical screen) */
-  max-height: calc(100vh - 260px);
-  min-height: 520px;
+  /* max-height is set dynamically from the window size (see recomputeHeight) */
+  min-height: 320px;
   overflow-y: auto;
   padding-right: 4px;
 }

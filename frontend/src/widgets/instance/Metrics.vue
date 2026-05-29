@@ -63,11 +63,25 @@ const setupChart = () => {
         restore: { title: t("TXT_CODE_metrics_reset_zoom") }
       }
     },
-    grid: { top: 44, bottom: 70, left: 48, right: 56 },
+    grid: { top: 44, bottom: 70, left: 56, right: 64 },
     xAxis: { type: "category", boundaryGap: false, data: [] },
     yAxis: [
-      { type: "value", name: "%", min: 0, max: 100 },
-      { type: "value", name: t("TXT_CODE_metrics_count_gb"), min: 0 }
+      {
+        type: "value",
+        name: "%",
+        min: 0,
+        max: 100,
+        nameLocation: "middle",
+        nameGap: 40
+      },
+      {
+        type: "value",
+        name: t("TXT_CODE_metrics_count_gb"),
+        min: 0,
+        nameLocation: "middle",
+        nameGap: 44,
+        nameRotate: 270
+      }
     ],
     dataZoom: [
       {
