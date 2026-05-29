@@ -12,7 +12,8 @@ import {
   reinstallServer,
   serverVersionsGet,
   updateModpack,
-  type ModpackVersion
+  type ModpackVersion,
+  type ResetMode
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types/index";
@@ -208,7 +209,7 @@ const runUpdate = async () => {
           mcVersion: selectedVersion.value,
           loader: "bedrock",
           acceptEula: true,
-          resetMode: "preserve_world"
+          resetMode: "preserve_world" as ResetMode
         }
       });
       taskId = res.value?.taskId || "";

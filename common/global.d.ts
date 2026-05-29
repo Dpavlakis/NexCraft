@@ -60,7 +60,7 @@ declare global {
   }
 
   interface IModpackInfo {
-    source: "curseforge" | "modrinth" | "vanilla";
+    source: "curseforge" | "modrinth" | "vanilla" | "serverjar" | "bedrock";
     projectId: string;
     projectName: string;
     fileId: string;
