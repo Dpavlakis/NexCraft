@@ -1,5 +1,6 @@
+import fs from "fs-extra";
+import StreamZip from "node-stream-zip";
 import { v4 } from "uuid";
-import { decompress } from "../../common/compress";
 import Instance from "../../entity/instance/instance";
 import { $t } from "../../i18n";
 import logger from "../log";
@@ -40,7 +41,18 @@ export class RestoreTask extends AsyncTask {
       }
       this.instance.println("INFO", $t("TXT_CODE_backup.restoreExtracting"));
       this.instance.status(Instance.STATUS_BUSY);
-      await decompress(this.backupFile, this.instance.absoluteCwdPath(), this.instance.config.fileCode);
+      // Extract with guaranteed overwrite of existing files. The daemon's shared
+      // decompress() prefers the Go zip tool which does NOT overwrite existing files,
+      // so a restore would silently no-op over the live world. node-stream-zip writes
+      // each entry via a truncating write stream, so existing files are replaced.
+      const dest = this.instance.absoluteCwdPath();
+      await fs.ensureDir(dest);
+      const zip = new StreamZip.async({ file: this.backupFile });
+      try {
+        await zip.extract(null, dest);
+      } finally {
+        await zip.close();
+      }
       this.instance.println("INFO", $t("TXT_CODE_backup.restoreSuccess"));
     } catch (error: any) {
       this.instance.status(Instance.STATUS_STOP);
