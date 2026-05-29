@@ -12,6 +12,15 @@ import RemoteServiceSubsystem from "../service/remote_service";
 
 const router = new Router({ prefix: "/protected_modpack" });
 
+// Reset modes the daemon understands. An unknown value (typo / wrong case) must
+// NOT silently fall through to a no-backup full wipe on the daemon, so clamp any
+// unrecognised value to the safest option (always backs up first).
+const RESET_MODES = ["backup_wipe", "wipe", "preserve_world"];
+function normalizeResetMode(raw: unknown): string {
+  const v = String(raw ?? "backup_wipe");
+  return RESET_MODES.includes(v) ? v : "backup_wipe";
+}
+
 // List installable versions of a modpack (with CF server-pack availability flag)
 router.get(
   "/versions",
@@ -380,7 +389,7 @@ router.post(
       const instanceUuid = String(ctx.query.uuid);
       const descriptor: any = await buildDescriptor(ctx.request.body);
       descriptor.acceptEula = !!ctx.request.body.acceptEula;
-      const resetMode = String(ctx.request.body.resetMode || "backup_wipe");
+      const resetMode = normalizeResetMode(ctx.request.body.resetMode);
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],
@@ -410,7 +419,7 @@ router.post(
       const daemonId = String(ctx.query.daemonId);
       const instanceUuid = String(ctx.query.uuid);
       const descriptor = await buildServerDescriptor(ctx.request.body);
-      const resetMode = String(ctx.request.body.resetMode || "backup_wipe");
+      const resetMode = normalizeResetMode(ctx.request.body.resetMode);
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],

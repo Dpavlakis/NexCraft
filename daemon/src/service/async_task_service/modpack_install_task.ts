@@ -337,15 +337,18 @@ export class ModpackInstallTask extends AsyncTask {
       inst.println("WARN", $t("TXT_CODE_modpack.dockerWarn"));
     }
     try {
+      // Concurrency guard: refuse if another async task already owns this
+      // instance. Set BEFORE prepareReset so two concurrent reinstalls can't
+      // both stop/clear/download into the same folder and corrupt it.
+      if (inst.asynchronousTask && inst.asynchronousTask !== this)
+        throw new Error($t("TXT_CODE_5b0e93b5"));
+      inst.asynchronousTask = this;
+
       // Reinstall into an existing instance: stop + (backup) + clear first.
       if (!this.isInitInstance && this.resetMode) {
         await this.prepareReset();
       }
       inst.status(Instance.STATUS_BUSY);
-      if (this.isInitInstance) {
-        if (inst.asynchronousTask) throw new Error($t("TXT_CODE_5b0e93b5"));
-        inst.asynchronousTask = this;
-      }
       inst.println("INFO", $t("TXT_CODE_modpack.start"));
 
       let startCommand: string;
@@ -459,7 +462,7 @@ export class ModpackInstallTask extends AsyncTask {
       this.error(error);
     } finally {
       inst.status(Instance.STATUS_STOP);
-      if (this.isInitInstance && inst.asynchronousTask === this) inst.asynchronousTask = undefined;
+      if (inst.asynchronousTask === this) inst.asynchronousTask = undefined;
       for (const f of this.tmpFiles) {
         try {
           await fs.remove(f);
