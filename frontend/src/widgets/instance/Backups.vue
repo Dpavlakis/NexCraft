@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
+import { useAppRouters } from "@/hooks/useAppRouters";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { getFileConfigAddr } from "@/hooks/useFileManager";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
+import BackupExclusions from "@/widgets/instance/dialogs/BackupExclusions.vue";
 import {
   backupDownloadAddress,
   backupList,
@@ -23,6 +25,7 @@ import {
   CloudUploadOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  FolderOpenOutlined,
   RedoOutlined,
   SaveOutlined
 } from "@ant-design/icons-vue";
@@ -35,9 +38,31 @@ const props = defineProps<{
 }>();
 
 const { isPhone } = useScreen();
+const { toPage } = useAppRouters();
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
 const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+
+const exclusionsDialog = ref<InstanceType<typeof BackupExclusions>>();
+
+const toConsole = () => {
+  toPage({
+    path: "/instances/terminal",
+    query: { daemonId, instanceId }
+  });
+};
+
+const openExclusionsPicker = () => {
+  const current = exclusionsText.value
+    .split("\n")
+    .map((v) => v.trim())
+    .filter((v) => v !== "");
+  exclusionsDialog.value?.openDialog(current);
+};
+
+const onExclusionsUpdate = (patterns: string[]) => {
+  exclusionsText.value = patterns.join("\n");
+};
 
 // ---- Backup configuration form ----
 const config = reactive({
@@ -293,6 +318,9 @@ onBeforeUnmount(() => {
             </a-typography-title>
           </template>
           <template #right>
+            <a-button @click="toConsole">
+              {{ t("TXT_CODE_backup_to_console") }}
+            </a-button>
             <a-button @click="loadBackups">
               {{ t("TXT_CODE_b76d94e0") }}
             </a-button>
@@ -344,6 +372,10 @@ onBeforeUnmount(() => {
                 </a-form-item>
                 <a-form-item>
                   <template #label>{{ t("TXT_CODE_backup_exclusions") }}</template>
+                  <a-button class="mb-8" @click="openExclusionsPicker">
+                    <FolderOpenOutlined />
+                    {{ t("TXT_CODE_backup_exclusions_select") }}
+                  </a-button>
                   <a-textarea
                     v-model:value="exclusionsText"
                     :rows="4"
@@ -406,6 +438,13 @@ onBeforeUnmount(() => {
       </a-col>
     </a-row>
   </div>
+
+  <BackupExclusions
+    ref="exclusionsDialog"
+    :daemon-id="daemonId"
+    :instance-id="instanceId"
+    @update="onExclusionsUpdate"
+  />
 </template>
 
 <style lang="scss" scoped>

@@ -15,7 +15,7 @@ export class RestoreTask extends AsyncTask {
     this.type = RestoreTask.TYPE;
   }
 
-  private async waitForStop(timeoutMs = 60 * 1000) {
+  private async waitForStop(timeoutMs = 5 * 60 * 1000) {
     const start = Date.now();
     while (this.instance.status() !== Instance.STATUS_STOP) {
       if (Date.now() - start > timeoutMs) throw new Error($t("TXT_CODE_backup.stopTimeout"));
@@ -34,9 +34,11 @@ export class RestoreTask extends AsyncTask {
       this.instance.println("INFO", $t("TXT_CODE_backup.restoreStart"));
       // Restoring over a live server is unsafe: always stop first.
       if (wasRunning) {
+        this.instance.println("INFO", $t("TXT_CODE_backup.restoreStopping"));
         await this.instance.execPreset("stop");
         await this.waitForStop();
       }
+      this.instance.println("INFO", $t("TXT_CODE_backup.restoreExtracting"));
       this.instance.status(Instance.STATUS_BUSY);
       await decompress(this.backupFile, this.instance.absoluteCwdPath(), this.instance.config.fileCode);
       this.instance.println("INFO", $t("TXT_CODE_backup.restoreSuccess"));

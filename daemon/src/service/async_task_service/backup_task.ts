@@ -41,7 +41,7 @@ export class BackupTask extends AsyncTask {
   }
 
   // Wait until the instance has fully stopped (bounded), used before a shutdown-mode backup.
-  private async waitForStop(timeoutMs = 60 * 1000) {
+  private async waitForStop(timeoutMs = 5 * 60 * 1000) {
     const start = Date.now();
     while (this.instance.status() !== Instance.STATUS_STOP) {
       if (Date.now() - start > timeoutMs) throw new Error($t("TXT_CODE_backup.stopTimeout"));

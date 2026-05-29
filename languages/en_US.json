@@ -3486,5 +3486,12 @@
   "TXT_CODE_backup.success": "Backup completed successfully.",
   "TXT_CODE_backup.progress": "Backing up... {{percentage}}%",
   "TXT_CODE_backup.restoreStart": "Starting restore...",
-  "TXT_CODE_backup.restoreSuccess": "Restore completed successfully."
+  "TXT_CODE_backup.restoreStopping": "Stopping the server before restore...",
+  "TXT_CODE_backup.restoreExtracting": "Extracting backup over the instance files...",
+  "TXT_CODE_backup.restoreSuccess": "Restore completed successfully.",
+  "TXT_CODE_backup_to_console": "Return to Console",
+  "TXT_CODE_backup_exclusions_select": "Select files / folders to exclude",
+  "TXT_CODE_backup_exclusions_title": "Choose paths to exclude from backups",
+  "TXT_CODE_backup_up": "Up",
+  "TXT_CODE_backup_selected": "Excluded paths"
 }
