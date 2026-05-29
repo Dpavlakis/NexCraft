@@ -248,6 +248,22 @@ export const uploadFilePiece = useDefineApi<
   timeout: Number.MAX_SAFE_INTEGER
 });
 
+export const saveServerIcon = useDefineApi<
+  {
+    params: {
+      uuid: string;
+      daemonId: string;
+    };
+    data: {
+      base64: string;
+    };
+  },
+  boolean
+>({
+  url: "/api/files/server_icon",
+  method: "POST"
+});
+
 export const downloadAddress = useDefineApi<
   {
     params: {

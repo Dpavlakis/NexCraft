@@ -444,6 +444,24 @@ router.all(
   }
 );
 
+router.post(
+  "/server_icon",
+  permission({ level: ROLE.USER }),
+  validator({ query: { uuid: String, daemonId: String }, body: { base64: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "file/save_server_icon",
+        { instanceUuid, base64: ctx.request.body.base64 }
+      );
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
 router.all(
   "/upload",
   permission({ level: ROLE.USER }),

@@ -1,3 +1,4 @@
+import fs from "fs-extra";
 import { t } from "i18next";
 import os from "os";
 import path from "path";
@@ -299,6 +300,30 @@ routerApp.on("file/edit", async (ctx, data) => {
     const fileManager = getFileManager(data.instanceUuid);
     const result = await fileManager.edit(target, text);
     protocol.response(ctx, result ? result : true);
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
+// Save a base64 PNG (already resized to 64x64 client-side) as server-icon.png
+routerApp.on("file/save_server_icon", (ctx, data) => {
+  try {
+    const fileManager = getFileManager(data.instanceUuid);
+    const b64 = String(data.base64 || "").replace(/^data:image\/\w+;base64,/, "");
+    const buf = Buffer.from(b64, "base64");
+    // Validate PNG signature: 89 50 4E 47
+    if (
+      buf.length < 8 ||
+      buf[0] !== 0x89 ||
+      buf[1] !== 0x50 ||
+      buf[2] !== 0x4e ||
+      buf[3] !== 0x47
+    ) {
+      throw new Error($t("TXT_CODE_server_icon.notPng"));
+    }
+    const target = fileManager.toAbsolutePath("server-icon.png");
+    fs.writeFileSync(target, buf);
+    protocol.response(ctx, true);
   } catch (error: any) {
     protocol.responseError(ctx, error);
   }

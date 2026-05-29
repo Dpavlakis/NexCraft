@@ -151,6 +151,10 @@ export class ModloaderBootstrap {
       if (fs.existsSync(sp)) {
         if (os.platform() !== "win32") {
           try {
+            // CF packs ship CRLF .sh scripts (they have a .bat sibling); bash
+            // chokes on \r, so normalize line endings, then make it executable.
+            const content = fs.readFileSync(sp, "utf-8");
+            if (content.includes("\r")) fs.writeFileSync(sp, content.replace(/\r\n/g, "\n"));
             fs.chmodSync(sp, 0o755);
           } catch {
             // ignore

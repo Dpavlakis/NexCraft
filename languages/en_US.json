@@ -3539,5 +3539,11 @@
   "TXT_CODE_modpack.updateDownloading": "Downloading the new pack version...",
   "TXT_CODE_modpack.updateApplying": "Applying the update (preserving your world)...",
   "TXT_CODE_modpack.updateDone": "Modpack updated successfully.",
-  "TXT_CODE_modpack.updateFailedStopped": "Update failed; the server was left stopped. Restore the pre-update backup if needed."
+  "TXT_CODE_modpack.updateFailedStopped": "Update failed; the server was left stopped. Restore the pre-update backup if needed.",
+  "TXT_CODE_server_icon_title": "Set Server Icon",
+  "TXT_CODE_server_icon_desc": "Upload an image — it will be resized to 64×64 and saved as server-icon.png in this instance.",
+  "TXT_CODE_server_icon_preview": "Preview (64×64)",
+  "TXT_CODE_server_icon_saved": "Server icon saved. It may take a server restart to appear in-game.",
+  "TXT_CODE_server_icon_bad": "Could not read that image. Please choose a valid PNG/JPG.",
+  "TXT_CODE_server_icon.notPng": "The uploaded data is not a valid PNG image."
 }
