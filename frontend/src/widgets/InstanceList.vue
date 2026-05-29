@@ -11,7 +11,7 @@ import {
   FormOutlined,
   FrownOutlined,
   InfoCircleOutlined,
-  PauseCircleOutlined,
+  PoweroffOutlined,
   PlayCircleOutlined,
   RedoOutlined,
   SearchOutlined,
@@ -401,7 +401,7 @@ const instanceOperations = [
   },
   {
     title: t("TXT_CODE_b1dedda3"),
-    icon: PauseCircleOutlined,
+    icon: PoweroffOutlined,
     click: () => batchOperation("stop")
   },
   {

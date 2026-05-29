@@ -31,7 +31,7 @@ import {
   LaptopOutlined,
   LoadingOutlined,
   MoneyCollectOutlined,
-  PauseCircleOutlined,
+  PoweroffOutlined,
   PlayCircleOutlined,
   RedoOutlined
 } from "@ant-design/icons-vue";
@@ -125,7 +125,7 @@ const quickOperations = computed(() =>
     },
     {
       title: t("TXT_CODE_b1dedda3"),
-      icon: PauseCircleOutlined,
+      icon: PoweroffOutlined,
       type: "default",
       click: async () => {
         try {

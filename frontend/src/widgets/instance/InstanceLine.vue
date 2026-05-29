@@ -16,7 +16,7 @@ import {
   DeleteOutlined,
   ExclamationCircleOutlined,
   FrownOutlined,
-  PauseCircleOutlined,
+  PoweroffOutlined,
   PlayCircleOutlined,
   RedoOutlined,
   UserOutlined
@@ -183,7 +183,7 @@ const toInstanceTerminal = async () => {
           :loading="stopLoading"
           @click.stop="execInstanceAction('stop')"
         >
-          <PauseCircleOutlined style="font-size: 13px" />
+          <PoweroffOutlined style="font-size: 13px" />
         </a-button>
         <a-button
           size="small"
