@@ -26,6 +26,21 @@ export interface IBootstrapResult {
   startCommand: string;
 }
 
+// Offline fallback mapping of a Minecraft version to the Java major it needs.
+// The authoritative source (Mojang's per-version javaVersion.majorVersion) is
+// consulted first; this covers the case where that fetch fails.
+export function staticJavaMajor(mc: string): number {
+  const p = String(mc || "")
+    .split(".")
+    .map((n) => parseInt(n, 10));
+  const minor = p[1] || 0;
+  const patch = p[2] || 0;
+  if (minor >= 21) return 21; // 1.21+
+  if (minor === 20 && patch >= 5) return 21; // 1.20.5 / 1.20.6
+  if (minor >= 17) return 17; // 1.17 - 1.20.4
+  return 8; // <= 1.16
+}
+
 // Recursively find the first file whose basename matches `name`, up to maxDepth.
 function findFile(dir: string, name: string, maxDepth = 8): string | undefined {
   if (maxDepth < 0 || !fs.existsSync(dir)) return undefined;
@@ -60,6 +75,11 @@ export class ModloaderBootstrap {
   private process?: ChildProcessWithoutNullStreams;
   private pid?: number;
   private aborted = false;
+  // Resolved at the start of run(): the java token baked into the start command
+  // ("{mcsm_java}" when we provisioned a specific runtime, else "java") and the
+  // real java executable path used to spawn loader installers.
+  private startJava = "java";
+  private installerJava = "java";
 
   constructor(private input: IBootstrapInput) {}
 
@@ -89,6 +109,68 @@ export class ModloaderBootstrap {
   private async fetchJson<T>(url: string): Promise<T> {
     const res = await axios.get(url, { headers: getCommonHeaders(url), timeout: 20000 });
     return res.data as T;
+  }
+
+  // The java token to embed in the generated start command. When we've assigned
+  // a managed runtime, use the {mcsm_java} placeholder so it resolves to that
+  // runtime at launch (and survives Java path changes); otherwise plain "java".
+  private startJavaToken(): string {
+    return this.input.instance.config.java?.id ? "{mcsm_java}" : "java";
+  }
+
+  // Find the Java major version this Minecraft version needs. Prefer Mojang's
+  // authoritative javaVersion.majorVersion (future-proof: if a future MC needs
+  // Java 25, this returns 25), falling back to the offline mapping.
+  private async resolveRequiredJavaMajor(): Promise<number> {
+    const fallback = staticJavaMajor(this.input.mcVersion);
+    try {
+      const manifest = await this.fetchJson<any>(
+        "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+      );
+      const ver = manifest.versions?.find((v: any) => v.id === this.input.mcVersion);
+      if (ver?.url) {
+        const j = await this.fetchJson<any>(ver.url);
+        const mv = Number(j?.javaVersion?.majorVersion);
+        if (Number.isFinite(mv) && mv > 0) return mv;
+      }
+    } catch {
+      // network/parse failure — use the offline mapping
+    }
+    return fallback;
+  }
+
+  // Make sure a Java runtime matching this pack is available, downloading one if
+  // needed, and record it on the instance config so the start command uses it.
+  private async ensureJava() {
+    // Respect an explicit user choice.
+    if (this.input.instance.config.java?.id) return;
+    if (!this.input.mcVersion) return;
+
+    this.println($t("TXT_CODE_modpack.javaResolving"));
+    const major = await this.resolveRequiredJavaMajor();
+    if (!major) return;
+
+    // If the daemon image's bundled Java already matches, just use it — no point
+    // downloading a second copy of (typically) Java 21.
+    const sys = await javaManager.getSystemJavaMajor();
+    if (sys && sys === major) {
+      this.println($t("TXT_CODE_modpack.javaUsingSystem", { ver: String(major) }));
+      return;
+    }
+
+    try {
+      const id = await javaManager.ensureJavaMajor(major, (m) => this.println(m));
+      if (id) {
+        const cfg = this.input.instance.config;
+        cfg.java = { ...(cfg.java || {}), id };
+        this.println($t("TXT_CODE_modpack.javaSelected", { ver: String(major) }));
+      }
+    } catch (e: any) {
+      this.input.instance.println(
+        "WARN",
+        $t("TXT_CODE_modpack.javaAutoFailed", { err: e?.message || String(e) })
+      );
+    }
   }
 
   private println(text: string) {
@@ -132,7 +214,8 @@ export class ModloaderBootstrap {
   }
 
   // Build a start command from already-present server artifacts (CF server packs, post-install layout).
-  private detectStartFromExisting(javaExe: string): string | undefined {
+  private detectStartFromExisting(): string | undefined {
+    const javaExe = this.startJava;
     const cwd = this.cwd();
     // Forge/NeoForge 1.17+ args files
     const argsName = os.platform() === "win32" ? "win_args.txt" : "unix_args.txt";
@@ -178,6 +261,12 @@ export class ModloaderBootstrap {
     return undefined;
   }
 
+  // The script-based start commands (CF run.sh/startserver.sh) invoke the system
+  // `java` internally, so a provisioned runtime can't be injected there.
+  private isScriptStart(cmd?: string): boolean {
+    return !!cmd && /(^|\s)(bash\s+)?\.?\/?[\w-]+\.(sh|bat)\b/i.test(cmd);
+  }
+
   private findInstallerJar(): string | undefined {
     return findTopFile(this.cwd(), /installer.*\.jar$/i) || findTopFile(this.cwd(), /-installer\.jar$/i);
   }
@@ -198,12 +287,12 @@ export class ModloaderBootstrap {
     await downloadManager.downloadFromUrl(url, target);
   }
 
-  private async bootstrapVanilla(javaExe: string): Promise<IBootstrapResult> {
+  private async bootstrapVanilla(): Promise<IBootstrapResult> {
     await this.downloadVanillaServer();
-    return { startCommand: `${javaExe} ${this.memArgs()} -jar server.jar nogui` };
+    return { startCommand: `${this.startJava} ${this.memArgs()} -jar server.jar nogui` };
   }
 
-  private async bootstrapFabricLike(javaExe: string, kind: "fabric" | "quilt"): Promise<IBootstrapResult> {
+  private async bootstrapFabricLike(kind: "fabric" | "quilt"): Promise<IBootstrapResult> {
     const cwd = this.cwd();
     const mc = this.input.mcVersion;
     const loaderVer = this.input.loaderVersion;
@@ -221,10 +310,10 @@ export class ModloaderBootstrap {
     const jarUrl = `${meta}/versions/loader/${mc}/${loaderVer}/${installerVer}/server/jar`;
     this.println($t("TXT_CODE_modpack.fetchLoader", { loader: kind, version: loaderVer }));
     await downloadManager.downloadFromUrl(jarUrl, path.join(cwd, launchJar));
-    return { startCommand: `${javaExe} ${this.memArgs()} -jar ${launchJar} nogui` };
+    return { startCommand: `${this.startJava} ${this.memArgs()} -jar ${launchJar} nogui` };
   }
 
-  private async bootstrapForgeLike(javaExe: string, kind: "forge" | "neoforge"): Promise<IBootstrapResult> {
+  private async bootstrapForgeLike(kind: "forge" | "neoforge"): Promise<IBootstrapResult> {
     const cwd = this.cwd();
     const mc = this.input.mcVersion;
     const lv = this.input.loaderVersion;
@@ -243,7 +332,7 @@ export class ModloaderBootstrap {
     await downloadManager.downloadFromUrl(installerUrl, installerPath);
 
     this.println($t("TXT_CODE_modpack.runInstaller"));
-    await this.runJar(javaExe, "installer.jar", ["--installServer"]);
+    await this.runJar(this.installerJava, "installer.jar", ["--installServer"]);
 
     // cleanup installer artifacts
     for (const f of ["installer.jar", "installer.jar.log"]) {
@@ -254,16 +343,46 @@ export class ModloaderBootstrap {
       }
     }
 
-    const start = this.detectStartFromExisting(javaExe);
+    const start = this.detectStartFromExisting();
     if (!start) throw new Error($t("TXT_CODE_modpack.noStartArtifact"));
     return { startCommand: start };
   }
 
   public async run(): Promise<IBootstrapResult> {
-    const javaExe = await this.javaCmd();
+    // First classify what kind of start the pack already provides (a cheap fs
+    // probe; the java token doesn't affect classification).
+    this.startJava = "java";
+    this.installerJava = "java";
+    let start = this.detectStartFromExisting();
 
-    // 1) Pack may already ship runnable artifacts (CF server packs)
-    let start = this.detectStartFromExisting(javaExe);
+    // If the pack ships a runnable script (CF run.sh/startserver.sh), the script
+    // invokes the system `java` itself — a managed runtime can't be injected, so
+    // don't provision one. Warn only if the system Java likely won't work.
+    if (start && this.isScriptStart(start)) {
+      try {
+        const major = staticJavaMajor(this.input.mcVersion);
+        const sys = await javaManager.getSystemJavaMajor();
+        if (major && sys && sys !== major) {
+          this.input.instance.println(
+            "WARN",
+            $t("TXT_CODE_modpack.javaWarn", { mc: this.input.mcVersion })
+          );
+        }
+      } catch {
+        // ignore — classification only
+      }
+      this.println($t("TXT_CODE_modpack.startDetected", { cmd: start }));
+      return { startCommand: start };
+    }
+
+    // Otherwise we control the java invocation — provision the right Java first
+    // so both the loader installer and the start command use it.
+    await this.ensureJava();
+    this.installerJava = await this.javaCmd();
+    this.startJava = this.startJavaToken();
+
+    // 1) Re-detect now that the java token may have changed.
+    start = this.detectStartFromExisting();
     if (start) {
       this.println($t("TXT_CODE_modpack.startDetected", { cmd: start }));
       return { startCommand: start };
@@ -273,13 +392,13 @@ export class ModloaderBootstrap {
     const bundled = this.findInstallerJar();
     if (bundled) {
       this.println($t("TXT_CODE_modpack.runInstaller"));
-      await this.runJar(javaExe, path.basename(bundled), ["--installServer"]);
+      await this.runJar(this.installerJava, path.basename(bundled), ["--installServer"]);
       try {
         await fs.remove(bundled);
       } catch {
         // ignore
       }
-      start = this.detectStartFromExisting(javaExe);
+      start = this.detectStartFromExisting();
       if (start) {
         this.println($t("TXT_CODE_modpack.startDetected", { cmd: start }));
         return { startCommand: start };
@@ -291,23 +410,17 @@ export class ModloaderBootstrap {
     switch (this.input.loader) {
       case "forge":
       case "neoforge":
-        result = await this.bootstrapForgeLike(javaExe, this.input.loader);
+        result = await this.bootstrapForgeLike(this.input.loader);
         break;
       case "fabric":
-        result = await this.bootstrapFabricLike(javaExe, "fabric");
+        result = await this.bootstrapFabricLike("fabric");
         break;
       case "quilt":
-        result = await this.bootstrapFabricLike(javaExe, "quilt");
+        result = await this.bootstrapFabricLike("quilt");
         break;
       default:
-        result = await this.bootstrapVanilla(javaExe);
+        result = await this.bootstrapVanilla();
         break;
-    }
-
-    // Java-version mismatch warning for old packs
-    const minor = Number(this.input.mcVersion.split(".")[1] || "0");
-    if (minor && minor < 17 && !this.input.instance.config.java?.id) {
-      this.input.instance.println("WARN", $t("TXT_CODE_modpack.javaWarn", { mc: this.input.mcVersion }));
     }
 
     this.println($t("TXT_CODE_modpack.startDetected", { cmd: result.startCommand }));

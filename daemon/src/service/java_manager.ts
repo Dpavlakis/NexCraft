@@ -1,16 +1,23 @@
 import axios from "axios";
+import { spawn } from "child_process";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
+import { extract } from "tar";
+import { URL } from "url";
 import StorageSubsystem from "../common/system_storage";
 import { JavaInfo } from "../entity/commands/java/java_manager";
 import { globalConfiguration } from "../entity/config";
 import { $t } from "../i18n";
+import downloadManager from "./download_manager";
+import logger from "./log";
+import FileManager from "./system_file";
 import InstanceSubsystem from "./system_instance";
 
 class JavaManager {
   private javaDataDir = "";
   public readonly javaList = new Map<string, IJavaRuntime>();
+  private _sysMajor?: number;
 
   constructor() {
     let javaDataDir = path.join(process.cwd(), "data/JavaData");
@@ -173,6 +180,135 @@ class JavaManager {
     );
 
     return `"${javaRuntimePath}"`;
+  }
+
+  // Download + extract a Java runtime into data/JavaData/<fullname>. Shared by
+  // the manual Java Manager (download router) and the automatic provisioning
+  // used when installing a modpack that needs a specific Java version.
+  async downloadAndInstall(info: JavaInfo, log?: (m: string) => void) {
+    info.downloading = true;
+    const javaPath = path.join(this.javaDataDir, info.fullname);
+    fs.mkdirsSync(javaPath);
+    // Persist a "downloading" marker so a crash mid-download is cleaned up on
+    // the next startup (loadJavaList removes entries still flagged downloading).
+    StorageSubsystem.store(`JavaData/${info.fullname}`, "java_info", {
+      name: info.name,
+      path: info.path,
+      version: info.version,
+      installTime: info.installTime,
+      downloading: true
+    });
+    this.javaList.set(info.fullname, { info, path: javaPath, usingInstances: [] });
+
+    try {
+      const downloadUrl = await this.getJavaDownloadUrl(info);
+      if (!downloadUrl) throw new Error($t("TXT_CODE_4b0f31b4"));
+
+      logger.info(`Download Java: ${downloadUrl} --> ${info.fullname}`);
+      const fileName = path.basename(new URL(downloadUrl).pathname);
+      const filePath = path.join(javaPath, fileName);
+      await downloadManager.downloadFromUrl(downloadUrl, filePath);
+
+      if (fileName.endsWith(".zip")) {
+        const fileManager = new FileManager(javaPath, "UTF-8");
+        await fileManager.unzip(fileName, ".", "UTF-8");
+        const extractDir = path.join(javaPath, path.basename(fileName, ".zip"));
+        if (fs.existsSync(extractDir) && (await fs.stat(extractDir)).isDirectory()) {
+          for (const file of await fs.readdir(extractDir)) {
+            await fs.move(path.join(extractDir, file), path.join(javaPath, file));
+          }
+          await fs.remove(extractDir);
+        }
+      } else if (fileName.endsWith(".tar.gz")) {
+        await extract({ file: filePath, cwd: javaPath, strip: 1 });
+      }
+      // Remove the downloaded archive once extracted to save disk space.
+      try {
+        await fs.remove(filePath);
+      } catch {
+        // ignore
+      }
+
+      logger.info(`Install Env Success: ${info.fullname}`);
+      info.downloading = false;
+      this.updateJavaInfo(info);
+    } catch (error: any) {
+      logger.warn(`Install Env Error: ${error?.message}`);
+      await this.removeJava(info.fullname).catch(() => {});
+      throw error;
+    }
+  }
+
+  private majorOf(v?: string): number {
+    if (!v) return 0;
+    const parts = String(v)
+      .split(".")
+      .map((n) => parseInt(n, 10));
+    let m = parts[0] || 0;
+    if (m === 1 && parts[1]) m = parts[1]; // "1.8" -> 8
+    return Number.isFinite(m) ? m : 0;
+  }
+
+  private async waitUntilReady(fullname: string, timeoutMs = 5 * 60 * 1000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const rt = this.javaList.get(fullname);
+      if (!rt || !rt.info.downloading) return;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+
+  // Detect the major version of the `java` on PATH (the daemon image's bundled
+  // JDK), cached. Used to skip an auto-download when the system Java already
+  // matches what the pack needs.
+  async getSystemJavaMajor(): Promise<number | undefined> {
+    if (this._sysMajor !== undefined) return this._sysMajor || undefined;
+    try {
+      const out = await new Promise<string>((resolve) => {
+        let s = "";
+        const p = spawn("java", ["-version"]);
+        p.stdout.on("data", (d) => (s += d.toString()));
+        p.stderr.on("data", (d) => (s += d.toString()));
+        p.on("error", () => resolve(""));
+        p.on("exit", () => resolve(s));
+      });
+      const m = out.match(/version "(\d+)(?:\.(\d+))?/);
+      let major = 0;
+      if (m) {
+        major = Number(m[1]);
+        if (major === 1 && m[2]) major = Number(m[2]); // 1.8 -> 8
+      }
+      this._sysMajor = major;
+      return major || undefined;
+    } catch {
+      this._sysMajor = 0;
+      return undefined;
+    }
+  }
+
+  // Ensure a Java runtime with the given major version exists, downloading a
+  // Zulu build if necessary. Returns the runtime id (fullname) to assign to an
+  // instance's config.java.id, or undefined on failure.
+  async ensureJavaMajor(major: number, log?: (m: string) => void): Promise<string | undefined> {
+    if (!major || !Number.isFinite(major)) return undefined;
+
+    // Already have a matching runtime?
+    for (const rt of this.javaList.values()) {
+      if (rt.info.downloading) continue;
+      if (this.majorOf(rt.info.version) === major) return rt.info.fullname;
+    }
+
+    const info = new JavaInfo("zulu", Date.now(), String(major));
+    // A matching download already in flight (parallel install)? Wait for it.
+    if (this.exists(info.fullname)) {
+      await this.waitUntilReady(info.fullname);
+      const rt = this.getJava(info.fullname);
+      return rt && !rt.info.downloading ? info.fullname : undefined;
+    }
+
+    log?.($t("TXT_CODE_modpack.javaDownloading", { ver: String(major) }));
+    await this.downloadAndInstall(info, log);
+    return this.exists(info.fullname) ? info.fullname : undefined;
   }
 
   async removeJava(id: string) {
