@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import dgram from "dgram";
 import fs from "fs-extra";
 import net from "net";
 import path from "path";
@@ -6,7 +7,8 @@ import StorageSubsystem from "../common/system_storage";
 import type Instance from "../entity/instance/instance";
 import InstanceSubsystem from "./system_instance";
 
-const PORT_KEYS = ["server-port", "query.port", "rcon.port"];
+// server-portv6 is Bedrock's IPv6 UDP port; include it so it's counted as used.
+const PORT_KEYS = ["server-port", "query.port", "rcon.port", "server-portv6"];
 
 function readPortsFromProps(file: string): number[] {
   if (!fs.existsSync(file)) return [];
@@ -64,6 +66,54 @@ function upsertProp(txt: string, key: string, value: string): string {
   if (re.test(txt)) return txt.replace(re, `${key}=${value}`);
   const prefix = txt && !txt.endsWith("\n") ? txt + "\n" : txt;
   return `${prefix}${key}=${value}\n`;
+}
+
+// Check whether a UDP port is free on the host (Bedrock uses UDP).
+function isUdpPortFreeOnOs(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const sock = dgram.createSocket("udp4");
+    sock.once("error", () => resolve(false));
+    sock.once("listening", () => sock.close(() => resolve(true)));
+    sock.bind(port, "0.0.0.0");
+  });
+}
+
+// Assign a free Bedrock port pair (IPv4 `server-port` + IPv6 `server-portv6`)
+// starting at 19132, skipping ports used by other instances. Bedrock is UDP, so
+// we OS-check via dgram. Returns the chosen IPv4 port.
+export async function assignFreeBedrockPort(instance: Instance): Promise<number> {
+  const used = getUsedMcPorts(instance.instanceUuid);
+  let port = 19132;
+  for (let p = 19132; p < 19132 + 2000; p += 2) {
+    if (used.has(p) || used.has(p + 1)) continue;
+    if (await isUdpPortFreeOnOs(p)) {
+      port = p;
+      break;
+    }
+  }
+  used.add(port);
+  used.add(port + 1);
+
+  const file = path.join(instance.absoluteCwdPath(), "server.properties");
+  let txt = "";
+  if (fs.existsSync(file)) {
+    try {
+      txt = fs.readFileSync(file, "utf-8");
+    } catch {
+      txt = "";
+    }
+  }
+  txt = upsertProp(txt, "server-port", String(port));
+  txt = upsertProp(txt, "server-portv6", String(port + 1));
+  fs.writeFileSync(file, txt);
+
+  try {
+    if (instance.config.pingConfig) instance.config.pingConfig.port = port;
+    StorageSubsystem.store("InstanceConfig", instance.instanceUuid, instance.config);
+  } catch {
+    // ignore
+  }
+  return port;
 }
 
 // Assign a free port to an instance by writing server-port + query.port into

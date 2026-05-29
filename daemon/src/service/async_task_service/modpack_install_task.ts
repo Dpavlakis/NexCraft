@@ -9,7 +9,7 @@ import InstanceConfig from "../../entity/instance/Instance_config";
 import { $t } from "../../i18n";
 import downloadManager from "../download_manager";
 import javaManager from "../java_manager";
-import { assignFreeMcPort } from "../mc_port";
+import { assignFreeBedrockPort, assignFreeMcPort } from "../mc_port";
 import { ModloaderBootstrap, staticJavaMajor, type ModLoader } from "../modloader_bootstrap";
 import {
   clearForReset,
@@ -258,6 +258,15 @@ export class ModpackInstallTask extends AsyncTask {
       if (fs.existsSync(bin)) await fs.chmod(bin, 0o755);
     } catch {
       // non-fatal
+    }
+
+    // Auto-assign a free UDP port pair so multiple Bedrock servers don't all
+    // sit on 19132 (mirrors the Java port auto-assignment).
+    try {
+      const port = await assignFreeBedrockPort(inst);
+      inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
+    } catch {
+      // non-fatal — user can set the port manually
     }
     // The daemon spawns argv[0] directly, so wrap in `sh -c` to set
     // LD_LIBRARY_PATH; `exec` replaces the shell so stdin (the "stop" command)
