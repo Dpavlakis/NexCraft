@@ -76,10 +76,16 @@ router.post(
   async (ctx) => {
     const daemonId = String(ctx.query.daemonId);
     const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
-    const response = await new RemoteRequest(remoteService).request("java_manager/download", {
-      name: ctx.request.body.name,
-      version: ctx.request.body.version
-    });
+    const response = await new RemoteRequest(remoteService).request(
+      "java_manager/download",
+      {
+        name: ctx.request.body.name,
+        version: ctx.request.body.version
+      },
+      // azul's metadata API can be slow; allow more time than the daemon's 15s call
+      // (kept under the frontend's 30s axios default so the chain is ordered)
+      20000
+    );
     ctx.body = response;
   }
 );

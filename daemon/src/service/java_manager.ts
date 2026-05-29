@@ -83,7 +83,9 @@ class JavaManager {
           "https://api.azul.com/metadata/v1/zulu/packages/?java_package_type=jdk&javafx_bundled=true&release_status=ga&availability_types=CA&certifications=tck&page=1&page_size=2" +
           `&java_version=${info.version}&os=${platform}&arch=${os.arch()}`;
         const response = await axios.get(url, {
-          timeout: 1000 * 3
+          // azul's metadata API is often slow to respond; 3s was too aggressive
+          // and aborted with ECONNABORTED before a reply arrived.
+          timeout: 1000 * 15
         });
 
         const data = response.data;
