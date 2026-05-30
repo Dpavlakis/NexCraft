@@ -56,3 +56,15 @@ export const queryUsername = useDefineApi<
   url: "/api/auth/query_username",
   method: "GET"
 });
+
+export const updateMyAvatar = useDefineApi<
+  {
+    data: {
+      avatar: string;
+    };
+  },
+  boolean
+>({
+  url: "/api/auth/avatar",
+  method: "PUT"
+});

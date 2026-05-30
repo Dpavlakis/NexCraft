@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import CopyButton from "@/components/CopyButton.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 import { PERMISSION_MAP } from "@/config/const";
 import { t } from "@/lang/i18n";
-import { confirm2FA, setUserApiKey, updatePassword } from "@/services/apis/user";
+import { confirm2FA, setUserApiKey, updateMyAvatar, updatePassword } from "@/services/apis/user";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import { useAppToolsStore } from "@/stores/useAppToolsStore";
+import { fileToAvatarDataUrl } from "@/tools/avatar";
 import { reportErrorMsg } from "@/tools/validator";
 import type { FormInstance } from "ant-design-vue";
 import { message } from "ant-design-vue";
@@ -98,6 +100,41 @@ const disable2FACode = async () => {
   await updateUserInfo();
   formState.qrcode = "";
 };
+
+const avatarUploading = ref(false);
+const avatarInput = ref<HTMLInputElement | null>(null);
+
+const pickAvatar = () => avatarInput.value?.click();
+
+const onAvatarFile = async (e: Event) => {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  try {
+    avatarUploading.value = true;
+    const dataUrl = await fileToAvatarDataUrl(file, 128);
+    await updateMyAvatar().execute({ data: { avatar: dataUrl } });
+    await updateUserInfo();
+    message.success(t("TXT_CODE_d3de39b4"));
+  } catch (error: any) {
+    reportErrorMsg(error.message);
+  } finally {
+    avatarUploading.value = false;
+  }
+};
+
+const removeAvatar = async () => {
+  try {
+    avatarUploading.value = true;
+    await updateMyAvatar().execute({ data: { avatar: "" } });
+    await updateUserInfo();
+  } catch (error: any) {
+    reportErrorMsg(error.message);
+  } finally {
+    avatarUploading.value = false;
+  }
+};
 </script>
 
 <template>
@@ -110,6 +147,33 @@ const disable2FACode = async () => {
   >
     <div>
       <a-form ref="formRef" :model="formState" layout="vertical">
+        <a-form-item :label="t('TXT_CODE_avatar.label')">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <UserAvatar
+              :avatar="state.userInfo?.avatar"
+              :name="state.userInfo?.userName"
+              :size="56"
+            />
+            <a-button :loading="avatarUploading" @click="pickAvatar">
+              {{ t("TXT_CODE_avatar.change") }}
+            </a-button>
+            <a-button
+              v-if="state.userInfo?.avatar"
+              danger
+              :loading="avatarUploading"
+              @click="removeAvatar"
+            >
+              {{ t("TXT_CODE_avatar.remove") }}
+            </a-button>
+            <input
+              ref="avatarInput"
+              type="file"
+              accept="image/png,image/webp,image/jpeg"
+              style="display: none"
+              @change="onAvatarFile"
+            />
+          </div>
+        </a-form-item>
         <a-row>
           <a-col :span="12">
             <a-form-item :label="t('TXT_CODE_eb9fcdad')">
