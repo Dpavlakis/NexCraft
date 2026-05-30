@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "Erişim Anahtarı: {{key}}",
   "TXT_CODE_app.passwordTip": "Anahtar tek kimlik doğrulama yöntemidir. Lütfen MCSManager panelinin daemons bölümünü kullanarak bağlanın.",
   "TXT_CODE_app.portTip": "Genel erişim için {{port}} portunun ve daemon portunun açılması gerekir.",
-  "TXT_CODE_app.reference": "Proje Referansı: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "Proje Referansı: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "Oturum {{ip}} {{uuid}} bağlandı",
   "TXT_CODE_app.sessionDisconnect": "Oturum {{ip}} {{uuid}} bağlantısı kesildi",
   "TXT_CODE_app.started": "Daemon süreci başarıyla başlatıldı",

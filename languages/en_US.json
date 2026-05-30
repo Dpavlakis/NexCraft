@@ -2180,7 +2180,7 @@
   "TXT_CODE_app.password": "Access Key: {{key}}",
   "TXT_CODE_app.passwordTip": "The key is the sole authentication method. Please connect using daemons section of MCSManager panel.",
   "TXT_CODE_app.portTip": "Public access requires opening ports {{port}} and the daemon's port.",
-  "TXT_CODE_app.reference": "Project Reference: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "Project Reference: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "Session {{ip}} {{uuid}} has connected",
   "TXT_CODE_app.sessionDisconnect": "Session {{ip}} {{uuid}} has disconnected",
   "TXT_CODE_app.started": "Daemon process has been successfully started",

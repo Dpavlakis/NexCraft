@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "存取金鑰：{{key}}",
   "TXT_CODE_app.passwordTip": "金鑰作為唯一認證方式，請使用 MCSManager 面板的節點功能連接程式",
   "TXT_CODE_app.portTip": "軟體公網存取需開放連接埠 {{port}} 與守護程式連接埠",
-  "TXT_CODE_app.reference": "專案參考: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "專案參考: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "會話 {{ip}} {{uuid}} 已連線",
   "TXT_CODE_app.sessionDisconnect": "會話 {{ip}} {{uuid}} 已中斷",
   "TXT_CODE_app.started": "守護程式現已成功啟動",

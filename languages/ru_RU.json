@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "Ключ доступа: {{key}}",
   "TXT_CODE_app.passwordTip": "Ключ является единственным способом аутентификации. Пожалуйста, подключитесь, используя раздел демонов в панели MCSManager.",
   "TXT_CODE_app.portTip": "Для общего доступа необходимо открыть порты {{port}} и порт демона.",
-  "TXT_CODE_app.reference": "Ссылка на проект: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "Ссылка на проект: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "Сеанс {{ip}} {{uuid}} подключен",
   "TXT_CODE_app.sessionDisconnect": "Сеанс {{ip}} {{uuid}} отключен",
   "TXT_CODE_app.started": "Процесс демона успешно запущен",

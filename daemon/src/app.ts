@@ -23,22 +23,15 @@ import versionAdapter from "./service/version_adapter";
 initVersionManager();
 const VERSION = getVersion();
 
-console.log(`
-______  _______________________  ___                                         
-___   |/  /_  ____/_  ___/__   |/  /_____ _____________ _______ _____________
-__  /|_/ /_  /    _____ \\__  /|_/ /_  __ \`/_  __ \\  __ \`/_  __ \`/  _ \\_  ___/
-_  /  / / / /___  ____/ /_  /  / / / /_/ /_  / / / /_/ /_  /_/ //  __/  /    
-/_/  /_/  \\____/  /____/ /_/  /_/  \\__,_/ /_/ /_/\\__,_/ _\\__, / \\___//_/     
-                                                        /____/               
-________                                                                     
-___  __ \\_____ ____________ ________________                                 
-__  / / /  __ \`/  _ \\_  __ \`__ \\  __ \\_  __ \\                                
-_  /_/ // /_/ //  __/  / / / / / /_/ /  / / /                                
-/_____/ \\__,_/ \\___//_/ /_/ /_/\\____//_/ /_/                                 
-                                                                             
+console.log(`    _   __          ______           ______
+   / | / /__  _  __/ ____/________ _/ __/ /_
+  /  |/ / _ \\| |/_/ /   / ___/ __ \`/ /_/ __/
+ / /|  /  __/>  </ /___/ /  / /_/ / __/ /_
+/_/ |_/\\___/_/|_|\\____/_/   \\__,_/_/  \\__/
 
- + Copyright ${new Date().getFullYear()} MCSManager Dev <https://github.com/MCSManager>
+ + NexCraft Daemon - per-node agent
  + Version ${VERSION}
+ + Based on MCSManager <https://github.com/MCSManager>
 `);
 
 // Initialize the global configuration service

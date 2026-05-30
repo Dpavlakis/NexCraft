@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "Clé d'accès : {{key}}",
   "TXT_CODE_app.passwordTip": "Comme seule méthode d'authentification, veuillez utiliser la fonction de nœud du panneau MCSManager pour connecter le programme.",
   "TXT_CODE_app.portTip": "L'accès au réseau public du logiciel nécessite l'ouverture du port {{port}} et du port de connexion du démon.",
-  "TXT_CODE_app.reference": "Référence du projet : https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "Référence du projet : https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "La session {{ip}} {{uuid}} est connectée",
   "TXT_CODE_app.sessionDisconnect": "La session {{ip}} {{uuid}} a été interrompue",
   "TXT_CODE_app.started": "Le démon a maintenant démarré avec succès",

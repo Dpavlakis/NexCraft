@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "访问密钥：{{key}}",
   "TXT_CODE_app.passwordTip": "密钥作为唯一认证方式，请使用 MCSManager 面板的节点功能连接程序",
   "TXT_CODE_app.portTip": "软件公网访问需开放端口 {{port}} 与守护进程端口",
-  "TXT_CODE_app.reference": "项目参考: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "项目参考: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "会话 {{ip}} {{uuid}} 已连接",
   "TXT_CODE_app.sessionDisconnect": "会话 {{ip}} {{uuid}} 已断开",
   "TXT_CODE_app.started": "守护进程现已成功启动",

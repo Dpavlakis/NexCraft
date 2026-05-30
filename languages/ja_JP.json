@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "アクセスキー: {{key}}",
   "TXT_CODE_app.passwordTip": "唯一の認証方法として、MCSManager パネルのノード機能を使用してプログラムを接続してください。",
   "TXT_CODE_app.portTip": "ソフトウェアのパブリック ネットワーク アクセスには、ポート {{port}} とデーモン接続ポートを開く必要があります",
-  "TXT_CODE_app.reference": "プロジェクト参照: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "プロジェクト参照: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "セッション {{ip}} {{uuid}} が接続されました",
   "TXT_CODE_app.sessionDisconnect": "セッション {{ip}} {{uuid}} が中断されました",
   "TXT_CODE_app.started": "デーモンが正常に起動しました",

@@ -1826,7 +1826,7 @@
   "TXT_CODE_app.password": "Zugriffsschlüssel: {{key}}",
   "TXT_CODE_app.passwordTip": "Als einzige Authentifizierungsmethode verwenden Sie bitte die Knotenfunktion des MCSManager-Panels, um das Programm zu verbinden.",
   "TXT_CODE_app.portTip": "Für den Zugriff auf das öffentliche Netzwerk der Software ist das Öffnen des Ports {{port}} und des Daemon-Verbindungsports erforderlich",
-  "TXT_CODE_app.reference": "Projektreferenz: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "Projektreferenz: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "Sitzung {{ip}} {{uuid}} ist verbunden",
   "TXT_CODE_app.sessionDisconnect": "Sitzung {{ip}} {{uuid}} wurde unterbrochen",
   "TXT_CODE_app.started": "Der Daemon wurde nun erfolgreich gestartet",

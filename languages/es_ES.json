@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "Clave de acceso: {{key}}",
   "TXT_CODE_app.passwordTip": "Como único método de autenticación, utilice la función de nodo del panel MCSManager para conectar el programa.",
   "TXT_CODE_app.portTip": "El acceso a la red pública de software requiere abrir el puerto {{port}} y el puerto de conexión del demonio",
-  "TXT_CODE_app.reference": "Referencia del proyecto: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "Referencia del proyecto: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "La sesión {{ip}} {{uuid}} está conectada",
   "TXT_CODE_app.sessionDisconnect": "La sesión {{ip}} {{uuid}} ha sido interrumpida",
   "TXT_CODE_app.started": "El demonio ahora se ha iniciado con éxito.",

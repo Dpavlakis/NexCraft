@@ -2151,7 +2151,7 @@
   "TXT_CODE_app.password": "คีย์การเข้าถึง: {{key}}",
   "TXT_CODE_app.passwordTip": "คีย์เป็นวิธีการยืนยันตัวตนเพียงวิธีเดียว กรุณาเชื่อมต่อโดยใช้ส่วน Daemon ของแผงควบคุม MCSManager",
   "TXT_CODE_app.portTip": "การเข้าถึงสาธารณะต้องเปิดพอร์ต {{port}} และพอร์ตของ Daemon",
-  "TXT_CODE_app.reference": "การอ้างอิงโครงการ: https://github.com/mcsmanager",
+  "TXT_CODE_app.reference": "การอ้างอิงโครงการ: https://github.com/Dpavlakis/NexCraft",
   "TXT_CODE_app.sessionConnect": "เซสชัน {{ip}} {{uuid}} ได้เชื่อมต่อแล้ว",
   "TXT_CODE_app.sessionDisconnect": "เซสชัน {{ip}} {{uuid}} ได้ยกเลิกการเชื่อมต่อแล้ว",
   "TXT_CODE_app.started": "กระบวนการ Daemon เริ่มต้นสำเร็จแล้ว",
