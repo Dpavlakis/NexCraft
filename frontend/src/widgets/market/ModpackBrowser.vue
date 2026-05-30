@@ -22,6 +22,7 @@ import {
   type ResetMode
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
+import { LOADER_INFO } from "@/tools/loaderInfo";
 import { modpackBrowseCache } from "./modpackBrowseCache";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
@@ -382,6 +383,7 @@ const loadVersions = async (item: ResultItem) => {
 
 const currentLoaderLabel = () =>
   customLoaders.find((l) => l.value === customLoader.value)?.label || "Vanilla";
+const currentLoaderInfo = computed(() => LOADER_INFO[customLoader.value]);
 
 // Modloaders let the user choose the specific build; others auto-pick latest.
 const MODLOADERS = ["fabric", "quilt", "forge", "neoforge"];
@@ -817,7 +819,23 @@ onBeforeUnmount(() => {
     <a-tabs v-model:activeKey="dialog.tab" class="install-tabs">
       <!-- Details: hero, meta, tags + image-rich description -->
       <a-tab-pane key="details" :tab="t('TXT_CODE_modpack_tab_details')">
-        <div v-if="dialog.item" class="pack-detail">
+        <div v-if="dialog.item && source === 'custom'" class="pack-detail custom-detail">
+          <div class="pack-head">
+            <img v-if="loaderIcon" :src="loaderIcon" class="loader-detail-icon" alt="" />
+            <div class="pack-head-text">
+              <div class="pack-title">{{ currentLoaderLabel() }} {{ dialog.item.id }}</div>
+              <div class="pack-meta">
+                <span>{{ dialog.item.description }}</span>
+                <span v-if="dialog.selectedLoaderVersion"> · {{ dialog.selectedLoaderVersion }}</span>
+              </div>
+              <a v-if="currentLoaderInfo" :href="currentLoaderInfo.url" target="_blank" rel="noopener">
+                {{ t("TXT_CODE_loader_learn_more") }}
+              </a>
+            </div>
+          </div>
+          <p v-if="currentLoaderInfo" class="pack-desc">{{ t(currentLoaderInfo.blurbKey) }}</p>
+        </div>
+        <div v-else-if="dialog.item" class="pack-detail">
           <img
             v-if="dialog.item.icon"
             :src="dialog.item.icon"
@@ -1129,5 +1147,15 @@ onBeforeUnmount(() => {
 .pack-desc-html :deep(th) {
   border: 1px solid var(--color-gray-4, #ddd);
   padding: 4px 6px;
+}
+.custom-detail .loader-detail-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-right: 12px;
+}
+.custom-detail .pack-head {
+  display: flex;
+  align-items: center;
 }
 </style>

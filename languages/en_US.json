@@ -3663,5 +3663,15 @@
   "TXT_CODE_metrics_area_zoom": "Area zoom",
   "TXT_CODE_metrics_reset_zoom": "Reset zoom",
   "TXT_CODE_modpack_memory_hint": "Tip: scroll your mouse wheel over the field to adjust by 1 GB.",
-  "TXT_CODE_terminal_scroll_bottom": "Jump to latest"
+  "TXT_CODE_terminal_scroll_bottom": "Jump to latest",
+  "TXT_CODE_loader_learn_more": "Learn more",
+  "TXT_CODE_loader_blurb_vanilla": "The official Mojang server. No mods or plugins — pure Minecraft.",
+  "TXT_CODE_loader_blurb_paper": "High-performance Spigot fork with broad plugin support and great optimisations.",
+  "TXT_CODE_loader_blurb_purpur": "A Paper fork adding extensive gameplay and config customisation.",
+  "TXT_CODE_loader_blurb_folia": "A Paper fork using regionised multithreading for very large player counts.",
+  "TXT_CODE_loader_blurb_fabric": "Lightweight, fast-updating mod loader popular for performance and tech mods.",
+  "TXT_CODE_loader_blurb_forge": "The long-standing mod loader behind most large modpacks.",
+  "TXT_CODE_loader_blurb_neoforge": "A modern community-driven fork of Forge.",
+  "TXT_CODE_loader_blurb_quilt": "A Fabric-compatible mod loader focused on modularity.",
+  "TXT_CODE_loader_blurb_bedrock": "The official Bedrock Dedicated Server for cross-platform play."
 }
