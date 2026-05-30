@@ -419,7 +419,7 @@ onMounted(async () => {
     <a-row :gutter="[24, 16]">
       <a-col :span="24">
         <BetweenMenus>
-          <template #left>
+          <template v-if="!embeddedInManageModal" #left>
             <a-typography-title v-if="!isPhone" class="mb-0" :level="4">
               <appstore-outlined class="mr-1" />
               {{ t("TXT_CODE_MOD_MANAGER") }}

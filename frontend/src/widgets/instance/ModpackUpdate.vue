@@ -254,7 +254,7 @@ onBeforeUnmount(() => {
     <a-row :gutter="[24, 24]" style="height: 100%">
       <a-col :span="24">
         <BetweenMenus>
-          <template v-if="!isPhone" #left>
+          <template v-if="!isPhone && !embeddedInManageModal" #left>
             <a-typography-title class="mb-0" :level="4">
               <CloudDownloadOutlined />
               {{ cardTitle }}
