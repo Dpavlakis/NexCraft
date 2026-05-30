@@ -33,12 +33,45 @@ export function staticJavaMajor(mc: string): number {
   const p = String(mc || "")
     .split(".")
     .map((n) => parseInt(n, 10));
+  const major = p[0] || 0;
   const minor = p[1] || 0;
   const patch = p[2] || 0;
+  // Post-"1.x" version scheme (e.g. "26.1.2"): a modern release whose exact Java
+  // we can't know offline. Default high (never Java 8); the Mojang-manifest
+  // lookup (preferred, see resolveJavaMajorForMc) returns the precise value
+  // (e.g. 25) when online.
+  if (major !== 1) return 21;
   if (minor >= 21) return 21; // 1.21+
   if (minor === 20 && patch >= 5) return 21; // 1.20.5 / 1.20.6
   if (minor >= 17) return 17; // 1.17 - 1.20.4
   return 8; // <= 1.16
+}
+
+// Shared HTTP helper for the standalone Java resolver below.
+async function fetchJsonUrl<T>(url: string): Promise<T> {
+  const res = await axios.get(url, { headers: getCommonHeaders(url), timeout: 20000 });
+  return res.data as T;
+}
+
+// Resolve the Java major a Minecraft version needs, preferring Mojang's
+// authoritative per-version javaVersion.majorVersion and falling back to the
+// offline mapping. Shared by the modloader bootstrap and the server-jar path.
+export async function resolveJavaMajorForMc(mc: string): Promise<number> {
+  const fallback = staticJavaMajor(mc);
+  try {
+    const manifest = await fetchJsonUrl<any>(
+      "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+    );
+    const ver = manifest.versions?.find((v: any) => v.id === mc);
+    if (ver?.url) {
+      const j = await fetchJsonUrl<any>(ver.url);
+      const mv = Number(j?.javaVersion?.majorVersion);
+      if (Number.isFinite(mv) && mv > 0) return mv;
+    }
+  } catch {
+    // network/parse failure — use the offline mapping
+  }
+  return fallback;
 }
 
 // Recursively find the first file whose basename matches `name`, up to maxDepth.
@@ -162,21 +195,7 @@ export class ModloaderBootstrap {
   // authoritative javaVersion.majorVersion (future-proof: if a future MC needs
   // Java 25, this returns 25), falling back to the offline mapping.
   private async resolveRequiredJavaMajor(): Promise<number> {
-    const fallback = staticJavaMajor(this.input.mcVersion);
-    try {
-      const manifest = await this.fetchJson<any>(
-        "https://launchermeta.mojang.com/mc/game/version_manifest.json"
-      );
-      const ver = manifest.versions?.find((v: any) => v.id === this.input.mcVersion);
-      if (ver?.url) {
-        const j = await this.fetchJson<any>(ver.url);
-        const mv = Number(j?.javaVersion?.majorVersion);
-        if (Number.isFinite(mv) && mv > 0) return mv;
-      }
-    } catch {
-      // network/parse failure — use the offline mapping
-    }
-    return fallback;
+    return resolveJavaMajorForMc(this.input.mcVersion);
   }
 
   // Make sure a Java runtime matching this pack is available, downloading one if

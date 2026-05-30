@@ -10,7 +10,7 @@ import { $t } from "../../i18n";
 import downloadManager from "../download_manager";
 import javaManager from "../java_manager";
 import { assignFreeBedrockPort, assignFreeMcPort } from "../mc_port";
-import { ModloaderBootstrap, staticJavaMajor, type ModLoader } from "../modloader_bootstrap";
+import { ModloaderBootstrap, resolveJavaMajorForMc, type ModLoader } from "../modloader_bootstrap";
 import {
   clearForReset,
   downloadFtbFiles,
@@ -247,7 +247,7 @@ export class ModpackInstallTask extends AsyncTask {
 
     let javaToken = "java";
     try {
-      const major = staticJavaMajor(mc);
+      const major = await resolveJavaMajorForMc(mc);
       const sys = await javaManager.getSystemJavaMajor();
       if (major && (!sys || sys !== major)) {
         const id = await javaManager.ensureJavaMajor(major, (m) => inst.println("INFO", m));

@@ -451,11 +451,22 @@ export default class Instance extends EventEmitter {
     if (this.javaFixMajor > 0) return; // already detected this start
     const text = (this.javaErrTail + chunk).slice(-2048);
     this.javaErrTail = text;
-    if (!/UnsupportedClassVersionError/i.test(text)) return;
-    const m = text.match(/class file version (\d+)/i);
-    if (!m) return;
-    const major = parseInt(m[1], 10) - 44; // 52->8, 61->17, 65->21, 69->25
-    if (major >= 8 && major <= 99) this.javaFixMajor = major;
+    // (a) JVM class-file version mismatch (modloaders/vanilla crash this way).
+    if (/UnsupportedClassVersionError/i.test(text)) {
+      const m = text.match(/class file version (\d+)/i);
+      if (m) {
+        const major = parseInt(m[1], 10) - 44; // 52->8, 61->17, 65->21, 69->25
+        if (major >= 8 && major <= 99) this.javaFixMajor = major;
+      }
+      return;
+    }
+    // (b) Paper/Purpur/Folia print a friendly notice and exit cleanly instead
+    //     of throwing, e.g. "requires running the server with Java 25 or above".
+    const friendly = text.match(/Java (\d+) or (?:above|newer|higher)/i);
+    if (friendly) {
+      const major = parseInt(friendly[1], 10);
+      if (major >= 8 && major <= 99) this.javaFixMajor = major;
+    }
   }
 
   // Auto-provision the required Java, bind it to the instance, and restart once.
