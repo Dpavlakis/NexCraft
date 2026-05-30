@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { LayoutCard } from "@/types";
 import { NEW_CARD_TYPE } from "@/types/index";
-import { computed, ref, shallowRef, watch, type Component } from "vue";
+import { computed, provide, ref, shallowRef, watch, type Component } from "vue";
 import { useRoute } from "vue-router";
 
 // A large centered modal that hosts a full-page instance widget (Players,
@@ -51,6 +51,10 @@ watch(
     if (open.value) open.value = false;
   }
 );
+
+// Hosted widgets hide their own "Return to console" button when embedded — the
+// modal's X / Esc / click-outside already closes back to the instance page.
+provide("embeddedInManageModal", true);
 
 defineExpose({ openView });
 </script>

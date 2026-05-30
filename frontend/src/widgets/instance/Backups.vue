@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { inject } from "vue";
+const embeddedInManageModal = inject<boolean>("embeddedInManageModal", false);
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
 import { useAppRouters } from "@/hooks/useAppRouters";
@@ -319,7 +321,7 @@ onBeforeUnmount(() => {
             </a-typography-title>
           </template>
           <template #right>
-            <a-button @click="toConsole">
+            <a-button v-if="!embeddedInManageModal" @click="toConsole">
               <template #icon><RollbackOutlined /></template>
               {{ t("TXT_CODE_backup_to_console") }}
             </a-button>

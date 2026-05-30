@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { inject } from "vue";
+const embeddedInManageModal = inject<boolean>("embeddedInManageModal", false);
 import CardPanel from "@/components/CardPanel.vue";
 import { useAppRouters } from "@/hooks/useAppRouters";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
@@ -96,7 +98,7 @@ onMounted(async () => {
             </a-typography-title>
           </template>
           <template #right>
-            <a-button @click="toConsole">
+            <a-button v-if="!embeddedInManageModal" @click="toConsole">
               <template #icon><RollbackOutlined /></template>
               {{ t("TXT_CODE_backup_to_console") }}
             </a-button>
