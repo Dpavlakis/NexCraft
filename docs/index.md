@@ -21,7 +21,7 @@ hero:
 
 features:
   - title: Modpack browser
-    details: CurseForge / Modrinth / Custom, with live search, version pickers, and one-click install as a runnable server.
+    details: CurseForge / Modrinth / FTB / Custom, with live search, version pickers, and one-click install as a runnable server.
   - title: Every major loader
     details: Vanilla, Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quilt — accurate versions pulled from official APIs.
   - title: Update & Reset

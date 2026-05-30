@@ -1,12 +1,13 @@
 # Creating Minecraft Servers
 
-NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Minecraft builder**. Open the **Minecraft** menu (URL `/#/minecraft`) to get started. There are three sources in the left sidebar:
+NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Minecraft builder**. Open the **Minecraft** menu (URL `/#/minecraft`) to get started. There are four sources to choose from:
 
 ![Custom server builder](images/builder-custom.webp)
 
 - **Custom** — build a fresh server for any Minecraft version.
 - **CurseForge** — search and install CurseForge modpacks.
 - **Modrinth** — search and install Modrinth modpacks.
+- **FTB** — search and install Feed The Beast modpacks.
 
 ## Custom (Vanilla / loaders / server software)
 
@@ -20,11 +21,11 @@ NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Mine
 
 The daemon downloads the server, runs any loader bootstrap, assigns a free port, and writes the start command for you.
 
-## CurseForge / Modrinth modpacks
+## CurseForge / Modrinth / FTB modpacks
 
 ![CurseForge modpack browser](images/browser-curseforge.webp)
 
-1. Select **CurseForge** or **Modrinth** and search (or browse the popular list).
+1. Select **CurseForge**, **Modrinth**, or **FTB** and search (or browse the popular list).
 2. Click a pack to open its detail dialog — description, tags, supported versions, and a **Version** picker.
 3. Choose a version, accept the **Minecraft EULA**, set memory, and **Install**.
 
@@ -32,6 +33,7 @@ What happens under the hood:
 
 - **CurseForge:** NexCraft installs the pack's **server pack** file. Packs without a server pack are shown disabled ("no server pack").
 - **Modrinth:** NexCraft installs the full **`.mrpack`** server files (mods + overrides).
+- **FTB:** NexCraft installs the server files listed in the pack's FTB manifest (server-side mods and configs, downloaded from the FTB CDN).
 - The correct **mod loader and version** are resolved automatically from the pack metadata, and a matching **Java** version is provisioned if needed.
 - Known **client-only mods** that crash dedicated servers (e.g. `e4mc` shipped in client optimization packs) are stripped automatically.
 - A **server icon** is generated from the pack's logo, and the **EULA** is accepted on your behalf.

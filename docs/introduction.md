@@ -1,6 +1,6 @@
 # Introduction
 
-Welcome to the NexCraft docs. NexCraft is a self-hosted web panel for running **Minecraft** servers — search and install modpacks from **CurseForge** and **Modrinth**, build custom servers (Vanilla / Paper / Purpur / Folia / Fabric / Forge / NeoForge / Quilt), and manage everything from one dashboard.
+Welcome to the NexCraft docs. NexCraft is a self-hosted web panel for running **Minecraft** servers — search and install modpacks from **CurseForge**, **Modrinth** and **FTB**, build custom servers (Vanilla / Paper / Purpur / Folia / Fabric / Forge / NeoForge / Quilt), and manage everything from one dashboard.
 
 > NexCraft is built on the open-source [MCSManager](https://github.com/MCSManager/MCSManager) panel. For a general-purpose, multi-game/commercial panel, see upstream MCSManager and its docs at <https://docs.mcsmanager.com/>.
 
@@ -16,7 +16,7 @@ Welcome to the NexCraft docs. NexCraft is a self-hosted web panel for running **
 
 | Area | What you get |
 | --- | --- |
-| **Modpack browser** | CurseForge / Modrinth / Custom, live search + version pickers, one-click install as a server |
+| **Modpack browser** | CurseForge / Modrinth / FTB / Custom, live search + version pickers, one-click install as a server |
 | **Loaders** | Vanilla, Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quilt — accurate versions from official APIs |
 | **Update** | Bump an installed pack to a newer version; auto-backup, world preserved |
 | **Reset / Reinstall** | Rebuild an instance with a choice of *auto-backup then wipe*, *full wipe*, or *preserve world* |
