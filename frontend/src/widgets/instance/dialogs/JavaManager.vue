@@ -176,7 +176,8 @@ defineExpose({
 <template>
   <a-modal
     v-model:open="open"
-    width="1000px"
+    width="92%"
+    wrap-class-name="nexcraft-wide-modal"
     centered
     :title="t('TXT_CODE_3fee13ed')"
     :confirm-loading="isLoading"

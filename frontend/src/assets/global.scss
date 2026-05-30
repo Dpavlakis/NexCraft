@@ -196,6 +196,12 @@ html {
   margin-bottom: 16px !important;
 }
 
+// Wide instance dialogs (Java Manager, Event Tasks, Terminal, Instance Settings)
+// use width="92%" + this class so they match the Manage Instance popups' size.
+.nexcraft-wide-modal .ant-modal {
+  max-width: 1500px;
+}
+
 // Override the AntDesign progress bar animation
 .no-animation .ant-progress-bg {
   transition: none !important;

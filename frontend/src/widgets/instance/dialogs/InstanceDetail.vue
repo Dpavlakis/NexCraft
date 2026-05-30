@@ -548,7 +548,8 @@ defineExpose({
     v-model:open="open"
     centered
     :mask-closable="false"
-    :width="isPhone ? '100%' : '1200px'"
+    :width="isPhone ? '100%' : '92%'"
+    wrap-class-name="nexcraft-wide-modal"
     :title="title"
     :confirm-loading="isLoading"
     :ok-text="t('TXT_CODE_abfe9512')"
