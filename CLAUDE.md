@@ -17,7 +17,7 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
   - PowerShell gotcha: each shell starts with a **stale PATH** and cwd resets — prefix commands with `$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` then `Set-Location D:\NexCraft`.
   - The OneDrive copy at `C:\Users\dimit\OneDrive\Documents\MCS` is the old location — work in `D:\NexCraft`.
 - After local checks pass, commit + push to `nexcraft main`; the user pulls on Unraid (`/mnt/user/appdata/nexcraft-src`) and rebuilds the Docker image(s). The Docker build remains the final gate.
-- **Always give the full `docker run` commands in any rebuild instructions**, and say which image changed:
+- **Always paste the FULL copy-paste rebuild block EVERY time a rebuild is suggested** — `cd` + `git pull` + both `docker build` + `docker rm -f` + BOTH `docker run` commands (daemon incl. the `/mnt/user/Backup/Minecraft` backup mount) + `docker ps | grep nexcraft`. NEVER abbreviate with "use the block from before" or omit the run commands. Say which image(s) changed:
   - daemon (`daemon/`, `common/`) → `nexcraft-daemon` (container `nexcraft-daemon`)
   - web (`frontend/`, `panel/`, `languages/`) → `nexcraft-web` (container `nexcraft-web`)
   - The **web build also compiles the daemon** (panel bundles daemon source), so a daemon type error breaks the web build too.
