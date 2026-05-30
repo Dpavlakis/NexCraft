@@ -11,7 +11,7 @@ import { $t } from "../i18n";
 import { ROLE } from "../entity/user";
 import { getInstancesByUuid } from "../service/instance_service";
 import { toBoolean } from "mcsmanager-common";
-import { validateAvatarString } from "../service/user_service";
+import { validateAvatarString, isValidThemeId } from "../service/user_service";
 
 const router = new Router({ prefix: "/auth" });
 
@@ -75,6 +75,22 @@ router.put(
     const avatar = String(ctx.request.body.avatar ?? "");
     validateAvatarString(avatar);
     await userSystem.edit(userUuid, { avatar });
+    ctx.body = true;
+  }
+);
+
+// [Low-level Permission]
+// Update only the current user's theme
+router.put(
+  "/theme",
+  permission({ level: ROLE.USER }),
+  validator({ body: { theme: String } }),
+  async (ctx: Koa.ParameterizedContext) => {
+    const userUuid = getUserUuid(ctx);
+    if (!userUuid) return;
+    const theme = String(ctx.request.body.theme ?? "");
+    if (theme !== "" && !isValidThemeId(theme)) throw new Error("Invalid theme id");
+    await userSystem.edit(userUuid, { theme });
     ctx.body = true;
   }
 );

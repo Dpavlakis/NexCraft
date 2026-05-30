@@ -145,6 +145,7 @@ export async function getInstancesByUuid(
     open2FA: user.open2FA,
     secret: user.secret,
     avatar: user.avatar,
+    theme: user.theme,
     token: ""
   };
 }
