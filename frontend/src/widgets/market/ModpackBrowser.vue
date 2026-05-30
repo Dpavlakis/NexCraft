@@ -756,6 +756,15 @@ onBeforeUnmount(() => {
                 @change="onSortChange"
               />
             </div>
+            <!-- Many recent FTB packs (e.g. StoneBlock 4) ship only through
+                 CurseForge, not FTB's own API — point users there. -->
+            <a-alert
+              v-if="source === 'ftb'"
+              class="mb-12 ftb-note"
+              type="info"
+              show-icon
+              :message="t('TXT_CODE_modpack_ftb_note')"
+            />
 
             <a-spin :spinning="loading">
               <div ref="resultsScrollEl" class="results-scroll" :style="{ maxHeight: scrollMaxHeight }">
