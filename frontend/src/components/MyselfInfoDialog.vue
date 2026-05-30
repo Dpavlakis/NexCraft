@@ -149,6 +149,8 @@ const { currentThemeId, setThemeId } = useAppConfigStore();
 const themeSaving = ref(false);
 
 const chooseTheme = async (id: string) => {
+  if (themeSaving.value || currentThemeId.value === id) return;
+  const prev = currentThemeId.value;
   setThemeId(id); // live preview + localStorage mirror
   try {
     themeSaving.value = true;
@@ -156,6 +158,7 @@ const chooseTheme = async (id: string) => {
     await updateUserInfo();
     message.success(t("TXT_CODE_d3de39b4"));
   } catch (error: any) {
+    setThemeId(prev); // revert the optimistic apply
     reportErrorMsg(error.message);
   } finally {
     themeSaving.value = false;
@@ -207,7 +210,11 @@ const chooseTheme = async (id: string) => {
               :key="th.id"
               class="theme-swatch"
               :class="{ 'theme-swatch-active': currentThemeId === th.id }"
+              role="button"
+              tabindex="0"
               @click="chooseTheme(th.id)"
+              @keydown.enter.prevent="chooseTheme(th.id)"
+              @keydown.space.prevent="chooseTheme(th.id)"
             >
               <span class="theme-bar" :style="{ backgroundImage: th.headerGradient }"></span>
               <span class="theme-dot" :style="{ backgroundColor: th.accent }"></span>
