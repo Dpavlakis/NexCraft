@@ -389,6 +389,73 @@ router.get(
   }
 );
 
+const loaderBuildCache: Record<string, { at: number; data: any[] }> = {};
+
+async function fetchFabricLikeLoaderBuilds(meta: string, mc: string) {
+  const { data } = await axios.get(`${meta}/versions/loader/${mc}`, { timeout: 15000 });
+  return (Array.isArray(data) ? data : []).map((e: any) => {
+    const v = String(e?.loader?.version ?? "");
+    return { id: v, type: /beta|alpha|rc/i.test(v) ? "snapshot" : "release" };
+  });
+}
+
+async function listLoaderBuilds(loader: string, mc: string) {
+  const cacheKey = `${loader}:${mc}`;
+  const cached = loaderBuildCache[cacheKey];
+  if (cached && Date.now() - cached.at < LOADER_MC_TTL) return cached.data;
+
+  let out: any[] = [];
+  if (loader === "fabric") {
+    out = await fetchFabricLikeLoaderBuilds("https://meta.fabricmc.net/v2", mc);
+  } else if (loader === "quilt") {
+    out = await fetchFabricLikeLoaderBuilds("https://meta.quiltmc.org/v3", mc);
+  } else if (loader === "neoforge") {
+    const { data } = await axios.get(
+      "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge",
+      { timeout: 15000 }
+    );
+    const versions: string[] = data?.versions || [];
+    out = versions
+      .filter((v) => neoforgeBuildToMc(v) === mc)
+      .reverse()
+      .map((v) => ({ id: v, type: /beta|alpha|rc/i.test(v) ? "snapshot" : "release" }));
+  } else if (loader === "forge") {
+    const { data } = await axios.get(
+      "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml",
+      { timeout: 20000, responseType: "text" }
+    );
+    const xml = String(data);
+    const re = /<version>([^<]+)<\/version>/g;
+    let m: RegExpExecArray | null;
+    const matches: string[] = [];
+    while ((m = re.exec(xml)) !== null) matches.push(m[1]);
+    out = matches
+      .filter((v) => v.startsWith(`${mc}-`))
+      .map((v) => v.slice(mc.length + 1))
+      .reverse()
+      .map((v) => ({ id: v, type: "release" }));
+  }
+  loaderBuildCache[cacheKey] = { at: Date.now(), data: out };
+  return out;
+}
+
+router.get(
+  "/loader_versions",
+  permission({ level: ROLE.USER }),
+  validator({ query: { loader: String, mc: String } }),
+  async (ctx) => {
+    try {
+      const loader = String(ctx.query.loader).toLowerCase();
+      const mc = String(ctx.query.mc);
+      ctx.body = ["fabric", "quilt", "neoforge", "forge"].includes(loader)
+        ? await listLoaderBuilds(loader, mc)
+        : [];
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
 // Build the install descriptor for a vanilla/loader/server-jar server build.
 async function buildServerDescriptor(b: any) {
   const loader = String(b.loader || "vanilla").toLowerCase();
