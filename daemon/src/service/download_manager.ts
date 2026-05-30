@@ -25,8 +25,20 @@ interface DownloadTask {
 class DownloadManager {
   public tasks: DownloadTask[] = [];
 
+  // Large single files (server packs, JREs) download much faster over several
+  // parallel range requests — CDNs (e.g. Cloudflare) commonly cap throughput per
+  // connection, so one stream tops out well below the link speed.
+  private readonly SEGMENT_MIN_BYTES = 16 * 1024 * 1024;
+  private readonly SEGMENT_COUNT = 8;
+
   public get downloadingCount() {
     return this.tasks.length;
+  }
+
+  private removeTaskSoon(taskId: string) {
+    setTimeout(() => {
+      this.tasks = this.tasks.filter((t) => t.id !== taskId);
+    }, 1000);
   }
 
   public async downloadFromUrl(
@@ -51,87 +63,222 @@ class DownloadManager {
       const dir = path.dirname(targetPath);
       if (!fs.existsSync(dir)) fs.mkdirpSync(dir);
 
-      const response = await this.requestWithRetry(url, controller);
-      const total = parseInt(response.headers["content-length"] || "0");
-      let current = 0;
-      const stream = response.data;
-      const writeStream = createWriteStream(targetPath);
+      const speedLimit = Number(globalConfiguration.config.downloadSpeedRate) || 0;
 
-      task.total = total;
-
-      return new Promise((resolve, reject) => {
-        const onError = (err: Error) => {
-          stream.destroy();
-          writeStream.destroy();
-          const activeTask = this.tasks.find((t) => t.id === taskId);
-          if (activeTask) {
-            activeTask.status = DOWNLOAD_STATUS.ERROR;
-            activeTask.error = err.message;
-          }
-          setTimeout(() => {
-            this.tasks = this.tasks.filter((t) => t.id !== taskId);
-          }, 1000);
-
-          if (err.name === "CanceledError") {
-            resolve();
+      // Prefer a parallel segmented download for large files when not throttled
+      // and the server supports byte ranges; otherwise use a single stream.
+      if (speedLimit <= 0) {
+        const total = await this.probeRangeTotal(url, controller);
+        if (total >= this.SEGMENT_MIN_BYTES) {
+          task.total = total;
+          try {
+            await this.runSegmented(url, targetPath, task, total, controller);
+            if (controller.signal.aborted) {
+              this.removeTaskSoon(taskId);
+              return;
+            }
+            task.current = total;
+            task.status = DOWNLOAD_STATUS.COMPLETED;
+            this.removeTaskSoon(taskId);
             return;
+          } catch (segErr: any) {
+            if (controller.signal.aborted || segErr?.name === "CanceledError") {
+              this.removeTaskSoon(taskId);
+              return;
+            }
+            // Segmented failed mid-way (a range request hiccup) — discard the
+            // partial file and retry the whole thing as a plain single stream.
+            try {
+              await fs.remove(targetPath);
+            } catch {
+              // ignore
+            }
+            task.current = 0;
           }
-          reject(err);
-        };
-
-        const onFinish = () => {
-          const activeTask = this.tasks.find((t) => t.id === taskId);
-          if (activeTask) {
-            activeTask.status = DOWNLOAD_STATUS.COMPLETED;
-            if (total > 0) activeTask.current = total;
-          }
-          setTimeout(() => {
-            this.tasks = this.tasks.filter((t) => t.id !== taskId);
-          }, 1000);
-          resolve();
-        };
-
-        stream.on("data", (chunk: any) => {
-          current += chunk.length;
-          const activeTask = this.tasks.find((t) => t.id === taskId);
-          if (!activeTask) return;
-          activeTask.current = current;
-        });
-
-        stream.on("error", onError);
-        writeStream.on("error", onError);
-        writeStream.on("finish", onFinish);
-
-        const speedLimit = globalConfiguration.config.uploadSpeedRate;
-        if (speedLimit <= 0) {
-          stream.pipe(writeStream);
-          return;
         }
-        const throttleStream = new Throttle({ rate: speedLimit * 64 * 1024 });
-        throttleStream.on("error", onError);
-        stream.pipe(throttleStream).pipe(writeStream);
-      });
-    } catch (err: any) {
-      if (fallbackUrl && !controller.signal.aborted) {
-        this.tasks = this.tasks.filter((t) => t.id !== taskId);
-        return await this.downloadFromUrl(fallbackUrl, targetPath);
       }
 
-      if (err.name === "CanceledError") {
+      await this.runSingleStream(url, targetPath, task, controller, speedLimit);
+      if (controller.signal.aborted) {
+        this.removeTaskSoon(taskId);
+        return;
+      }
+      task.status = DOWNLOAD_STATUS.COMPLETED;
+      if (task.total > 0) task.current = task.total;
+      this.removeTaskSoon(taskId);
+      return;
+    } catch (err: any) {
+      if (controller.signal.aborted || err?.name === "CanceledError") {
         this.tasks = this.tasks.filter((t) => t.id !== taskId);
         return;
       }
-
-      const activeTask = this.tasks.find((t) => t.id === taskId);
-      if (activeTask) {
-        activeTask.status = DOWNLOAD_STATUS.ERROR;
-        activeTask.error = err.message;
-      }
-      setTimeout(() => {
+      if (fallbackUrl) {
         this.tasks = this.tasks.filter((t) => t.id !== taskId);
-      }, 1000);
+        return await this.downloadFromUrl(fallbackUrl, targetPath);
+      }
+      task.status = DOWNLOAD_STATUS.ERROR;
+      task.error = err?.message;
+      this.removeTaskSoon(taskId);
       throw err;
     }
+  }
+
+  // Probe whether the server supports byte ranges; return the total size (0 if
+  // ranges aren't supported, the size is unknown, or the probe failed).
+  private async probeRangeTotal(url: string, controller: AbortController): Promise<number> {
+    try {
+      const resp = await axios({
+        method: "get",
+        url,
+        responseType: "stream",
+        timeout: 60000,
+        headers: { ...getCommonHeaders(url), Range: "bytes=0-0" },
+        maxRedirects: 10,
+        signal: controller.signal,
+        validateStatus: (s) => s === 206 || s === 200
+      });
+      try {
+        resp.data?.destroy?.();
+      } catch {
+        // ignore — we only needed the headers
+      }
+      if (resp.status !== 206) return 0; // server ignored Range → no segmenting
+      const contentRange = String(resp.headers["content-range"] || "");
+      const m = /\/(\d+)\s*$/.exec(contentRange);
+      return m ? parseInt(m[1], 10) || 0 : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  // Download `total` bytes as SEGMENT_COUNT parallel range requests, each writing
+  // to its own offset in the pre-sized target file.
+  private async runSegmented(
+    url: string,
+    targetPath: string,
+    task: DownloadTask,
+    total: number,
+    controller: AbortController
+  ): Promise<void> {
+    const count = this.SEGMENT_COUNT;
+    const partSize = Math.ceil(total / count);
+    // Pre-size the file so each segment can write at its own offset (flags "r+").
+    await fs.ensureFile(targetPath);
+    await fs.truncate(targetPath, total);
+
+    const progress = new Array<number>(count).fill(0);
+    const jobs: Promise<void>[] = [];
+    for (let i = 0; i < count; i++) {
+      const start = i * partSize;
+      if (start >= total) break;
+      const end = Math.min(start + partSize - 1, total - 1);
+      const index = i;
+      jobs.push(
+        this.downloadSegment(url, targetPath, start, end, controller, (got) => {
+          progress[index] = got;
+          task.current = progress.reduce((a, b) => a + b, 0);
+        })
+      );
+    }
+    await Promise.all(jobs);
+  }
+
+  private downloadSegment(
+    url: string,
+    targetPath: string,
+    start: number,
+    end: number,
+    controller: AbortController,
+    onProgress: (got: number) => void
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      axios({
+        method: "get",
+        url,
+        responseType: "stream",
+        timeout: 60000,
+        headers: { ...getCommonHeaders(url), Range: `bytes=${start}-${end}` },
+        maxRedirects: 10,
+        signal: controller.signal,
+        validateStatus: (s) => s === 206
+      })
+        .then((resp) => {
+          const stream = resp.data;
+          const ws = createWriteStream(targetPath, { flags: "r+", start });
+          let got = 0;
+          const fail = (err: any) => {
+            try {
+              stream.destroy();
+            } catch {
+              // ignore
+            }
+            try {
+              ws.destroy();
+            } catch {
+              // ignore
+            }
+            if (err?.name === "CanceledError" || controller.signal.aborted) return resolve();
+            reject(err);
+          };
+          stream.on("data", (chunk: Buffer) => {
+            got += chunk.length;
+            onProgress(got);
+          });
+          stream.on("error", fail);
+          ws.on("error", fail);
+          ws.on("finish", () => resolve());
+          stream.pipe(ws);
+        })
+        .catch((err) => {
+          if (err?.name === "CanceledError" || controller.signal.aborted) return resolve();
+          reject(err);
+        });
+    });
+  }
+
+  // Classic single-connection download (used as a fallback, for small files, or
+  // when a download speed limit is configured).
+  private runSingleStream(
+    url: string,
+    targetPath: string,
+    task: DownloadTask,
+    controller: AbortController,
+    speedLimit: number
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.requestWithRetry(url, controller)
+        .then((response) => {
+          const total = parseInt(response.headers["content-length"] || "0");
+          if (total > 0) task.total = total;
+          let current = 0;
+          const stream = response.data;
+          const writeStream = createWriteStream(targetPath);
+
+          const onError = (err: Error) => {
+            stream.destroy();
+            writeStream.destroy();
+            if (err.name === "CanceledError") return resolve();
+            reject(err);
+          };
+
+          stream.on("data", (chunk: any) => {
+            current += chunk.length;
+            task.current = current;
+          });
+          stream.on("error", onError);
+          writeStream.on("error", onError);
+          writeStream.on("finish", () => resolve());
+
+          if (speedLimit <= 0) {
+            stream.pipe(writeStream);
+            return;
+          }
+          const throttleStream = new Throttle({ rate: speedLimit * 64 * 1024 });
+          throttleStream.on("error", onError);
+          stream.pipe(throttleStream).pipe(writeStream);
+        })
+        .catch((err) => reject(err));
+    });
   }
 
   public stop(targetPath: string) {
