@@ -442,11 +442,16 @@ async function listLoaderBuilds(loader: string, mc: string) {
 router.get(
   "/loader_versions",
   permission({ level: ROLE.USER }),
+  requestConcurrencyLimiter("modpack:loader_versions"),
   validator({ query: { loader: String, mc: String } }),
   async (ctx) => {
     try {
       const loader = String(ctx.query.loader).toLowerCase();
       const mc = String(ctx.query.mc);
+      if (!/^[\w.\-]+$/.test(mc)) {
+        ctx.body = [];
+        return;
+      }
       ctx.body = ["fabric", "quilt", "neoforge", "forge"].includes(loader)
         ? await listLoaderBuilds(loader, mc)
         : [];
