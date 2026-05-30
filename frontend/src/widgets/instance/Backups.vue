@@ -382,7 +382,7 @@ onBeforeUnmount(() => {
                   </a-button>
                   <a-textarea
                     v-model:value="exclusionsText"
-                    :rows="4"
+                    :rows="3"
                     :placeholder="t('TXT_CODE_backup_exclusions_ph')"
                   />
                 </a-form-item>
@@ -454,5 +454,13 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 .ml-8 {
   margin-left: 8px;
+}
+
+// Tighten the settings form so the dialog fits without scrolling.
+:deep(.ant-form-item) {
+  margin-bottom: 12px;
+}
+:deep(.ant-form-item-label) {
+  padding-bottom: 2px;
 }
 </style>
