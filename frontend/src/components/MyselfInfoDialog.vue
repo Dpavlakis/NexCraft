@@ -129,6 +129,7 @@ const removeAvatar = async () => {
     avatarUploading.value = true;
     await updateMyAvatar().execute({ data: { avatar: "" } });
     await updateUserInfo();
+    message.success(t("TXT_CODE_d3de39b4"));
   } catch (error: any) {
     reportErrorMsg(error.message);
   } finally {
