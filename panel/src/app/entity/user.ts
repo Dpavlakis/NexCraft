@@ -28,6 +28,7 @@ export class User implements IUser {
   ssoSub = "";
   ssoBound = false;
   avatar: string = "";
+  theme: string = "";
 }
 
 export enum ROLE {

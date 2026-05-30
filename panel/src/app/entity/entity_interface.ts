@@ -29,6 +29,7 @@ export interface IUser {
   ssoSub?: string;
   ssoBound?: boolean;
   avatar?: string;
+  theme?: string;
 }
 
 export interface ICompleteUser {

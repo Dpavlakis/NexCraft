@@ -22,6 +22,14 @@ export function validateAvatarString(avatar: string): void {
   }
 }
 
+// Known theme ids — kept in sync with the frontend registry
+// (frontend/src/config/themes.ts). The panel can't import frontend code, so
+// this list is duplicated intentionally; update both when adding a theme.
+const THEME_IDS = ["nexcraft", "crafty", "nether", "emerald", "amethyst", "diamond"];
+export function isValidThemeId(id: string): boolean {
+  return THEME_IDS.includes(id);
+}
+
 export class TwoFactorError extends Error {}
 
 class UserSubsystem {
@@ -66,6 +74,10 @@ class UserSubsystem {
     if (config.avatar != null) {
       validateAvatarString(String(config.avatar));
       instance.avatar = String(config.avatar);
+    }
+    if (config.theme != null) {
+      const t = String(config.theme);
+      if (t === "" || isValidThemeId(t)) instance.theme = t;
     }
     if (config.instances) this.setUserInstances(uuid, config.instances);
     if (config.passWord) {
