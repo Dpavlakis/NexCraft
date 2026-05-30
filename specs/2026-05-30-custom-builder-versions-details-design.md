@@ -107,6 +107,30 @@ fabric, forge, neoforge, quilt, bedrock. Blurb text added as i18n keys
 (`TXT_CODE_loader_blurb_<loader>`) so it's translatable; the map holds keys +
 urls. Modpack Details (CF/Modrinth/FTB) keep their existing HTML description.
 
+## Part 4 — Fix Quilt server install + clear "no server build" errors (daemon)
+
+`bootstrapFabricLike(kind)` in `modloader_bootstrap.ts` handles both Fabric and
+Quilt by downloading a prebuilt launch jar from
+`{meta}/versions/loader/{mc}/{loader}/{installer}/server/jar`. Fabric serves
+this; Quilt's meta does not (→ 404). Quilt distributes servers via its
+**installer**, like Forge/NeoForge.
+
+- **Split Quilt into its own flow:** download the Quilt installer jar
+  (`https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-installer/{ver}/quilt-installer-{ver}.jar`,
+  newest stable installer version), then spawn it (reusing the same
+  `spawn`/print streaming the Forge/NeoForge installer path already uses):
+  `java -jar quilt-installer.jar install server {mc} {loader} --install-dir=. --download-server`.
+  Start command: `java -jar quilt-server-launch.jar nogui` (the installer emits
+  this; fall back to `server.jar` detection if the name differs).
+- **Fabric:** unchanged (keep the direct `/server/jar` download).
+- **Clear errors:** wrap loader downloads/installs so a 404 (or missing artifact)
+  surfaces a friendly message — new i18n key `TXT_CODE_modpack.noServerBuild`
+  ("{loader} has no server build for Minecraft {mc} yet — try another version
+  or loader.") — instead of a raw "Request failed with status code 404".
+
+This is the one daemon change in this design; resolution of the explicit
+`loaderVersion` from Parts 1–2 is already consumed by the daemon.
+
 ## Caching summary
 
 - `/server_versions` per-loader lists: ~3h server cache (per loader).
@@ -128,7 +152,11 @@ Frontend:
 - `languages/en_US.json` — `TXT_CODE_loader_blurb_*` + a "Loader build" label +
   "Learn more".
 
-Daemon: none (already consumes `loaderVersion`).
+Daemon:
+- `service/modloader_bootstrap.ts` — split Quilt off `bootstrapFabricLike` into
+  an installer-based flow; wrap loader downloads to throw a clear
+  "no server build" error on 404.
+- `languages/en_US.json` — `TXT_CODE_modpack.noServerBuild`.
 
 ## Verification
 
@@ -142,4 +170,6 @@ Daemon: none (already consumes `loaderVersion`).
 5. Switching loaders is instant after first load (caches); upstream APIs aren't
    hit on every switch.
 6. Modpack (CF/Modrinth/FTB) tabs and their Details are unchanged.
-7. Builds green: panel (webpack), frontend (vue-tsc + vite).
+7. Quilt installs via its installer and starts (no 404); a loader with genuinely
+   no server build shows the clear "no server build" message, not a raw 404.
+8. Builds green: daemon (webpack), panel (webpack), frontend (vue-tsc + vite).
