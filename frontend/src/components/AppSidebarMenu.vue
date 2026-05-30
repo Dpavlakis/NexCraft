@@ -154,7 +154,11 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   // NexCraft: tint the block texture with the logo gradient (keeps the blocks)
   background-color: #182142;
-  background-image: var(--nx-sidebar-grad), url("@/assets/stone-tile.png");
+  background-image: var(
+      --nx-sidebar-grad,
+      linear-gradient(160deg, #162961 0%, #393f98 40%, #5c469c 65%, #1587ac 100%)
+    ),
+    url("@/assets/stone-tile.png");
   background-blend-mode: overlay, normal;
   background-repeat: repeat;
   padding: 20px 12px;

@@ -3,14 +3,6 @@ import { TYPE_UNIVERSAL } from "@/hooks/useInstance";
 import { t } from "@/lang/i18n";
 import type { QuickStartPackages } from ".";
 
-export enum AppTheme {
-  AUTO = 0,
-  LIGHT,
-  DARK
-}
-
-export const THEME_KEY = "THEME_KEY";
-
 export const CARD_FIXED_HEIGHT = 200;
 
 export const TERMINAL_CODE = [

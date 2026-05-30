@@ -272,7 +272,11 @@ const openPhoneMenu = (b = false) => {
 .app-header-wrapper {
   box-shadow: 0 2px 4px 0 var(--card-shadow-color);
   // NexCraft brand gradient (navy -> indigo -> purple -> teal, from the logo)
-  background-image: var(--nx-header-grad), url("@/assets/stone-tile.png");
+  background-image: var(
+      --nx-header-grad,
+      linear-gradient(90deg, #162961 0%, #393f98 32%, #5c469c 58%, #1587ac 100%)
+    ),
+    url("@/assets/stone-tile.png");
   background-blend-mode: overlay, normal;
   background-repeat: repeat;
   width: 100%;
