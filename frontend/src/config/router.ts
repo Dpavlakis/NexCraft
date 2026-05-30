@@ -354,10 +354,9 @@ const originRouterConfig: RouterConfig[] = [
     meta: {
       permission: ROLE.GUEST,
       mainMenu: true,
-      condition: () => {
-        const { state: appConfig } = useAppStateStore();
-        return appConfig.settings.businessMode;
-      }
+      // Merchant/business mode is a commercial MCSManager reseller feature that
+      // NexCraft doesn't use. Keep the route registered, but never surface it.
+      condition: () => false
     }
   }
 ];

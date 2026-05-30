@@ -586,17 +586,6 @@ export function getLayoutCardPool() {
     },
     {
       id: getRandomId(),
-      permission: ROLE.GUEST,
-      meta: {},
-      type: "ShelvesCard",
-      title: t("TXT_CODE_b99cae18"),
-      width: 8,
-      description: t("TXT_CODE_163e2d0a"),
-      height: LayoutCardHeight.MEDIUM,
-      category: NEW_CARD_TYPE.COMMON
-    },
-    {
-      id: getRandomId(),
       permission: ROLE.ADMIN,
       meta: {},
       type: "Market",
