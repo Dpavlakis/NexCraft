@@ -82,15 +82,18 @@ defineExpose({ openView });
     top: 24px;
   }
   .ant-modal-body {
-    padding: 8px 24px 16px;
+    padding: 8px 16px 16px;
   }
   // Size to content (so short views aren't a tall empty box and the hosted
   // widgets' `height:100%` rows don't stretch/space out), capped with a scroll.
-  // overflow-x hides the a-row gutter's negative margin (the stray h-scrollbar).
+  // The 12px horizontal padding absorbs the a-row gutter's -12px negative margin
+  // so content (e.g. a progress bar's "100%" label) isn't clipped, while
+  // overflow-x:hidden stays as a backstop against the stray h-scrollbar.
   .manage-modal-body {
     max-height: 82vh;
     overflow-y: auto;
     overflow-x: hidden;
+    padding: 0 12px;
   }
 }
 </style>
