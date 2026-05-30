@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import InnerCard from "@/components/InnerCard.vue";
 import ResponsiveLayoutGroup from "@/components/ResponsiveLayoutGroup.vue";
-import { useAppRouters } from "@/hooks/useAppRouters";
 import {
   TYPE_MINECRAFT_JAVA,
   TYPE_MINECRAFT_MCDR,
@@ -31,17 +30,27 @@ import {
 } from "@ant-design/icons-vue";
 
 import { computed, ref, watch } from "vue";
-import type { RouteLocationPathRaw } from "vue-router";
 import { useLayoutCardTools } from "../../hooks/useCardTools";
 import { arrayFilter } from "../../tools/array";
 import EventConfig from "./dialogs/EventConfig.vue";
 import InstanceDetail from "./dialogs/InstanceDetail.vue";
 import InstanceFundamentalDetail from "./dialogs/InstanceFundamentalDetail.vue";
 import JavaManager from "./dialogs/JavaManager.vue";
+import ManageInstanceModal from "./dialogs/ManageInstanceModal.vue";
 import McPingSettings from "./dialogs/McPingSettings.vue";
 import PingConfig from "./dialogs/PingConfig.vue";
 import RconSettings from "./dialogs/RconSettings.vue";
 import TermConfig from "./dialogs/TermConfig.vue";
+// Full-page instance views, now opened in a modal so you stay on the server page.
+import type { Component } from "vue";
+import InstanceBackups from "./Backups.vue";
+import InstanceFileManager from "./FileManager.vue";
+import InstanceMetrics from "./Metrics.vue";
+import InstanceModManager from "./ModManager.vue";
+import InstanceModpackUpdate from "./ModpackUpdate.vue";
+import InstancePlayers from "./Players.vue";
+import InstanceSchedule from "./Schedule.vue";
+import InstanceServerConfigOverview from "./ServerConfigOverview.vue";
 
 const terminalConfigDialog = ref<InstanceType<typeof TermConfig>>();
 const rconSettingsDialog = ref<InstanceType<typeof RconSettings>>();
@@ -51,8 +60,6 @@ const eventConfigDialog = ref<InstanceType<typeof EventConfig>>();
 const pingConfigDialog = ref<InstanceType<typeof PingConfig>>();
 const instanceDetailsDialog = ref<InstanceType<typeof InstanceDetail>>();
 const instanceFundamentalDetailDialog = ref<InstanceType<typeof InstanceFundamentalDetail>>();
-
-const { toPage: toOtherPager } = useAppRouters();
 
 const props = defineProps<{
   card: LayoutCard;
@@ -102,14 +109,9 @@ watch(
   { immediate: true }
 );
 
-const toPage = (params: RouteLocationPathRaw) => {
-  if (!params.query) params.query = {};
-  params.query = {
-    ...params.query,
-    instanceId,
-    daemonId
-  };
-  toOtherPager(params);
+const manageModal = ref<InstanceType<typeof ManageInstanceModal>>();
+const openManage = (component: Component, modalTitle: string, meta: Record<string, any> = {}) => {
+  manageModal.value?.openView(component, modalTitle, meta);
 };
 
 const refreshInstanceInfo = async () => {
@@ -136,11 +138,8 @@ const btns = computed(() => {
         );
       },
       click: (): void => {
-        toPage({
-          path: "/instances/terminal/serverConfig",
-          query: {
-            type: instanceInfo.value?.config.type
-          }
+        openManage(InstanceServerConfigOverview, t("TXT_CODE_d07742fe"), {
+          type: instanceInfo.value?.config.type
         });
       }
     },
@@ -148,7 +147,7 @@ const btns = computed(() => {
       title: t("TXT_CODE_ae533703"),
       icon: FolderOpenOutlined,
       click: () => {
-        toPage({ path: "/instances/terminal/files" });
+        openManage(InstanceFileManager, t("TXT_CODE_ae533703"));
       },
       condition: () => state.settings.canFileManager || isAdmin.value
     },
@@ -156,7 +155,7 @@ const btns = computed(() => {
       title: t("TXT_CODE_MOD_MANAGER"),
       icon: UsbOutlined,
       click: () => {
-        toPage({ path: "/instances/terminal/mods" });
+        openManage(InstanceModManager, t("TXT_CODE_MOD_MANAGER"));
       },
       condition: () => {
         const type = instanceInfo.value?.config.type || "";
@@ -199,13 +198,7 @@ const btns = computed(() => {
       icon: FieldTimeOutlined,
       condition: () => !isGlobalTerminal.value,
       click: () => {
-        toPage({
-          path: "/instances/schedule",
-          query: {
-            instanceId,
-            daemonId
-          }
-        });
+        openManage(InstanceSchedule, t("TXT_CODE_b7d026f8"));
       }
     },
     {
@@ -213,13 +206,7 @@ const btns = computed(() => {
       icon: CloudUploadOutlined,
       condition: () => !isGlobalTerminal.value,
       click: () => {
-        toPage({
-          path: "/instances/backup",
-          query: {
-            instanceId,
-            daemonId
-          }
-        });
+        openManage(InstanceBackups, t("TXT_CODE_backup_card_title"));
       }
     },
     {
@@ -233,13 +220,12 @@ const btns = computed(() => {
       condition: () =>
         isAdmin.value && !isGlobalTerminal.value && !!instanceInfo.value?.config?.packInfo,
       click: () => {
-        toPage({
-          path: "/instances/modpackUpdate",
-          query: {
-            instanceId,
-            daemonId
-          }
-        });
+        openManage(
+          InstanceModpackUpdate,
+          instanceInfo.value?.config?.packInfo?.source === "bedrock"
+            ? t("TXT_CODE_version_update_card_title")
+            : t("TXT_CODE_modpack_update_card_title")
+        );
       }
     },
     {
@@ -247,13 +233,7 @@ const btns = computed(() => {
       icon: TeamOutlined,
       condition: () => !isGlobalTerminal.value,
       click: () => {
-        toPage({
-          path: "/instances/players",
-          query: {
-            instanceId,
-            daemonId
-          }
-        });
+        openManage(InstancePlayers, t("TXT_CODE_player_card_title"));
       }
     },
     {
@@ -261,13 +241,7 @@ const btns = computed(() => {
       icon: LineChartOutlined,
       condition: () => !isGlobalTerminal.value,
       click: () => {
-        toPage({
-          path: "/instances/metrics",
-          query: {
-            instanceId,
-            daemonId
-          }
-        });
+        openManage(InstanceMetrics, t("TXT_CODE_metrics_card_title"));
       }
     },
     {
@@ -400,6 +374,8 @@ watch(instanceInfo, (cfg, oldCfg) => {
     :instance-id="instanceId"
     @update="refreshInstanceInfo"
   />
+
+  <ManageInstanceModal ref="manageModal" :instance-id="instanceId" :daemon-id="daemonId" />
 </template>
 
 <style lang="scss" scoped>
