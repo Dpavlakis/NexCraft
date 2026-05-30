@@ -8,6 +8,7 @@ import { useLayoutConfigStore } from "@/stores/useLayoutConfig";
 import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
 import {
   AppstoreAddOutlined,
+  BgColorsOutlined,
   BuildOutlined,
   CloseCircleOutlined,
   GithubFilled,
@@ -16,6 +17,7 @@ import {
   SaveOutlined,
   UserOutlined
 } from "@ant-design/icons-vue";
+import { useAppConfigStore, type AppMode } from "@/stores/useAppConfigStore";
 import { message, Modal, notification } from "ant-design-vue";
 import type { Component } from "vue";
 import { computed } from "vue";
@@ -83,6 +85,7 @@ export function useHeaderMenus() {
   const { toPage } = useAppRouters();
   const { state: appTools } = useAppToolsStore();
   const { isAdmin, state: appState, isLogged } = useAppStateStore();
+  const { setMode } = useAppConfigStore();
   const { execute } = logoutUser();
 
   const openNewCardDialog = (): void => {
@@ -136,6 +139,22 @@ export function useHeaderMenus() {
         onlyPC: true,
         onlyHeader: true,
         click: onClickIcon
+      },
+      {
+        // Light/dark mode — independent of the colour theme (set in Profile).
+        title: t("TXT_CODE_mode_label"),
+        leftSideTitle: t("TXT_CODE_mode_label"),
+        icon: BgColorsOutlined,
+        click: (key?: string) => {
+          setMode((key ?? "auto") as AppMode);
+        },
+        conditions: !containerState.isDesignMode,
+        onlyPC: false,
+        menus: [
+          { value: "auto", title: t("TXT_CODE_dc8de4ff") },
+          { value: "light", title: t("TXT_CODE_673eac8e") },
+          { value: "dark", title: t("TXT_CODE_5e4a370d") }
+        ]
       },
       {
         title: t("TXT_CODE_8b0f8aab"),

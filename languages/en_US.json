@@ -3369,6 +3369,7 @@
   "TXT_CODE_285cef0c": "Unit: GB. For example, 60 means 60GB, 0 means unlimited.",
   "TXT_CODE_5d88a9b": "Color Theme",
   "TXT_CODE_ee01c10c": "Default Theme",
+  "TXT_CODE_mode_label": "Appearance",
   "TXT_CODE_4eb158da": "Layout Mode",
   "TXT_CODE_network_upload_limit": "Upload Speed Limit",
   "TXT_CODE_network_upload_limit_help": "Set container upload bandwidth limit, 0 means unlimited",

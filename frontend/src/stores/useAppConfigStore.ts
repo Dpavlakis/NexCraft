@@ -2,11 +2,22 @@
 import logo from "@/assets/logo.png";
 import { getCurrentLang, setLanguage } from "@/lang/i18n";
 import { DEFAULT_THEME_ID, THEME_ID_KEY, themeById, type ThemeDef } from "@/config/themes";
-import { createGlobalState, useBreakpoints, useLocalStorage } from "@vueuse/core";
+import {
+  createGlobalState,
+  useBreakpoints,
+  useLocalStorage,
+  usePreferredDark
+} from "@vueuse/core";
 import { theme as antTheme } from "ant-design-vue";
 import type { ThemeConfig } from "ant-design-vue/es/config-provider/context";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useLayoutConfigStore } from "./useLayoutConfig";
+
+// Light/dark mode is independent of the colour theme: a theme sets the accent +
+// header/sidebar gradient; the mode sets the page brightness and works with any
+// theme. "auto" follows the OS preference.
+export type AppMode = "auto" | "light" | "dark";
+const MODE_KEY = "nx-mode";
 
 export const useAppConfigStore = createGlobalState(() => {
   const { getSettingsConfig } = useLayoutConfigStore();
@@ -30,10 +41,16 @@ export const useAppConfigStore = createGlobalState(() => {
 
   const logoImage = computed(() => appConfig.logoImage);
 
+  const isPreferredDark = usePreferredDark();
   const currentThemeId = useLocalStorage<string>(THEME_ID_KEY, DEFAULT_THEME_ID);
-  const activeBase = ref<"light" | "dark">("light");
+  const currentMode = useLocalStorage<AppMode>(MODE_KEY, "auto");
 
-  const isDarkTheme = computed(() => activeBase.value === "dark");
+  // Resolve "auto" against the OS; light/dark are explicit.
+  const isDarkTheme = computed(() => {
+    if (currentMode.value === "dark") return true;
+    if (currentMode.value === "light") return false;
+    return isPreferredDark.value;
+  });
 
   const hasBgImage = ref(false);
 
@@ -79,6 +96,7 @@ export const useAppConfigStore = createGlobalState(() => {
     document.body.classList.remove("app-light-theme");
   };
 
+  // A theme only sets the accent + header/sidebar gradient (no light/dark).
   const applyTheme = (themeDef: ThemeDef) => {
     const body = document.body;
     body.style.setProperty("--nx-header-grad", themeDef.headerGradient);
@@ -88,9 +106,6 @@ export const useAppConfigStore = createGlobalState(() => {
       theme.token.colorPrimary = themeDef.accent;
       theme.token.colorLink = themeDef.accent;
     }
-    activeBase.value = themeDef.base;
-    if (themeDef.base === "dark") setDark();
-    else setLight();
   };
 
   const setThemeId = (id?: string) => {
@@ -99,8 +114,31 @@ export const useAppConfigStore = createGlobalState(() => {
     applyTheme(def);
   };
 
+  // The light/dark mode is the single source of truth for page brightness.
+  const applyMode = () => {
+    if (isDarkTheme.value) setDark();
+    else setLight();
+    // Re-tint a configured background image to match the new brightness.
+    const bg = document.body.style.backgroundImage;
+    if (hasBgImage.value && bg) {
+      const url = bg.match(/url\((.*?)\)/)?.[1]?.replace(/['"]/g, "");
+      if (url) setBackgroundImage(url);
+    }
+  };
+
+  const setMode = (m: AppMode) => {
+    currentMode.value = m;
+    applyMode();
+  };
+
+  // When in auto mode, follow OS changes live.
+  watch(isPreferredDark, () => {
+    if (currentMode.value === "auto") applyMode();
+  });
+
   const initAppTheme = async () => {
     setThemeId(currentThemeId.value);
+    applyMode();
 
     const frontendSettings = await getSettingsConfig();
     if (frontendSettings?.theme?.backgroundImage)
@@ -147,6 +185,8 @@ export const useAppConfigStore = createGlobalState(() => {
     initAppTheme,
     setThemeId,
     applyTheme,
+    setMode,
+    currentMode,
     setBackgroundImage,
     currentThemeId,
     themeConfig: theme
