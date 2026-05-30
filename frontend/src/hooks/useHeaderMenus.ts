@@ -229,8 +229,9 @@ export function useHeaderMenus() {
       },
       {
         title: t("TXT_CODE_8c3164c9"),
+        inUserDropdown: true,
         icon: UserOutlined,
-        click: () => {
+        click: (): void => {
           appTools.showUserInfoDialog = true;
         },
         conditions: !containerState.isDesignMode && isLogged.value,
@@ -238,8 +239,9 @@ export function useHeaderMenus() {
       },
       {
         title: t("TXT_CODE_2c69ab15"),
+        inUserDropdown: true,
         icon: LogoutOutlined,
-        click: async () => {
+        click: async (): Promise<void> => {
           Modal.confirm({
             title: t("TXT_CODE_9654b91c"),
             async onOk() {

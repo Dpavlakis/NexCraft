@@ -8,11 +8,15 @@ import { useScroll } from "@vueuse/core";
 import { computed, h } from "vue";
 import { useRoute } from "vue-router";
 import CardPanel from "./CardPanel.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
+import { useAppStateStore } from "@/stores/useAppStateStore";
 
 const route = useRoute();
 const { containerState } = useLayoutContainerStore();
 
 const { menus, appMenus, handleToPage } = useHeaderMenus();
+const { state: appState, isLogged } = useAppStateStore();
+const userMenuItems = computed(() => (appMenus.value as any[]).filter((i) => i.inUserDropdown));
 
 /** Whether route menu item is active (current path equals or is child of this path) */
 const isRouteActive = (path: string): boolean => {
@@ -61,7 +65,7 @@ const openPhoneMenu = (b = false) => {
       </nav>
       <div class="btns">
         <div v-for="(item, index) in appMenus as any" :key="index">
-          <a-dropdown v-if="item.menus && item.conditions" placement="bottom">
+          <a-dropdown v-if="item.menus && item.conditions && !item.inUserDropdown" placement="bottom">
             <div
               :class="item.customClass"
               class="nav-button right-nav-button flex-center"
@@ -77,7 +81,7 @@ const openPhoneMenu = (b = false) => {
               </a-menu>
             </template>
           </a-dropdown>
-          <a-tooltip v-else-if="item.conditions" placement="bottom">
+          <a-tooltip v-else-if="item.conditions && !item.inUserDropdown" placement="bottom">
             <template #title>
               <span>{{ item.title }}</span>
             </template>
@@ -94,6 +98,28 @@ const openPhoneMenu = (b = false) => {
             </div>
           </a-tooltip>
         </div>
+        <a-dropdown v-if="isLogged" placement="bottomRight">
+          <div class="nav-button right-nav-button user-chip flex-center" @click.prevent>
+            <UserAvatar
+              :avatar="appState.userInfo?.avatar"
+              :name="appState.userInfo?.userName"
+              :size="28"
+            />
+            <span class="user-chip-name">{{ appState.userInfo?.userName }}</span>
+          </div>
+          <template #overlay>
+            <a-menu>
+              <a-menu-item
+                v-for="(item, i) in userMenuItems"
+                :key="i"
+                :class="item.customClass"
+                @click="item.click()"
+              >
+                {{ item.title }}
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
       </div>
     </div>
   </header>
@@ -304,6 +330,17 @@ const openPhoneMenu = (b = false) => {
     margin: 0 2px;
     font-size: 14px;
     padding: 8px 8px;
+  }
+
+  .user-chip {
+    gap: 8px;
+    .user-chip-name {
+      font-size: 14px;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   .icon-button {
