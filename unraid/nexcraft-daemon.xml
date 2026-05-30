@@ -13,7 +13,7 @@
   <Category>Tools: GameServers:</Category>
   <WebUI/>
   <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/unraid/nexcraft-daemon.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/frontend/public/nexcraft_logo.svg</Icon>
+  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/unraid/nexcraft_logo.webp</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
@@ -24,7 +24,7 @@
   <Config Name="Daemon Port" Target="24444" Default="24444" Mode="tcp" Description="Daemon RPC port the panel connects to." Type="Port" Display="always" Required="true" Mask="false">24444</Config>
   <Config Name="Data" Target="/opt/mcsmanager/daemon/data" Default="/mnt/user/appdata/nexcraft/daemon/data" Mode="rw" Description="Daemon data: instances, configs, the access key and (with the backup mount below) backups." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/nexcraft/daemon/data</Config>
   <Config Name="Logs" Target="/opt/mcsmanager/daemon/logs" Default="/mnt/user/appdata/nexcraft/daemon/logs" Mode="rw" Description="Daemon logs." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft/daemon/logs</Config>
-  <Config Name="Backups (optional)" Target="/opt/mcsmanager/daemon/data/backups" Default="/mnt/user/Backup/Minecraft" Mode="rw" Description="Optional: store instance backups on a separate share instead of inside appdata. Leave blank to keep backups under the Data path." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Backups" Target="/opt/mcsmanager/daemon/data/backups" Default="/mnt/user/Backup/Minecraft" Mode="rw" Description="Where instance backups are stored. Point this at a dedicated share (e.g. /mnt/user/Backup/Minecraft) to keep backups off appdata, or leave it under the Data path if you prefer. Clear the field to keep backups inside the Data volume." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/Backup/Minecraft</Config>
   <Config Name="Instance Data Host Path" Target="MCSM_DOCKER_WORKSPACE_PATH" Default="/mnt/user/appdata/nexcraft/daemon/data/InstanceData" Mode="" Description="Host path to the InstanceData folder (used only by the legacy Docker-instance mode; harmless otherwise). Keep it pointing at &lt;Data path&gt;/InstanceData." Type="Variable" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft/daemon/data/InstanceData</Config>
   <Config Name="Docker Socket (optional)" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Description="Optional: only needed for legacy Docker-instance mode. Host/general process mode does not need it." Type="Path" Display="advanced" Required="false" Mask="false"/>
 </Container>

@@ -46,7 +46,8 @@ CA is a moderated, central feed — you request inclusion of this repo:
 - **Networking:** templates default to **bridge** with published ports
   (23333 / 24444) so they work for everyone. Advanced users can switch to a
   custom/macvlan network with static IPs.
-- **Icon:** currently the SVG logo. If CA doesn't render it, add a 256×256
-  `icon.png` to the repo and point `<Icon>` at it.
+- **Icon:** `nexcraft_logo.webp` (256×256) in this folder. Unraid renders
+  raster icons more reliably than SVG, so the templates point at the WebP. To
+  refresh it, re-rasterize `frontend/public/nexcraft_logo.svg` at 256×256.
 - **Backups:** the daemon template has an optional separate-share backup mount;
   leave it blank to keep backups inside appdata.
