@@ -68,3 +68,15 @@ export const updateMyAvatar = useDefineApi<
   url: "/api/auth/avatar",
   method: "PUT"
 });
+
+export const updateMyTheme = useDefineApi<
+  {
+    data: {
+      theme: string;
+    };
+  },
+  boolean
+>({
+  url: "/api/auth/theme",
+  method: "PUT"
+});

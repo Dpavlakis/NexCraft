@@ -3,7 +3,15 @@ import CopyButton from "@/components/CopyButton.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { PERMISSION_MAP } from "@/config/const";
 import { t } from "@/lang/i18n";
-import { confirm2FA, setUserApiKey, updateMyAvatar, updatePassword } from "@/services/apis/user";
+import { THEMES } from "@/config/themes";
+import {
+  confirm2FA,
+  setUserApiKey,
+  updateMyAvatar,
+  updateMyTheme,
+  updatePassword
+} from "@/services/apis/user";
+import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import { useAppToolsStore } from "@/stores/useAppToolsStore";
 import { fileToAvatarDataUrl } from "@/tools/avatar";
@@ -136,6 +144,23 @@ const removeAvatar = async () => {
     avatarUploading.value = false;
   }
 };
+
+const { currentThemeId, setThemeId } = useAppConfigStore();
+const themeSaving = ref(false);
+
+const chooseTheme = async (id: string) => {
+  setThemeId(id); // live preview + localStorage mirror
+  try {
+    themeSaving.value = true;
+    await updateMyTheme().execute({ data: { theme: id } });
+    await updateUserInfo();
+    message.success(t("TXT_CODE_d3de39b4"));
+  } catch (error: any) {
+    reportErrorMsg(error.message);
+  } finally {
+    themeSaving.value = false;
+  }
+};
 </script>
 
 <template>
@@ -173,6 +198,21 @@ const removeAvatar = async () => {
               style="display: none"
               @change="onAvatarFile"
             />
+          </div>
+        </a-form-item>
+        <a-form-item :label="t('TXT_CODE_theme_label')">
+          <div class="theme-grid">
+            <div
+              v-for="th in THEMES"
+              :key="th.id"
+              class="theme-swatch"
+              :class="{ 'theme-swatch-active': currentThemeId === th.id }"
+              @click="chooseTheme(th.id)"
+            >
+              <span class="theme-bar" :style="{ backgroundImage: th.headerGradient }"></span>
+              <span class="theme-dot" :style="{ backgroundColor: th.accent }"></span>
+              <span class="theme-name">{{ t(th.nameKey) }}</span>
+            </div>
           </div>
         </a-form-item>
         <a-row>
@@ -287,3 +327,41 @@ const removeAvatar = async () => {
     </div>
   </a-modal>
 </template>
+
+<style lang="scss" scoped>
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.theme-swatch {
+  border: 2px solid var(--color-gray-5, #d9d9d9);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+.theme-swatch:hover {
+  border-color: var(--nx-accent, #3179bd);
+}
+.theme-swatch-active {
+  border-color: var(--nx-accent, #3179bd);
+}
+.theme-bar {
+  height: 22px;
+  border-radius: 4px;
+  display: block;
+}
+.theme-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.theme-name {
+  font-size: 12px;
+}
+</style>
