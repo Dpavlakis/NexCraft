@@ -67,7 +67,6 @@ defineExpose({ openView });
     width="92%"
     :destroy-on-close="true"
     wrap-class-name="manage-instance-modal"
-    centered
   >
     <div class="manage-modal-body">
       <component :is="view" v-if="view" :key="title" :card="card" />
@@ -80,13 +79,18 @@ defineExpose({ openView });
   .ant-modal {
     max-width: 1500px;
     padding-bottom: 0;
+    top: 24px;
   }
   .ant-modal-body {
-    padding: 16px;
+    padding: 8px 24px 16px;
   }
+  // Size to content (so short views aren't a tall empty box and the hosted
+  // widgets' `height:100%` rows don't stretch/space out), capped with a scroll.
+  // overflow-x hides the a-row gutter's negative margin (the stray h-scrollbar).
   .manage-modal-body {
-    height: 80vh;
-    overflow: auto;
+    max-height: 82vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 </style>
