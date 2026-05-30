@@ -69,8 +69,12 @@ const setupChart = () => {
       textStyle: { fontFamily: APP_FONT }
     },
     toolbox: {
-      right: 12,
-      top: 0,
+      // Align the toolbox with the plot area's right edge (grid.right) so the
+      // zoom buttons sit just inside the chart, before the right axis label,
+      // instead of spilling past it.
+      right: 64,
+      top: 6,
+      itemGap: 12,
       feature: {
         dataZoom: {
           yAxisIndex: "none",
