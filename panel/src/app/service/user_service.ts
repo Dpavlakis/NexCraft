@@ -10,6 +10,18 @@ import { IUserApp, User, UserPassWordType } from "../entity/user";
 import { $t } from "../i18n";
 import { logger } from "./log";
 
+// Avatars are stored as small base64 data URLs on the user record. Reject
+// anything that is not an image data URL or exceeds the size cap (~256 KB
+// binary ≈ 400k base64 chars). Empty string clears the avatar.
+const AVATAR_DATA_URL_RE = /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/;
+const AVATAR_MAX_LEN = 400_000;
+export function validateAvatarString(avatar: string): void {
+  if (avatar === "") return;
+  if (typeof avatar !== "string" || !AVATAR_DATA_URL_RE.test(avatar) || avatar.length > AVATAR_MAX_LEN) {
+    throw new Error($t("TXT_CODE_avatar.invalid"));
+  }
+}
+
 export class TwoFactorError extends Error {}
 
 class UserSubsystem {
@@ -51,6 +63,10 @@ class UserSubsystem {
     if (config.open2FA != null) instance.open2FA = Boolean(config.open2FA);
     if (config.ssoSub != null) instance.ssoSub = String(config.ssoSub);
     if (config.ssoBound != null) instance.ssoBound = Boolean(config.ssoBound);
+    if (config.avatar != null) {
+      validateAvatarString(String(config.avatar));
+      instance.avatar = String(config.avatar);
+    }
     if (config.instances) this.setUserInstances(uuid, config.instances);
     if (config.passWord) {
       instance.passWordType = UserPassWordType.bcrypt;
