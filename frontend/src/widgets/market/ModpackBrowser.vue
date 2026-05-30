@@ -684,7 +684,11 @@ onBeforeUnmount(() => {
               >
                 <template #prefix><SearchOutlined /></template>
               </a-input-search>
+              <!-- FTB's API only exposes a single "popular" ordering, so the
+                   sort options don't apply there — hide it instead of showing a
+                   non-functional dropdown. -->
               <a-select
+                v-if="source !== 'ftb'"
                 v-model:value="sortField"
                 class="sort-select"
                 :options="sortOptions"
