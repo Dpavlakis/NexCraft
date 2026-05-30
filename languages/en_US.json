@@ -3576,6 +3576,7 @@
   "TXT_CODE_modpack.installDone": "Modpack installed. Review the start command in Config, then start the server.",
   "TXT_CODE_modpack.noServerPack": "This CurseForge modpack has no server pack available.",
   "TXT_CODE_modpack.noMrpack": "No .mrpack download URL was provided.",
+  "TXT_CODE_modpack.noFtb": "No FTB pack/version was provided.",
   "TXT_CODE_modpack.dockerWarn": "Modpack install runs Java on the host; Docker-mode instances are not fully supported yet.",
   "TXT_CODE_modpack.fetchVanilla": "Downloading Minecraft server.jar for {{mc}}...",
   "TXT_CODE_modpack.noMcVersion": "Could not find Minecraft version {{mc}} in the Mojang manifest.",

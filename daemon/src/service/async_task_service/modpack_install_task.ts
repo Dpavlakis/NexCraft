@@ -13,9 +13,12 @@ import { assignFreeBedrockPort, assignFreeMcPort } from "../mc_port";
 import { ModloaderBootstrap, staticJavaMajor, type ModLoader } from "../modloader_bootstrap";
 import {
   clearForReset,
+  downloadFtbFiles,
   downloadMrpackFiles,
   extractMrpackOverrides,
   extractZipOverwrite,
+  fetchFtbVersion,
+  ftbTargets,
   maybeFlatten,
   parseMrpackIndex,
   removeKnownClientMods,
@@ -33,12 +36,15 @@ import { AsyncTask, IAsyncTaskJSON } from "./index";
 export type ResetMode = "backup_wipe" | "wipe" | "preserve_world";
 
 export interface IModpackInstallDescriptor {
-  source: "curseforge" | "modrinth" | "vanilla" | "serverjar" | "bedrock";
+  source: "curseforge" | "modrinth" | "vanilla" | "serverjar" | "bedrock" | "ftb";
   // CurseForge server-pack path:
   serverPackUrl?: string;
   serverPackFileName?: string;
   // Modrinth path:
   mrpackUrl?: string;
+  // FTB path (api.modpacks.ch): the pack + version the daemon resolves a manifest from.
+  ftbPackId?: number;
+  ftbVersionId?: number;
   // Server-jar path (Paper / Purpur / Folia): a single runnable jar URL.
   serverJarUrl?: string;
   // Bedrock path: the Bedrock Dedicated Server zip URL.
@@ -206,6 +212,28 @@ export class ModpackInstallTask extends AsyncTask {
     return { mc, loader, loaderVersion };
   }
 
+  private async installFTB(): Promise<{ mc: string; loader: ModLoader; loaderVersion: string }> {
+    const packId = this.descriptor.ftbPackId;
+    const versionId = this.descriptor.ftbVersionId;
+    if (!packId || !versionId) throw new Error($t("TXT_CODE_modpack.noFtb"));
+    const cwd = this.instance.absoluteCwdPath();
+
+    this.phase = "files";
+    const manifest = await fetchFtbVersion(packId, versionId);
+    const { mc, loader, loaderVersion } = ftbTargets(manifest);
+
+    await downloadFtbFiles(manifest, cwd, (done, total) => {
+      this.downloadProgress.percentage = total ? Math.round((done / total) * 100) : 0;
+      const now = Date.now();
+      if (now - this.lastProgressOutput >= 1000) {
+        this.instance.println("INFO", $t("TXT_CODE_modpack.files", { done, total }));
+        this.lastProgressOutput = now;
+      }
+    });
+
+    return { mc, loader, loaderVersion };
+  }
+
   // Download a single server jar (Paper/Purpur/Folia) and build a Java start
   // command, auto-provisioning a matching Java version when needed.
   private async installServerJar(mc: string, memMB?: number): Promise<string> {
@@ -368,13 +396,15 @@ export class ModpackInstallTask extends AsyncTask {
             ? await this.installCurseForge()
             : this.descriptor.source === "modrinth"
               ? await this.installModrinth()
-              : {
-                  // "vanilla": build a fresh server (vanilla or a loader) from
-                  // scratch — no files to download, just bootstrap the loader.
-                  mc: this.descriptor.mcVersion || "",
-                  loader: this.descriptor.loader || "vanilla",
-                  loaderVersion: this.descriptor.loaderVersion || ""
-                };
+              : this.descriptor.source === "ftb"
+                ? await this.installFTB()
+                : {
+                    // "vanilla": build a fresh server (vanilla or a loader) from
+                    // scratch — no files to download, just bootstrap the loader.
+                    mc: this.descriptor.mcVersion || "",
+                    loader: this.descriptor.loader || "vanilla",
+                    loaderVersion: this.descriptor.loaderVersion || ""
+                  };
         resolvedMc = resolved.mc;
         resolvedLoader = resolved.loader;
         resolvedLoaderVersion = resolved.loaderVersion;

@@ -33,6 +33,8 @@ router.get(
       const projectId = String(ctx.query.projectId);
       if (source === "curseforge") {
         ctx.body = await modManagerService.getCurseForgeModpackVersions(projectId);
+      } else if (source === "ftb") {
+        ctx.body = await modManagerService.getFTBModpackVersions(projectId);
       } else {
         ctx.body = await modManagerService.getProjectVersions(projectId, "modrinth");
       }
@@ -71,6 +73,24 @@ async function buildDescriptor(body: any) {
     versionName: String(body.versionName || ""),
     iconUrl: body.iconUrl ? String(body.iconUrl) : undefined
   };
+
+  if (source === "ftb") {
+    // The daemon fetches the FTB version manifest itself (targets give mc+loader,
+    // files give direct URLs), so we only pass the pack + version to resolve.
+    return {
+      source: "ftb",
+      ftbPackId: Number(body.projectId),
+      ftbVersionId: Number(body.fileId),
+      maxMemoryMB: body.maxMemoryMB ? Number(body.maxMemoryMB) : undefined,
+      packInfo: {
+        ...packInfoBase,
+        versionName: String(body.versionName || ""),
+        mcVersion: "",
+        loader: "",
+        loaderVersion: ""
+      }
+    };
+  }
 
   if (source === "curseforge") {
     const sp = await modManagerService.resolveCurseForgeServerPack(

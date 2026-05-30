@@ -26,6 +26,7 @@ import type { LayoutCard, NodeStatus } from "@/types";
 import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
+import ftbIcon from "@/assets/ftb.svg";
 import vanillaIcon from "@/assets/loaders/vanilla.svg";
 import bedrockIcon from "@/assets/loaders/bedrock.svg";
 import paperIcon from "@/assets/loaders/paper.png";
@@ -64,12 +65,13 @@ const hideChrome = computed(() => {
 
 const { toPage } = useAppRouters();
 
-type Source = "custom" | "curseforge" | "modrinth";
+type Source = "custom" | "curseforge" | "modrinth" | "ftb";
 const source = ref<Source>("custom");
 const sources: { key: Source; label: string; img?: string }[] = [
   { key: "custom", label: t("TXT_CODE_modpack_custom") },
   { key: "curseforge", label: "CurseForge", img: curseforgeIcon },
-  { key: "modrinth", label: "Modrinth", img: modrinthIcon }
+  { key: "modrinth", label: "Modrinth", img: modrinthIcon },
+  { key: "ftb", label: "FTB", img: ftbIcon }
 ];
 
 // ---- nodes ----
@@ -406,6 +408,7 @@ const dialogSourceUrl = computed(() => {
   if (source.value === "curseforge")
     return `https://www.curseforge.com/minecraft/modpacks/${it.slug || it.id}`;
   if (source.value === "modrinth") return `https://modrinth.com/modpack/${it.slug || it.id}`;
+  if (source.value === "ftb") return `https://www.feed-the-beast.com/modpacks/${it.id}`;
   return "";
 });
 

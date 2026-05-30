@@ -412,6 +412,10 @@ class ModManagerService {
       return await this.searchModrinth(query, offset, limit, filters);
     }
 
+    if (source === "ftb") {
+      return await this.searchFTB(query, offset, limit);
+    }
+
     if (source === "curseforge") {
       return await this.searchCurseForge(query, offset, limit, filters);
     }
@@ -636,6 +640,101 @@ class ModManagerService {
       console.error("Modrinth search error:", err);
       return { hits: [], total_hits: 0 };
     }
+  }
+
+  // ---- FTB (api.modpacks.ch) ----
+  private readonly ftbUrl = "https://api.modpacks.ch/public";
+  // Search/popular return only pack IDs; cache the per-query ID list so paging
+  // through results doesn't refetch it each page.
+  private ftbIdCache = new Map<string, { ids: number[]; expires: number }>();
+
+  private async ftbPackIds(query: string): Promise<number[]> {
+    const key = query.trim().toLowerCase();
+    const now = Date.now();
+    const hit = this.ftbIdCache.get(key);
+    if (hit && hit.expires > now) return hit.ids;
+    let ids: number[] = [];
+    try {
+      const url = key
+        ? `${this.ftbUrl}/modpack/search/50?term=${encodeURIComponent(key)}`
+        : `${this.ftbUrl}/modpack/popular/installs/100`;
+      const res = await this.requestWithRetry({ method: "GET", url });
+      ids = Array.isArray(res.data?.packs) ? res.data.packs : [];
+    } catch (e) {
+      ids = [];
+    }
+    this.ftbIdCache.set(key, { ids, expires: now + 10 * 60 * 1000 });
+    return ids;
+  }
+
+  private async getFtbPack(id: number): Promise<any> {
+    const res = await this.requestWithRetry({ method: "GET", url: `${this.ftbUrl}/modpack/${id}` });
+    return res.data;
+  }
+
+  private mapFtbHit(p: any) {
+    const art = Array.isArray(p.art) ? p.art : [];
+    const icon = art.find((a: any) => a.type === "square") || art[0];
+    const gv = new Set<string>();
+    for (const v of p.versions || []) {
+      for (const tg of v.targets || []) {
+        if (tg.type === "game" || tg.name === "minecraft") gv.add(tg.version);
+      }
+    }
+    const ts = Number(p.updated || p.released || 0);
+    return {
+      id: String(p.id),
+      title: p.name,
+      description: p.synopsis || p.description || "",
+      icon_url: icon?.url,
+      author: (p.authors || [])[0]?.name || "FTB",
+      downloads: p.installs,
+      updated: ts ? new Date(ts * 1000).toISOString() : undefined,
+      categories: (p.tags || []).map((tg: any) => tg.name).slice(0, 6),
+      game_versions: Array.from(gv),
+      source: "FTB",
+      project_type: "modpack"
+    };
+  }
+
+  public async searchFTB(query: string, offset = 0, limit = 20) {
+    try {
+      const ids = await this.ftbPackIds(query);
+      const slice = ids.slice(offset, offset + limit);
+      const packs = await Promise.all(slice.map((id) => this.getFtbPack(id).catch(() => null)));
+      const hits = packs.filter((p) => !!p).map((p) => this.mapFtbHit(p));
+      return { hits, total_hits: ids.length };
+    } catch (err) {
+      console.error("FTB search error:", err);
+      return { hits: [], total_hits: 0 };
+    }
+  }
+
+  // Versions for the install dialog — newest first; every FTB version is server-installable.
+  public async getFTBModpackVersions(packId: string) {
+    const p = await this.getFtbPack(Number(packId));
+    const versions: any[] = Array.isArray(p?.versions) ? p.versions : [];
+    return versions
+      .slice()
+      .sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
+      .map((v) => {
+        let mc = "";
+        let loader = "";
+        for (const tg of v.targets || []) {
+          if (tg.type === "game" || tg.name === "minecraft") mc = tg.version;
+          if (tg.type === "modloader") loader = tg.name;
+        }
+        return {
+          fileId: String(v.id),
+          id: String(v.id),
+          displayName: v.name,
+          name: v.name,
+          mcVersion: mc,
+          loader,
+          hasServerPack: true,
+          releaseType: v.type === "release" ? 1 : v.type === "beta" ? 2 : 3
+        };
+      });
   }
 
   public async searchCurseForge(
@@ -1075,6 +1174,31 @@ class ModManagerService {
 
   // Full detail for a modpack project (for the install/detail dialog).
   public async getModpackDetail(source: string, projectId: string) {
+    if (source.toLowerCase() === "ftb") {
+      const p = await this.getFtbPack(Number(projectId));
+      const art = Array.isArray(p?.art) ? p.art : [];
+      const icon = art.find((a: any) => a.type === "square") || art[0];
+      const gv = new Set<string>();
+      for (const v of p?.versions || []) {
+        for (const tg of v.targets || []) {
+          if (tg.type === "game" || tg.name === "minecraft") gv.add(tg.version);
+        }
+      }
+      const ts = Number(p?.updated || p?.released || 0);
+      return {
+        name: p?.name,
+        summary: p?.synopsis,
+        author: (p?.authors || [])[0]?.name,
+        iconUrl: icon?.url,
+        downloads: p?.installs,
+        screenshots: art.filter((a: any) => a.type === "splash").map((a: any) => a.url),
+        categories: (p?.tags || []).map((tg: any) => tg.name),
+        gameVersions: Array.from(gv).slice(0, 8),
+        updated: ts ? new Date(ts * 1000).toISOString() : undefined,
+        websiteUrl: `https://www.feed-the-beast.com/modpacks/${projectId}`,
+        description: this.toPlainText(p?.description || p?.synopsis || "")
+      };
+    }
     if (source.toLowerCase() === "curseforge") {
       const modRes = await this.requestWithRetry({
         method: "GET",

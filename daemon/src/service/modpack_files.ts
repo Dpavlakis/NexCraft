@@ -1,3 +1,4 @@
+import axios from "axios";
 import fs from "fs-extra";
 import StreamZip from "node-stream-zip";
 import path from "path";
@@ -135,6 +136,96 @@ export async function downloadMrpackFiles(
           const dest = safeJoin(cwd, f.path);
           const url = f.downloads?.[0];
           if (dest && url) await downloadManager.downloadFromUrl(url, dest, f.downloads?.[1]);
+        }
+      } finally {
+        done++;
+        if (onProgress) onProgress(done, total);
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, files.length || 1) }, () => worker())
+  );
+}
+
+// ---- FTB (api.modpacks.ch) ----
+// An FTB version manifest gives a flat list of files (each with a direct CDN
+// URL) plus "targets" describing the Minecraft + modloader versions. Installing
+// a server = download every non-client file, then bootstrap the loader — the
+// same shape as a Modrinth .mrpack.
+export interface FtbFile {
+  path: string; // e.g. "./config/Foo/"
+  name: string;
+  url: string;
+  clientonly?: boolean;
+  serveronly?: boolean;
+}
+export interface FtbVersionManifest {
+  files: FtbFile[];
+  targets: { type: string; name: string; version: string }[];
+}
+
+export async function fetchFtbVersion(
+  packId: number,
+  versionId: number
+): Promise<FtbVersionManifest> {
+  const res = await axios.get(
+    `https://api.modpacks.ch/public/modpack/${packId}/${versionId}`,
+    { timeout: 30000 }
+  );
+  return res.data as FtbVersionManifest;
+}
+
+export function ftbTargets(manifest: FtbVersionManifest): {
+  mc: string;
+  loader: ModLoader;
+  loaderVersion: string;
+} {
+  let mc = "";
+  let loader: ModLoader = "vanilla";
+  let loaderVersion = "";
+  for (const t of manifest.targets || []) {
+    if (t.type === "game" || t.name === "minecraft") mc = t.version || mc;
+    if (t.type === "modloader") {
+      const n = (t.name || "").toLowerCase();
+      if (n === "neoforge") loader = "neoforge";
+      else if (n === "forge") loader = "forge";
+      else if (n === "fabric") loader = "fabric";
+      else if (n === "quilt") loader = "quilt";
+      loaderVersion = t.version || "";
+    }
+  }
+  return { mc, loader, loaderVersion };
+}
+
+// Download every server-relevant file from an FTB version manifest into cwd
+// (skipping client-only files), with a bounded concurrency pool.
+export async function downloadFtbFiles(
+  manifest: FtbVersionManifest,
+  cwd: string,
+  onProgress?: (done: number, total: number) => void,
+  skip?: (relPath: string) => boolean,
+  concurrency = 8
+) {
+  const files = (manifest.files || []).filter((f) => !f.clientonly && !!f.url);
+  const total = files.length;
+  let done = 0;
+  let next = 0;
+
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= files.length) return;
+      const f = files[i];
+      try {
+        const rel = `${(f.path || "").replace(/^\.?\/+/, "").replace(/\/+$/, "")}/${f.name}`.replace(
+          /\/+/g,
+          "/"
+        );
+        if (!(skip && skip(rel))) {
+          const dest = safeJoin(cwd, rel);
+          if (dest) await downloadManager.downloadFromUrl(f.url, dest);
         }
       } finally {
         done++;
