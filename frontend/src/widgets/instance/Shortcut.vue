@@ -8,6 +8,7 @@ import { useInstanceInfo, verifyEULA } from "@/hooks/useInstance";
 import { t } from "@/lang/i18n";
 import { downloadAddress } from "@/services/apis/fileManager";
 import { parseForwardAddress } from "@/tools/protocol";
+import { loaderIconFor } from "@/tools/loaderIcon";
 import {
   killInstance,
   openInstance,
@@ -157,6 +158,11 @@ const actions = {
 
 // Minecraft server-icon.png shown in the card's top-right corner (if present).
 const serverIconUrl = ref("");
+// Fall back to the loader/server-software logo when the instance has no
+// server-icon.png of its own (e.g. a custom build).
+const displayIcon = computed(
+  () => serverIconUrl.value || loaderIconFor(instanceInfo.value?.config?.packInfo)
+);
 const loadServerIcon = async () => {
   if (!instanceId || !daemonId) return;
   const type = instanceInfo.value?.config?.type || "";
@@ -327,8 +333,8 @@ const instanceOperations = computed(() =>
     </template>
     <template #operator>
       <img
-        v-if="serverIconUrl"
-        :src="serverIconUrl"
+        v-if="displayIcon"
+        :src="displayIcon"
         class="server-icon"
         alt=""
         @error="serverIconUrl = ''"

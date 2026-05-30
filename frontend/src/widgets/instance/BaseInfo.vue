@@ -4,6 +4,7 @@ import { useInstanceInfo } from "@/hooks/useInstance";
 import { t } from "@/lang/i18n";
 import { downloadAddress } from "@/services/apis/fileManager";
 import { parseForwardAddress } from "@/tools/protocol";
+import { loaderIconFor } from "@/tools/loaderIcon";
 import type { LayoutCard } from "@/types";
 import { CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons-vue";
 import { computed, onMounted, ref } from "vue";
@@ -49,6 +50,10 @@ const instanceGameServerInfo = computed(() => {
 });
 
 const serverIconUrl = ref("");
+// Fall back to the loader/server-software logo when there's no server-icon.png.
+const displayIcon = computed(
+  () => serverIconUrl.value || loaderIconFor(instanceInfo.value?.config?.packInfo)
+);
 const loadServerIcon = async () => {
   if (!instanceId || !daemonId) return;
   const type = instanceInfo.value?.config?.type || "";
@@ -87,8 +92,8 @@ onMounted(async () => {
     </template>
     <template #operator>
       <img
-        v-if="serverIconUrl"
-        :src="serverIconUrl"
+        v-if="displayIcon"
+        :src="displayIcon"
         class="server-icon"
         alt=""
         @error="serverIconUrl = ''"
