@@ -389,7 +389,9 @@ const needsLoaderBuild = computed(
   () => source.value === "custom" && MODLOADERS.includes(customLoader.value)
 );
 
+let loaderFetchId = 0;
 const loadLoaderBuilds = async (mc: string) => {
+  const myId = ++loaderFetchId;
   dialog.loaderVersions = [];
   dialog.selectedLoaderVersion = "";
   if (!needsLoaderBuild.value || !mc) return;
@@ -398,13 +400,15 @@ const loadLoaderBuilds = async (mc: string) => {
     const res = await loaderVersionsGet().execute({
       params: { loader: customLoader.value, mc }
     });
+    if (myId !== loaderFetchId) return; // superseded — discard
     dialog.loaderVersions = res.value || [];
     const stable = dialog.loaderVersions.find((v) => v.type === "release");
     dialog.selectedLoaderVersion = (stable || dialog.loaderVersions[0])?.id || "";
   } catch (err: any) {
+    if (myId !== loaderFetchId) return;
     reportErrorMsg(err.message);
   } finally {
-    dialog.loaderVersionLoading = false;
+    if (myId === loaderFetchId) dialog.loaderVersionLoading = false;
   }
 };
 
@@ -518,7 +522,8 @@ const canInstall = computed(() => {
   // custom (built-in versions): the MC version is the selected row; EULA still
   // required for consistency with the modpack flow.
   if (source.value === "custom") {
-    if (needsLoaderBuild.value && !dialog.selectedLoaderVersion) return false;
+    if (needsLoaderBuild.value && (dialog.loaderVersionLoading || !dialog.selectedLoaderVersion))
+      return false;
     return !!dialog.item?.id && dialog.acceptEula;
   }
   return dialog.acceptEula && !!dialog.selectedVersion;
@@ -620,7 +625,10 @@ const doInstall = async () => {
 watch(source, () => nextTick(recomputeHeight));
 // Switching the Custom mod loader changes which version list applies.
 watch(customLoader, () => {
-  if (source.value === "custom") loadCustom();
+  if (source.value === "custom") {
+    loadCustom();
+    if (dialog.open) loadLoaderBuilds(dialog.item?.id || "");
+  }
 });
 
 // In reinstall mode, jump straight to the currently-installed pack's dialog so
