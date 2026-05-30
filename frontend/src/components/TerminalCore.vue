@@ -403,8 +403,9 @@ onMounted(async () => {
 
     .scroll-bottom-btn {
       position: absolute;
-      right: 16px;
-      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 48px;
       z-index: 6;
       width: 34px;
       height: 34px;

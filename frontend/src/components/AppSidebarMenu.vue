@@ -143,6 +143,8 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
 
 .left-sidebar:hover {
   width: 246px;
+}
+.left-sidebar:hover::before {
   background-position-x: -20px;
 }
 
@@ -152,18 +154,33 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
   flex: 0 0 240px;
   text-align: left;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  // NexCraft: tint the block texture with the logo gradient (keeps the blocks)
+  position: relative;
+  // Theme gradient at full strength; faint stone texture overlay via ::before.
   background-color: #182142;
   background-image: var(
-      --nx-sidebar-grad,
-      linear-gradient(160deg, #162961 0%, #393f98 40%, #5c469c 65%, #1587ac 100%)
-    ),
-    url("@/assets/stone-tile.png");
-  background-blend-mode: overlay, normal;
-  background-repeat: repeat;
+    --nx-sidebar-grad,
+    linear-gradient(160deg, #162961 0%, #393f98 40%, #5c469c 65%, #1587ac 100%)
+  );
   padding: 20px 12px;
   transition: all 0.3s ease;
-  background-position-x: -80px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("@/assets/stone-tile.png");
+    background-repeat: repeat;
+    background-position-x: -80px;
+    opacity: 0.09;
+    pointer-events: none;
+    transition: background-position-x 0.3s ease;
+    z-index: 0;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .sidebar-menu {

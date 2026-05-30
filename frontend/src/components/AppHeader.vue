@@ -271,14 +271,12 @@ const openPhoneMenu = (b = false) => {
 
 .app-header-wrapper {
   box-shadow: 0 2px 4px 0 var(--card-shadow-color);
-  // NexCraft brand gradient (navy -> indigo -> purple -> teal, from the logo)
+  // Theme gradient at full strength; the stone texture sits behind it as a
+  // faint overlay (see ::before) so the gradient leads and the blocks are subtle.
   background-image: var(
-      --nx-header-grad,
-      linear-gradient(90deg, #162961 0%, #393f98 32%, #5c469c 58%, #1587ac 100%)
-    ),
-    url("@/assets/stone-tile.png");
-  background-blend-mode: overlay, normal;
-  background-repeat: repeat;
+    --nx-header-grad,
+    linear-gradient(90deg, #162961 0%, #393f98 32%, #5c469c 58%, #1587ac 100%)
+  );
   width: 100%;
   display: flex;
   justify-content: center;
@@ -297,8 +295,22 @@ const openPhoneMenu = (b = false) => {
   // Smooth height transition
   transition: height 0.3s ease-in-out;
 
+  // Faint stone texture behind the gradient (9% — a subtle hint, not blocks).
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("@/assets/stone-tile.png");
+    background-repeat: repeat;
+    opacity: 0.09;
+    pointer-events: none;
+    z-index: 0;
+  }
+
   .app-header-content {
     @extend .global-app-container;
+    position: relative;
+    z-index: 1;
 
     display: flex;
     align-items: center;
