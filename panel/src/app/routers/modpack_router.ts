@@ -257,6 +257,65 @@ async function resolveBedrockUrl(version: string): Promise<string> {
   return links.stable?.url || "";
 }
 
+// Per-loader Minecraft version lists, cached ~3h to avoid hammering upstream.
+const loaderMcCache: Record<string, { at: number; data: any[] }> = {};
+const LOADER_MC_TTL = 3 * 60 * 60 * 1000;
+
+// NeoForge build version -> Minecraft version. Two schemes coexist:
+//   legacy "21.1.5" (3 parts) -> MC "1.21.1" (or "1.21" when patch is 0)
+//   new    "26.1.2.68-beta"   (4 parts) -> MC "26.1.2"
+function neoforgeBuildToMc(build: string): string {
+  const nums = build.split("-")[0].split(".");
+  if (nums.length >= 4) return `${nums[0]}.${nums[1]}.${nums[2]}`;
+  const minor = nums[0];
+  const patch = nums[1];
+  return patch && patch !== "0" ? `1.${minor}.${patch}` : `1.${minor}`;
+}
+
+async function fetchFabricLikeGameVersions(url: string) {
+  const { data } = await axios.get(url, { timeout: 15000 });
+  return (Array.isArray(data) ? data : [])
+    .map((g: any) => ({ id: String(g.version), type: g.stable ? "release" : "snapshot" }));
+}
+
+async function fetchNeoforgeMcVersions() {
+  const { data } = await axios.get(
+    "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge",
+    { timeout: 15000 }
+  );
+  const versions: string[] = data?.versions || [];
+  const byMc = new Map<string, boolean>(); // mc -> hasStable
+  for (const v of versions) {
+    const mc = neoforgeBuildToMc(v);
+    const stable = !/beta|alpha|rc/i.test(v);
+    byMc.set(mc, (byMc.get(mc) || false) || stable);
+  }
+  return [...byMc.entries()].map(([id, hasStable]) => ({
+    id,
+    type: hasStable ? "release" : "snapshot"
+  }));
+}
+
+async function fetchForgeMcVersions() {
+  const { data } = await axios.get(
+    "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml",
+    { timeout: 20000, responseType: "text" }
+  );
+  const xml = String(data);
+  const seen = new Set<string>();
+  const out: any[] = [];
+  const re = /<version>([^<]+)<\/version>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) {
+    const mc = m[1].split("-")[0];
+    if (mc && !seen.has(mc)) {
+      seen.add(mc);
+      out.push({ id: mc, type: "release" });
+    }
+  }
+  return out;
+}
+
 async function listServerVersions(software: string) {
   if (software === "bedrock") {
     const links = await getBedrockLinks();
@@ -278,6 +337,22 @@ async function listServerVersions(software: string) {
       .slice()
       .reverse()
       .map((v: string) => ({ id: v, type: "release" }));
+  }
+  if (["fabric", "quilt", "neoforge", "forge"].includes(software)) {
+    const cached = loaderMcCache[software];
+    if (cached && Date.now() - cached.at < LOADER_MC_TTL) return cached.data;
+    let data: any[] = [];
+    if (software === "fabric") {
+      data = await fetchFabricLikeGameVersions("https://meta.fabricmc.net/v2/versions/game");
+    } else if (software === "quilt") {
+      data = await fetchFabricLikeGameVersions("https://meta.quiltmc.org/v3/versions/game");
+    } else if (software === "neoforge") {
+      data = (await fetchNeoforgeMcVersions()).reverse();
+    } else if (software === "forge") {
+      data = (await fetchForgeMcVersions()).reverse();
+    }
+    loaderMcCache[software] = { at: Date.now(), data };
+    return data;
   }
   return [];
 }
