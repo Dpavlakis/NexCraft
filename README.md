@@ -77,6 +77,7 @@ Everything is wrapped in the proven MCSManager foundation: a distributed multi-n
 - **Backups** — manual and scheduled, with restore, exclusions, and pre/post commands.
 - **Players** — RCON-based online list with op / deop / kick / ban.
 - **Metrics** — per-instance CPU / RAM (measured across the process tree) and player count, with zoom and selectable time ranges.
+- **Auto server-port management** — each instance is assigned its own free server port (Java and Bedrock), so servers never collide on the same port.
 - **Easy MOTD editor**, **server icon** upload, **autostart delay**, and **shutdown timeout** — all in instance settings.
 
 **Platform (from MCSManager)**

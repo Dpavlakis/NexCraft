@@ -24,6 +24,7 @@ Welcome to the NexCraft docs. NexCraft is a self-hosted web panel for running **
 | **Backups** | Manual + scheduled, with restore and exclusions |
 | **Players** | RCON online list with op / kick / ban |
 | **Metrics** | Per-instance CPU / RAM / players with zoom |
+| **Ports** | Auto-assigns each instance its own free server port (Java + Bedrock) |
 | **Convenience** | MOTD editor, server icon, autostart delay, shutdown timeout |
 
 > **Note on Docker:** NexCraft runs servers in **host / general process mode** only — running game servers *inside* Docker containers (an MCSManager feature) has been removed from the UI to keep things simple and Minecraft-focused. The panel *itself* is typically deployed via Docker (see [Installation](installation.md)).
