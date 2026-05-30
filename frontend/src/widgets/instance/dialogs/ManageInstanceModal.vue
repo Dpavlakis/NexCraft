@@ -81,19 +81,20 @@ defineExpose({ openView });
     padding-bottom: 0;
     top: 24px;
   }
+  // Let the scroll container reach the modal edge so the scrollbar sits at the
+  // side, and put the content padding inside it — that keeps a comfortable gap
+  // between the content and the scrollbar, and the 24px right padding stops
+  // right-aligned content (sort arrows, "100%" labels) being clipped or hidden
+  // under the scrollbar. Sized to content (max-height + scroll) so short views
+  // aren't a tall empty box and the hosted `height:100%` rows don't stretch.
   .ant-modal-body {
-    padding: 8px 16px 16px;
+    padding: 0;
   }
-  // Size to content (so short views aren't a tall empty box and the hosted
-  // widgets' `height:100%` rows don't stretch/space out), capped with a scroll.
-  // The 12px horizontal padding absorbs the a-row gutter's -12px negative margin
-  // so content (e.g. a progress bar's "100%" label) isn't clipped, while
-  // overflow-x:hidden stays as a backstop against the stray h-scrollbar.
   .manage-modal-body {
     max-height: 82vh;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0 12px;
+    padding: 8px 24px 16px;
   }
 }
 </style>
