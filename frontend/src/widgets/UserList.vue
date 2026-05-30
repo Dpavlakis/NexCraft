@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import UserAvatar from "@/components/UserAvatar.vue";
+import { fileToAvatarDataUrl } from "@/tools/avatar";
 import { t } from "@/lang/i18n";
 import { message, Modal, type FormInstance } from "ant-design-vue";
 import { DownOutlined, UserOutlined, SearchOutlined } from "@ant-design/icons-vue";
@@ -325,6 +327,31 @@ const search = throttle(async () => {
   await fetchData();
 }, 600);
 
+const avatarTargetUuid = ref("");
+const userListAvatarInput = ref<HTMLInputElement | null>(null);
+
+const handleSetAvatar = (user: BaseUserInfo) => {
+  avatarTargetUuid.value = user.uuid;
+  userListAvatarInput.value?.click();
+};
+
+const onUserAvatarFile = async (e: Event) => {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file || !avatarTargetUuid.value) return;
+  try {
+    const dataUrl = await fileToAvatarDataUrl(file, 128);
+    await editUserInfo().execute({
+      data: { config: { avatar: dataUrl } as any, uuid: avatarTargetUuid.value }
+    });
+    message.success(t("TXT_CODE_27efac3b"));
+    await fetchData();
+  } catch (error: any) {
+    reportErrorMsg(error.message);
+  }
+};
+
 onMounted(async () => {
   fetchData();
 });
@@ -398,6 +425,13 @@ onMounted(async () => {
   </a-modal>
 
   <div style="height: 100%" class="container">
+    <input
+      ref="userListAvatarInput"
+      type="file"
+      accept="image/png,image/webp,image/jpeg"
+      style="display: none"
+      @change="onUserAvatarFile"
+    />
     <a-row :gutter="[24, 24]" style="height: 100%">
       <a-col :span="24">
         <BetweenMenus>
@@ -485,6 +519,12 @@ onMounted(async () => {
                 "
               >
                 <template #bodyCell="{ column, record }: AntTableCell">
+                  <template v-if="column.key === 'userName'">
+                    <span style="display: inline-flex; align-items: center; gap: 8px">
+                      <UserAvatar :avatar="record.avatar" :name="record.userName" :size="24" />
+                      <span>{{ record.userName }}</span>
+                    </span>
+                  </template>
                   <template v-if="column.key === 'ssoBound'">
                     <a-tag v-if="record.ssoBound" color="green">
                       {{ t("TXT_CODE_SSO_BOUND_YES") }}
@@ -499,6 +539,9 @@ onMounted(async () => {
                         <a-menu>
                           <a-menu-item key="1" @click="handleEditUser(record)">
                             {{ t("TXT_CODE_236f70aa") }}
+                          </a-menu-item>
+                          <a-menu-item key="avatar" @click="handleSetAvatar(record)">
+                            {{ t("TXT_CODE_avatar.change") }}
                           </a-menu-item>
                           <a-menu-item key="2" @click="handleToUserResources(record)">
                             {{ t("TXT_CODE_4d934e3a") }}
