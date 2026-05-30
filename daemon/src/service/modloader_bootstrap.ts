@@ -144,6 +144,15 @@ export class ModloaderBootstrap {
     return res.data as T;
   }
 
+  private async fetchText(url: string): Promise<string> {
+    const res = await axios.get(url, {
+      headers: getCommonHeaders(url),
+      timeout: 20000,
+      responseType: "text"
+    });
+    return String(res.data);
+  }
+
   // Resolve the latest stable loader version for the chosen Minecraft version
   // when one wasn't supplied (e.g. building a fresh server from scratch).
   private async resolveLoaderVersion(): Promise<string> {
@@ -163,20 +172,38 @@ export class ModloaderBootstrap {
           "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge"
         );
         const versions: string[] = data?.versions || [];
-        // mc "1.21.1" -> neoforge "21.1."; mc "1.21" -> "21.0."
+        // Legacy MC "1.21.1" -> NeoForge "21.1." (drop the leading "1."); the
+        // newer year-based scheme "26.1.2" -> NeoForge "26.1.2." (full MC kept).
         const parts = String(mc).split(".");
-        const prefix = `${parts[1] || ""}.${parts[2] || "0"}.`;
+        const prefix = parts[0] === "1" ? `${parts[1] || ""}.${parts[2] || "0"}.` : `${mc}.`;
         const matching = versions.filter((v) => v.startsWith(prefix));
         const stable = matching.filter((v) => !/beta|alpha|rc/i.test(v));
         const pick = stable.length ? stable : matching;
         return pick.length ? pick[pick.length - 1] : "";
       }
       if (loader === "forge") {
-        const data = await this.fetchJson<any>(
-          "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"
+        // Promotions give recommended/latest for established versions.
+        try {
+          const data = await this.fetchJson<any>(
+            "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"
+          );
+          const promos = data?.promos || {};
+          const promo = promos[`${mc}-recommended`] || promos[`${mc}-latest`];
+          if (promo) return String(promo);
+        } catch {
+          // fall through to maven metadata
+        }
+        // Fallback: scan Forge's maven metadata for any build of this MC. Covers
+        // brand-new versions that only have betas / no promotion yet. Entries are
+        // "<mc>-<forge>" (e.g. "26.1.2-64.0.8") — return the trailing build.
+        const xml = await this.fetchText(
+          "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml"
         );
-        const promos = data?.promos || {};
-        return promos[`${mc}-recommended`] || promos[`${mc}-latest`] || "";
+        const builds = [...xml.matchAll(/<version>([^<]+)<\/version>/g)]
+          .map((m) => m[1])
+          .filter((v) => v.startsWith(`${mc}-`))
+          .map((v) => v.slice(mc.length + 1));
+        return builds.length ? builds[builds.length - 1] : "";
       }
     } catch {
       // fall through
