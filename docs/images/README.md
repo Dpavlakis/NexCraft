@@ -32,7 +32,6 @@ These are still the older, lower-res shots and should be re-captured (light mode
 
 - `terminal-overview.webp` — the hero (terminal + Manage grid)
 - `builder-custom.webp` — the **Custom** tab with the loader row + version list
-- `reset-dialog.webp` — the three reset modes
 - `backups.webp` — the Backups card (with at least one backup listed if possible)
 
 Capture with the browser window maximized so the panel uses full width and there's no empty margin.
