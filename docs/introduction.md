@@ -4,6 +4,8 @@ Welcome to the NexCraft docs. NexCraft is a self-hosted web panel for running **
 
 > NexCraft is built on the open-source [MCSManager](https://github.com/MCSManager/MCSManager) panel. For a general-purpose, multi-game/commercial panel, see upstream MCSManager and its docs at <https://docs.mcsmanager.com/>.
 
+![The NexCraft dashboard — daemon, instance and system-resource overview](images/overview.webp)
+
 ## Contents
 
 - **[Installation](installation.md)** — run the panel and connect a node.
@@ -28,3 +30,9 @@ Welcome to the NexCraft docs. NexCraft is a self-hosted web panel for running **
 | **Convenience** | MOTD editor, server icon, autostart delay, shutdown timeout |
 
 > **Note on Docker:** NexCraft runs servers in **host / general process mode** only — running game servers *inside* Docker containers (an MCSManager feature) has been removed from the UI to keep things simple and Minecraft-focused. The panel *itself* is typically deployed via Docker (see [Installation](installation.md)).
+
+## Make it yours
+
+Each user gets a profile with a custom **avatar** and a choice of six built-in colour **themes** (NexCraft, Crafty, Nether, Emerald, Amethyst, Diamond). Light and dark mode toggle independently, so your theme colour stays the same in either brightness.
+
+![User profile — avatar upload and the six-theme picker](images/profile-themes.webp)

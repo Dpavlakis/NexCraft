@@ -42,9 +42,13 @@ Backups are stored outside the instance folder, so resets/wipes never touch them
 
 ## Players (RCON)
 
+![Players card — online players with skin heads, plus op / kick / ban](images/players.webp)
+
 The **Players** card uses RCON to show who's online (with skin heads) and lets you **Op / Deop / Kick / Ban / Unban**. NexCraft auto-enables RCON with a random password and a free port when it sets up a server, so this usually works out of the box.
 
 ## Metrics
+
+![Metrics card — per-instance CPU %, RAM and player count over time](images/metrics.webp)
 
 The **Metrics** card charts per-instance **CPU %**, **RAM (GB)**, and **player count** over time, with selectable ranges (1 min → 24 h), shift-wheel zoom and drag-to-zoom. CPU/RAM are measured across the server's **process tree** (not a container), so they're accurate in host/general mode. The player count refreshes about every 10 seconds.
 

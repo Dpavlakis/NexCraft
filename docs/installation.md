@@ -58,6 +58,8 @@ docker run -d --name nexcraft-web --restart unless-stopped \
 2. If the web panel doesn't auto-detect the local daemon, go to **Daemons** and add a node pointing at the daemon's IP and port (`24444`) with its access key.
 3. Once the node shows **online**, you're ready to [create your first server](creating-servers.md).
 
+![Daemons page — node connection status with live CPU / RAM usage](images/daemons.webp)
+
 ## Updating
 
 Pull the latest source, rebuild the image(s) that changed, and recreate the containers:

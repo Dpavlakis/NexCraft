@@ -25,8 +25,12 @@ The daemon downloads the server, runs any loader bootstrap, assigns a free port,
 
 ![CurseForge modpack browser](images/browser-curseforge.webp)
 
+![Modrinth modpack browser](images/browser-modrinth.webp)
+
 1. Select **CurseForge**, **Modrinth**, or **FTB** and search (or browse the popular list).
 2. Click a pack to open its detail dialog — description, tags, supported versions, and a **Version** picker.
+
+   ![Modpack detail dialog — description, tags, versions, and Install](images/modpack-detail-curseforge.webp)
 3. Choose a version, accept the **Minecraft EULA**, set memory, and **Install**.
 
 What happens under the hood:
