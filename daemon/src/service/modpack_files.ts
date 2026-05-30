@@ -189,11 +189,12 @@ export function ftbTargets(manifest: FtbVersionManifest): {
     if (t.type === "game" || t.name === "minecraft") mc = t.version || mc;
     if (t.type === "modloader") {
       const n = (t.name || "").toLowerCase();
-      if (n === "neoforge") loader = "neoforge";
-      else if (n === "forge") loader = "forge";
-      else if (n === "fabric") loader = "fabric";
-      else if (n === "quilt") loader = "quilt";
-      loaderVersion = t.version || "";
+      // Only adopt the version when we recognise the loader, so an unknown
+      // loader name can't leave loader="vanilla" with a stray loaderVersion.
+      if (n === "neoforge" || n === "forge" || n === "fabric" || n === "quilt") {
+        loader = n;
+        loaderVersion = t.version || "";
+      }
     }
   }
   return { mc, loader, loaderVersion };
@@ -219,10 +220,11 @@ export async function downloadFtbFiles(
       if (i >= files.length) return;
       const f = files[i];
       try {
-        const rel = `${(f.path || "").replace(/^\.?\/+/, "").replace(/\/+$/, "")}/${f.name}`.replace(
-          /\/+/g,
-          "/"
-        );
+        // FTB paths look like "./config/Foo/"; strip the leading "./" and any
+        // surrounding slashes. A root-level file ("" or "/") must NOT yield a
+        // leading-slash rel, or path.join(cwd, "/x") drops cwd → file lost.
+        const dir = (f.path || "").replace(/^\.?\/+/, "").replace(/\/+$/, "");
+        const rel = dir ? `${dir}/${f.name}` : f.name;
         if (!(skip && skip(rel))) {
           const dest = safeJoin(cwd, rel);
           if (dest) await downloadManager.downloadFromUrl(f.url, dest);

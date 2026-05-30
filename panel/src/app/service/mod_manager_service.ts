@@ -656,7 +656,7 @@ class ModManagerService {
     let ids: number[] = [];
     try {
       const url = key
-        ? `${this.ftbUrl}/modpack/search/50?term=${encodeURIComponent(key)}`
+        ? `${this.ftbUrl}/modpack/search/100?term=${encodeURIComponent(key)}`
         : `${this.ftbUrl}/modpack/popular/installs/100`;
       const res = await this.requestWithRetry({ method: "GET", url });
       ids = Array.isArray(res.data?.packs) ? res.data.packs : [];
