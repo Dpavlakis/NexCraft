@@ -36,6 +36,7 @@ export default defineConfig({
         items: [
           { text: "Introduction", link: "/introduction" },
           { text: "Installation", link: "/installation" },
+          { text: "Running on Unraid", link: "/unraid" },
           { text: "Creating Minecraft Servers", link: "/creating-servers" },
           { text: "Updating & Resetting Modpacks", link: "/modpacks" },
           { text: "Managing an Instance", link: "/managing-instances" },
