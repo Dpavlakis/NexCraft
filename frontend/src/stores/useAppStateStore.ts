@@ -5,6 +5,7 @@ import type { LoginUserInfo } from "@/types/user";
 import { createGlobalState, useLocalStorage } from "@vueuse/core";
 import _ from "lodash";
 import { computed, reactive } from "vue";
+import { useAppConfigStore } from "./useAppConfigStore";
 
 interface AppStateInfo extends PanelStatus {
   userInfo: LoginUserInfo | null;
@@ -51,6 +52,8 @@ export const useAppStateStore = createGlobalState(() => {
           throw new Error("Failed to get user information from server!");
         }
       }
+      const { setThemeId } = useAppConfigStore();
+      if (state.userInfo?.theme) setThemeId(state.userInfo.theme);
     } catch (err: any) {
       console.error(err);
       throw new Error(err.message);

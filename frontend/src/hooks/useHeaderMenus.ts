@@ -2,15 +2,12 @@ import { router, type RouterMetaInfo } from "@/config/router";
 import { useAppRouters } from "@/hooks/useAppRouters";
 import { t } from "@/lang/i18n";
 import { logoutUser } from "@/services/apis/index";
-import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import { useAppToolsStore } from "@/stores/useAppToolsStore";
 import { useLayoutConfigStore } from "@/stores/useLayoutConfig";
 import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
-import { AppTheme } from "@/types/const";
 import {
   AppstoreAddOutlined,
-  BgColorsOutlined,
   BuildOutlined,
   CloseCircleOutlined,
   GithubFilled,
@@ -63,11 +60,27 @@ export type SidebarEntry =
   | SidebarAppEntry
   | SidebarAppDropdownEntry;
 
+/** Header/sidebar app menu item (header buttons + optional dropdown). */
+export interface AppMenuItem {
+  title: string;
+  icon: Component;
+  iconText?: string;
+  leftSideTitle?: string;
+  customClass?: string[];
+  conditions?: boolean;
+  onlyPC?: boolean;
+  onlyHeader?: boolean;
+  inUserDropdown?: boolean;
+  showAvatar?: boolean;
+  menus?: { value: string | number; title: string }[];
+  // eslint-disable-next-line no-unused-vars -- type param name only
+  click: (menuKey?: string) => void | Promise<void>;
+}
+
 export function useHeaderMenus() {
   const { saveGlobalLayoutConfig, resetGlobalLayoutConfig } = useLayoutConfigStore();
   const { containerState, changeDesignMode } = useLayoutContainerStore();
   const { toPage } = useAppRouters();
-  const { setTheme } = useAppConfigStore();
   const { state: appTools } = useAppToolsStore();
   const { isAdmin, state: appState, isLogged } = useAppStateStore();
   const { execute } = logoutUser();
@@ -114,7 +127,7 @@ export function useHeaderMenus() {
       }));
   });
 
-  const appMenus = computed(() => {
+  const appMenus = computed<AppMenuItem[]>(() => {
     return [
       {
         iconText: "",
@@ -191,21 +204,6 @@ export function useHeaderMenus() {
         conditions: containerState.isDesignMode,
         onlyPC: true,
         customClass: ["nav-button-danger"]
-      },
-      {
-        title: t("TXT_CODE_5d88a9b"),
-        leftSideTitle: t("TXT_CODE_ee01c10c"),
-        icon: BgColorsOutlined,
-        click: (key: string) => {
-          setTheme(Number(key) as AppTheme);
-        },
-        conditions: !containerState.isDesignMode,
-        onlyPC: false,
-        menus: [
-          { value: AppTheme.AUTO, title: t("TXT_CODE_dc8de4ff") },
-          { value: AppTheme.LIGHT, title: t("TXT_CODE_673eac8e") },
-          { value: AppTheme.DARK, title: t("TXT_CODE_5e4a370d") }
-        ]
       },
       {
         title: t("TXT_CODE_ebd2a6a1"),
