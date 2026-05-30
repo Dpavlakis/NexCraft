@@ -1196,7 +1196,9 @@ class ModManagerService {
         gameVersions: Array.from(gv).slice(0, 8),
         updated: ts ? new Date(ts * 1000).toISOString() : undefined,
         websiteUrl: `https://www.feed-the-beast.com/modpacks/${projectId}`,
-        description: this.toPlainText(p?.description || p?.synopsis || "")
+        description: this.toPlainText(p?.description || p?.synopsis || ""),
+        descriptionHtml: p?.description || p?.synopsis || "",
+        descriptionFormat: "markdown"
       };
     }
     if (source.toLowerCase() === "curseforge") {
@@ -1229,7 +1231,9 @@ class ModManagerService {
         gameVersions: versions.slice(0, 8),
         updated: m.dateModified,
         websiteUrl: m.links?.websiteUrl,
-        description: this.toPlainText(body) || m.summary || ""
+        description: this.toPlainText(body) || m.summary || "",
+        descriptionHtml: body || "",
+        descriptionFormat: "html"
       };
     }
 
@@ -1250,7 +1254,9 @@ class ModManagerService {
       gameVersions: (p.game_versions || []).slice(-8),
       updated: p.updated,
       websiteUrl: p.slug ? `https://modrinth.com/modpack/${p.slug}` : undefined,
-      description: this.toPlainText(p.body || p.description || "")
+      description: this.toPlainText(p.body || p.description || ""),
+      descriptionHtml: p.body || p.description || "",
+      descriptionFormat: "markdown"
     };
   }
 

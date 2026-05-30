@@ -22,6 +22,8 @@ import {
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
 import { modpackBrowseCache } from "./modpackBrowseCache";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 import type { LayoutCard, NodeStatus } from "@/types";
 import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
 import curseforgeIcon from "@/assets/curseforge.svg";
@@ -412,6 +414,50 @@ const dialogSourceUrl = computed(() => {
   return "";
 });
 
+// Render the pack description with images, but drop videos/scripts (sanitize)
+// and "rent a server" promo blocks that clutter CurseForge descriptions.
+const HOSTING_RE =
+  /(bisecthosting|apexhosting|shockbyte|gameserver|serverminer|nodecraft|akliz|mcprohosting|pebblehost|bloom\.host|kinetichosting|aquatis|sparkedhost|hosthavoc|fluctishosting|creeperhost|gtxgaming|scalacube)/i;
+const PROMO_RE =
+  /(buy|rent|get|grab|order)\b[^.]{0,40}\bserver|\bserver\b[^.]{0,30}(host|hosting|deal|discount|coupon|promo)|use code|click here to (buy|get|rent|order)/i;
+
+const packDescHtml = computed(() => {
+  const d = dialog.detail;
+  if (!d?.descriptionHtml) return "";
+  const raw =
+    d.descriptionFormat === "markdown"
+      ? (marked.parse(d.descriptionHtml, { async: false }) as string)
+      : d.descriptionHtml;
+  return sanitizeHtml(raw, {
+    allowedTags: [
+      "p", "br", "b", "strong", "i", "em", "u", "s", "span", "div", "center",
+      "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote",
+      "code", "pre", "hr", "a", "img", "table", "thead", "tbody", "tr", "td", "th"
+    ],
+    allowedAttributes: { a: ["href", "target", "rel"], img: ["src", "alt"] },
+    allowedSchemes: ["http", "https"],
+    transformTags: {
+      a: (tagName, attribs) => ({
+        tagName,
+        attribs: { ...attribs, target: "_blank", rel: "noopener noreferrer" }
+      })
+    },
+    exclusiveFilter: (frame) => {
+      const text = (frame.text || "").toLowerCase();
+      if (frame.tag === "a" && HOSTING_RE.test(frame.attribs?.href || "")) return true;
+      if (
+        (frame.tag === "p" ||
+          frame.tag === "div" ||
+          frame.tag === "center" ||
+          /^h[1-6]$/.test(frame.tag)) &&
+        PROMO_RE.test(text)
+      )
+        return true;
+      return false;
+    }
+  });
+});
+
 const formatDownloads = (n?: number) => {
   if (!n) return "";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -739,7 +785,9 @@ onBeforeUnmount(() => {
       </div>
 
       <a-spin :spinning="dialog.detailLoading">
-        <div class="pack-desc">
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div v-if="packDescHtml" class="pack-desc pack-desc-html" v-html="packDescHtml"></div>
+        <div v-else class="pack-desc">
           {{ dialog.detail?.description || dialog.item.description }}
         </div>
       </a-spin>
@@ -929,5 +977,36 @@ onBeforeUnmount(() => {
   line-height: 1.6;
   opacity: 0.85;
   padding-right: 6px;
+}
+.pack-desc-html {
+  white-space: normal;
+  max-height: 320px;
+}
+.pack-desc-html :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 6px 0;
+}
+.pack-desc-html :deep(a) {
+  color: #3179bd;
+}
+.pack-desc-html :deep(h1),
+.pack-desc-html :deep(h2),
+.pack-desc-html :deep(h3) {
+  font-size: 15px;
+  margin: 12px 0 4px;
+}
+.pack-desc-html :deep(p) {
+  margin: 6px 0;
+}
+.pack-desc-html :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pack-desc-html :deep(td),
+.pack-desc-html :deep(th) {
+  border: 1px solid var(--color-gray-4, #ddd);
+  padding: 4px 6px;
 }
 </style>

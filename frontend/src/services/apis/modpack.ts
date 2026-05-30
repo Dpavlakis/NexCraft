@@ -58,6 +58,10 @@ export interface ModpackDetail {
   updated?: string;
   websiteUrl?: string;
   description?: string;
+  // Rich description (CurseForge = HTML, Modrinth/FTB = Markdown), rendered
+  // sanitized in the install dialog so showcase images show.
+  descriptionHtml?: string;
+  descriptionFormat?: "html" | "markdown";
 }
 
 // Full project detail for the install/detail dialog
