@@ -144,6 +144,7 @@ export async function getInstancesByUuid(
     isInit: user.isInit,
     open2FA: user.open2FA,
     secret: user.secret,
+    avatar: user.avatar,
     token: ""
   };
 }

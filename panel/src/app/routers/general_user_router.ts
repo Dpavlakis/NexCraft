@@ -11,6 +11,7 @@ import { $t } from "../i18n";
 import { ROLE } from "../entity/user";
 import { getInstancesByUuid } from "../service/instance_service";
 import { toBoolean } from "mcsmanager-common";
+import { validateAvatarString } from "../service/user_service";
 
 const router = new Router({ prefix: "/auth" });
 
@@ -61,6 +62,22 @@ router.put("/update", permission({ level: ROLE.USER }), async (ctx: Koa.Paramete
     ctx.body = logout(ctx);
   }
 });
+
+// [Low-level Permission]
+// Update only the current user's avatar (does not log out, unlike /update)
+router.put(
+  "/avatar",
+  permission({ level: ROLE.USER }),
+  validator({ body: { avatar: String } }),
+  async (ctx: Koa.ParameterizedContext) => {
+    const userUuid = getUserUuid(ctx);
+    if (!userUuid) return;
+    const avatar = String(ctx.request.body.avatar ?? "");
+    validateAvatarString(avatar);
+    await userSystem.edit(userUuid, { avatar });
+    ctx.body = true;
+  }
+);
 
 // [Low-level Permission]
 // API generation and shutdown

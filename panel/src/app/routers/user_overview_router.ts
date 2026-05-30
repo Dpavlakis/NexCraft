@@ -1,7 +1,7 @@
 import Koa from "koa";
 import Router from "@koa/router";
 import permission from "../middleware/permission";
-import userSystem from "../service/user_service";
+import userSystem, { validateAvatarString } from "../service/user_service";
 import { ICompleteUser } from "../entity/entity_interface";
 import { $t } from "../i18n";
 import { ROLE } from "../entity/user";
@@ -20,6 +20,7 @@ router.put("/", permission({ level: ROLE.ADMIN }), async (ctx: Koa.Parameterized
       config.secret = "";
       config.open2FA = false;
     }
+    if (config.avatar != null) validateAvatarString(String(config.avatar));
     await userSystem.edit(uuid, config);
     ctx.body = true;
   } catch (error: any) {
