@@ -21,6 +21,7 @@ import {
   type ResetMode
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
+import { modpackBrowseCache } from "./modpackBrowseCache";
 import type { LayoutCard, NodeStatus } from "@/types";
 import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
 import curseforgeIcon from "@/assets/curseforge.svg";
@@ -212,9 +213,21 @@ const loadCustom = async () => {
   }
 };
 
+const browseKey = () =>
+  `${source.value}|${sortField.value}|${searchText.value.trim().toLowerCase()}`;
+
 const search = async () => {
   if (source.value === "custom") return applyCustomFilter();
-  loading.value = true;
+  // Stale-while-revalidate: if we've fetched this list before, show it instantly
+  // (no spinner) and refresh in the background; otherwise show the spinner.
+  const key = browseKey();
+  const cached = modpackBrowseCache.get(key);
+  if (cached) {
+    results.value = cached;
+    loading.value = false;
+  } else {
+    loading.value = true;
+  }
   try {
     const { execute } = modpackSearch();
     const res = await execute({
@@ -228,7 +241,7 @@ const search = async () => {
       },
       forceRequest: true
     });
-    results.value = (res.value?.hits || []).map((h: ModpackHit) => ({
+    const mapped = (res.value?.hits || []).map((h: ModpackHit) => ({
       id: h.id,
       title: h.title,
       description: h.description,
@@ -237,8 +250,11 @@ const search = async () => {
       author: h.author,
       downloads: h.downloads
     }));
+    results.value = mapped;
+    modpackBrowseCache.set(key, mapped);
   } catch (err: any) {
-    reportErrorMsg(err.message);
+    // Only surface the error if we had nothing cached to show.
+    if (!cached) reportErrorMsg(err.message);
   } finally {
     loading.value = false;
   }
@@ -246,11 +262,16 @@ const search = async () => {
 
 const selectSource = (s: Source) => {
   source.value = s;
-  results.value = [];
   searchText.value = "";
   // Custom loads the local catalog; CF/Modrinth load popular packs (empty query).
-  if (s === "custom") loadCustom();
-  else search();
+  if (s === "custom") {
+    results.value = [];
+    loadCustom();
+  } else {
+    // Show this source's cached list immediately (if any) to avoid an empty flash.
+    results.value = modpackBrowseCache.get(browseKey()) || [];
+    search();
+  }
 };
 
 // ---- install dialog ----
