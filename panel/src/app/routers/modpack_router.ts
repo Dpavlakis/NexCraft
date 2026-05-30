@@ -472,7 +472,7 @@ async function buildServerDescriptor(b: any) {
     versionName: mcVersion,
     mcVersion,
     loader,
-    loaderVersion: ""
+    loaderVersion: String(b.loaderVersion || "")
   };
   if (loader === "bedrock") {
     const bedrockUrl = await resolveBedrockUrl(mcVersion);
@@ -504,7 +504,7 @@ async function buildServerDescriptor(b: any) {
     source: "vanilla",
     mcVersion,
     loader,
-    loaderVersion: "",
+    loaderVersion: String(b.loaderVersion || ""),
     maxMemoryMB: b.maxMemoryMB ? Number(b.maxMemoryMB) : undefined,
     acceptEula: !!b.acceptEula,
     packInfo: { ...packInfoBase, source: "vanilla" }

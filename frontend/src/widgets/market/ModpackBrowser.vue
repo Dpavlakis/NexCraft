@@ -7,6 +7,7 @@ import { remoteNodeList } from "@/services/apis";
 import {
   installModpack,
   installServer,
+  loaderVersionsGet,
   mcVersionsGet,
   modpackDetail,
   modpackSearch,
@@ -340,6 +341,9 @@ const dialog = reactive({
   versions: [] as ModpackVersion[],
   versionLoading: false,
   selectedVersion: "" as string,
+  loaderVersions: [] as McVersion[],
+  loaderVersionLoading: false,
+  selectedLoaderVersion: "" as string,
   installing: false,
   detail: null as ModpackDetail | null,
   detailLoading: false,
@@ -379,6 +383,31 @@ const loadVersions = async (item: ResultItem) => {
 const currentLoaderLabel = () =>
   customLoaders.find((l) => l.value === customLoader.value)?.label || "Vanilla";
 
+// Modloaders let the user choose the specific build; others auto-pick latest.
+const MODLOADERS = ["fabric", "quilt", "forge", "neoforge"];
+const needsLoaderBuild = computed(
+  () => source.value === "custom" && MODLOADERS.includes(customLoader.value)
+);
+
+const loadLoaderBuilds = async (mc: string) => {
+  dialog.loaderVersions = [];
+  dialog.selectedLoaderVersion = "";
+  if (!needsLoaderBuild.value || !mc) return;
+  dialog.loaderVersionLoading = true;
+  try {
+    const res = await loaderVersionsGet().execute({
+      params: { loader: customLoader.value, mc }
+    });
+    dialog.loaderVersions = res.value || [];
+    const stable = dialog.loaderVersions.find((v) => v.type === "release");
+    dialog.selectedLoaderVersion = (stable || dialog.loaderVersions[0])?.id || "";
+  } catch (err: any) {
+    reportErrorMsg(err.message);
+  } finally {
+    dialog.loaderVersionLoading = false;
+  }
+};
+
 const openInstall = (item: ResultItem) => {
   dialog.item = item;
   dialog.daemonId = props.reinstallTarget?.daemonId || nodes.value[0]?.uuid || "";
@@ -393,6 +422,7 @@ const openInstall = (item: ResultItem) => {
   if (source.value === "custom") {
     // item.id is the chosen Minecraft version; loader comes from the radio.
     dialog.instanceName = `${currentLoaderLabel()} ${item.id}`.slice(0, 40);
+    loadLoaderBuilds(item.id);
   } else {
     dialog.instanceName = item.title.slice(0, 40);
     // fetch detail + versions in parallel
@@ -487,7 +517,10 @@ const canInstall = computed(() => {
   if (!isReinstall.value && !dialog.instanceName) return false;
   // custom (built-in versions): the MC version is the selected row; EULA still
   // required for consistency with the modpack flow.
-  if (source.value === "custom") return !!dialog.item?.id && dialog.acceptEula;
+  if (source.value === "custom") {
+    if (needsLoaderBuild.value && !dialog.selectedLoaderVersion) return false;
+    return !!dialog.item?.id && dialog.acceptEula;
+  }
   return dialog.acceptEula && !!dialog.selectedVersion;
 });
 
@@ -513,7 +546,8 @@ const doInstall = async () => {
             loader: customLoader.value,
             maxMemoryMB: dialog.maxMemoryMB,
             acceptEula: true,
-            resetMode: resetMode.value
+            resetMode: resetMode.value,
+            loaderVersion: dialog.selectedLoaderVersion
           }
         });
       } else {
@@ -543,7 +577,8 @@ const doInstall = async () => {
           loader: customLoader.value,
           instanceName: dialog.instanceName,
           maxMemoryMB: dialog.maxMemoryMB,
-          acceptEula: true
+          acceptEula: true,
+          loaderVersion: dialog.selectedLoaderVersion
         }
       });
       instanceUuid = res.value?.instanceUuid || "";
@@ -888,6 +923,17 @@ onBeforeUnmount(() => {
       </template>
       <a-form-item v-if="source === 'custom'" :label="t('TXT_CODE_modpack_version')">
         <a-input :value="`${currentLoaderLabel()}  —  ${dialog.item?.id || ''}`" disabled />
+      </a-form-item>
+      <a-form-item v-if="needsLoaderBuild" :label="t('TXT_CODE_modpack_loader_build')">
+        <a-select
+          v-model:value="dialog.selectedLoaderVersion"
+          :loading="dialog.loaderVersionLoading"
+          :placeholder="t('TXT_CODE_modpack_loader_build')"
+        >
+          <a-select-option v-for="lv in dialog.loaderVersions" :key="lv.id" :value="lv.id">
+            {{ lv.id }}{{ lv.type === "snapshot" ? " (beta)" : "" }}
+          </a-select-option>
+        </a-select>
       </a-form-item>
       <a-form-item v-if="source !== 'custom'" :label="t('TXT_CODE_modpack_version')">
         <a-select

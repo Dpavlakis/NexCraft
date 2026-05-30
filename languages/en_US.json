@@ -3561,6 +3561,7 @@
   "TXT_CODE_modpack_name": "Instance Name",
   "TXT_CODE_modpack_node": "Node",
   "TXT_CODE_modpack_version": "Version",
+  "TXT_CODE_modpack_loader_build": "Loader build",
   "TXT_CODE_modpack_memory": "Max Memory (MB)",
   "TXT_CODE_modpack_eula": "I agree to the Minecraft",
   "TXT_CODE_modpack_eula_link": "End User License Agreement ↗",

@@ -163,6 +163,7 @@ export const reinstallServer = useDefineApi<
       maxMemoryMB?: number;
       acceptEula?: boolean;
       resetMode: ResetMode;
+      loaderVersion?: string;
     };
   },
   { taskId: string; instanceUuid: string }
@@ -192,6 +193,15 @@ export const serverVersionsGet = useDefineApi<
   method: "GET"
 });
 
+// Loader build versions for a given loader + Minecraft version (modloaders only)
+export const loaderVersionsGet = useDefineApi<
+  { params: { loader: string; mc: string } },
+  McVersion[]
+>({
+  url: "/api/protected_modpack/loader_versions",
+  method: "GET"
+});
+
 // Build a fresh server (vanilla or a loader) for any Minecraft version
 export const installServer = useDefineApi<
   {
@@ -202,6 +212,7 @@ export const installServer = useDefineApi<
       instanceName: string;
       maxMemoryMB?: number;
       acceptEula?: boolean;
+      loaderVersion?: string;
     };
   },
   { taskId: string; instanceUuid: string }
