@@ -159,11 +159,11 @@ export const DAEMON_INDEX_HTML = `<!DOCTYPE html>
           <div class="link-title" id="doc-title"></div>
           <a
             class="link"
-            href="https://docs.mcsmanager.com/advanced/distributed.html#daemon-key"
+            href="https://dpavlakis.github.io/NexCraft/"
             target="_blank"
             rel="noopener noreferrer"
           >
-            https://docs.mcsmanager.com/advanced/distributed.html
+            https://dpavlakis.github.io/NexCraft/
           </a>
         </div>
       </div>

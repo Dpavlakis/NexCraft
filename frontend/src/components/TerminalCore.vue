@@ -246,7 +246,7 @@ onMounted(async () => {
               <strong>{{ $t("TXT_CODE_d4c8fb3b") }}</strong>
             </span>
             <a
-              href="https://docs.mcsmanager.com/ops/proxy_https.html"
+              href="https://dpavlakis.github.io/NexCraft/"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -254,7 +254,7 @@ onMounted(async () => {
             </a>
             <span>|</span>
             <a
-              href="https://docs.mcsmanager.com/ops/mcsm_network.html"
+              href="https://dpavlakis.github.io/NexCraft/"
               target="_blank"
               rel="noopener noreferrer"
             >
