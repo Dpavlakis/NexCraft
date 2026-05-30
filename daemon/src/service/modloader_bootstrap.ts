@@ -384,7 +384,7 @@ export class ModloaderBootstrap {
     return { startCommand: `${this.startJava} ${this.memArgs()} -jar server.jar nogui` };
   }
 
-  private async bootstrapFabricLike(kind: "fabric" | "quilt"): Promise<IBootstrapResult> {
+  private async bootstrapFabricLike(kind: "fabric"): Promise<IBootstrapResult> {
     const cwd = this.cwd();
     const mc = this.input.mcVersion;
     const loaderVer = this.input.loaderVersion || (await this.resolveLoaderVersion());
@@ -402,8 +402,58 @@ export class ModloaderBootstrap {
 
     const jarUrl = `${meta}/versions/loader/${mc}/${loaderVer}/${installerVer}/server/jar`;
     this.println($t("TXT_CODE_modpack.fetchLoader", { loader: kind, version: loaderVer }));
-    await downloadManager.downloadFromUrl(jarUrl, path.join(cwd, launchJar));
+    try {
+      await downloadManager.downloadFromUrl(jarUrl, path.join(cwd, launchJar));
+    } catch {
+      throw new Error($t("TXT_CODE_modpack.noServerBuild", { loader: "Fabric", mc }));
+    }
     return { startCommand: `${this.startJava} ${this.memArgs()} -jar ${launchJar} nogui` };
+  }
+
+  private async bootstrapQuilt(): Promise<IBootstrapResult> {
+    const cwd = this.cwd();
+    const mc = this.input.mcVersion;
+    const loaderVer = this.input.loaderVersion || (await this.resolveLoaderVersion());
+    if (!loaderVer) throw new Error($t("TXT_CODE_modpack.unknownLoaderVersion"));
+
+    // Quilt ships a generic installer jar (no prebuilt server-jar endpoint).
+    const installers = await this.fetchJson<any[]>("https://meta.quiltmc.org/v3/versions/installer");
+    const installerVer = (installers.find((i: any) => i.stable) || installers[0])?.version;
+    if (!installerVer) throw new Error($t("TXT_CODE_modpack.noLoader", { loader: "quilt" }));
+    const installerUrl =
+      `https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-installer/` +
+      `${installerVer}/quilt-installer-${installerVer}.jar`;
+    const installerPath = path.join(cwd, "quilt-installer.jar");
+
+    this.println($t("TXT_CODE_modpack.fetchLoader", { loader: "quilt", version: loaderVer }));
+    try {
+      await downloadManager.downloadFromUrl(installerUrl, installerPath);
+    } catch {
+      throw new Error($t("TXT_CODE_modpack.noServerBuild", { loader: "Quilt", mc }));
+    }
+
+    this.println($t("TXT_CODE_modpack.runInstaller"));
+    await this.runJar(this.installerJava, "quilt-installer.jar", [
+      "install",
+      "server",
+      mc,
+      loaderVer,
+      "--install-dir=.",
+      "--download-server"
+    ]);
+
+    try {
+      await fs.remove(path.join(cwd, "quilt-installer.jar"));
+    } catch {
+      // ignore
+    }
+
+    if (fs.existsSync(path.join(cwd, "quilt-server-launch.jar"))) {
+      return { startCommand: `${this.startJava} ${this.memArgs()} -jar quilt-server-launch.jar nogui` };
+    }
+    const start = this.detectStartFromExisting(false);
+    if (!start) throw new Error($t("TXT_CODE_modpack.noServerBuild", { loader: "Quilt", mc }));
+    return { startCommand: start };
   }
 
   private async bootstrapForgeLike(kind: "forge" | "neoforge"): Promise<IBootstrapResult> {
@@ -518,7 +568,7 @@ export class ModloaderBootstrap {
         result = await this.bootstrapFabricLike("fabric");
         break;
       case "quilt":
-        result = await this.bootstrapFabricLike("quilt");
+        result = await this.bootstrapQuilt();
         break;
       default:
         result = await this.bootstrapVanilla();

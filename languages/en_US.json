@@ -3616,6 +3616,7 @@
   "TXT_CODE_modpack.javaSelected": "Using Java {{ver}} for this server.",
   "TXT_CODE_modpack.javaAutoFailed": "Could not auto-provision Java ({{err}}). Falling back to system Java; install a matching Java via the Java Manager if it fails to start.",
   "TXT_CODE_modpack.updateFailedStopped": "Update failed; the server was left stopped. Restore the pre-update backup if needed.",
+  "TXT_CODE_modpack.noServerBuild": "{{loader}} has no server build for Minecraft {{mc}} yet — try another version or loader.",
   "TXT_CODE_server_icon_title": "Set Server Icon",
   "TXT_CODE_server_icon_desc": "Upload an image — it will be resized to 64×64 and saved as server-icon.png in this instance.",
   "TXT_CODE_server_icon_preview": "Preview (64×64)",
