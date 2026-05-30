@@ -21,7 +21,7 @@ import {
 import { dockerPortsArray } from "@/tools/common";
 import { reportErrorMsg } from "@/tools/validator";
 import type { DockerNetworkModes, InstanceDetail, QuickStartPackages } from "@/types";
-import { defaultQuickStartPackages, TERMINAL_CODE } from "@/types/const";
+import { defaultQuickStartPackages } from "@/types/const";
 import { CheckOutlined, CloseOutlined, PictureOutlined } from "@ant-design/icons-vue";
 import type { FormInstance } from "ant-design-vue";
 import { message } from "ant-design-vue";
@@ -1065,27 +1065,6 @@ defineExpose({
                     "
                     @update:image-select-method="(v) => (formData.instance.imageSelectMethod = v)"
                   />
-                </a-form-item>
-              </a-col>
-              <a-col :xs="24" :lg="24" :offset="0">
-                <a-form-item>
-                  <a-typography-title :level="5" class="require-field">
-                    {{ t("TXT_CODE_f041de90") }}
-                  </a-typography-title>
-                  <a-typography-paragraph>
-                    <a-tooltip :title="t('TXT_CODE_6e69b5a5')" placement="top">
-                      <a-typography-text type="secondary" :class="['typography-text-ellipsis']">
-                        {{ t("TXT_CODE_6e69b5a5") }}
-                      </a-typography-text>
-                    </a-tooltip>
-                  </a-typography-paragraph>
-                  <a-select
-                    v-model:value="formData.instance.config.fileCode"
-                    :placeholder="t('TXT_CODE_3bb646e4')"
-                  >
-                    <a-select-option v-for="item in TERMINAL_CODE" :key="item" :value="item">
-                    </a-select-option>
-                  </a-select>
                 </a-form-item>
               </a-col>
               <a-col :xs="24" :lg="24" :offset="0">
