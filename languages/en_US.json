@@ -3660,5 +3660,7 @@
   "TXT_CODE_metrics_zoom_line2": "Or click the area-zoom button (top-right of the chart) then drag the area you'd like to zoom into.",
   "TXT_CODE_metrics_zoom_line3": "Drag the slider below the chart to pan across time. Use the restore button to reset.",
   "TXT_CODE_metrics_area_zoom": "Area zoom",
-  "TXT_CODE_metrics_reset_zoom": "Reset zoom"
+  "TXT_CODE_metrics_reset_zoom": "Reset zoom",
+  "TXT_CODE_modpack_memory_hint": "Tip: scroll your mouse wheel over the field to adjust by 1 GB.",
+  "TXT_CODE_terminal_scroll_bottom": "Jump to latest"
 }

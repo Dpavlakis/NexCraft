@@ -5,7 +5,7 @@ import { useXhrPollError } from "@/hooks/useXhrPollError";
 import { t } from "@/lang/i18n";
 import { getInstanceOutputLog } from "@/services/apis/instance";
 import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
-import { CodeOutlined, DeleteOutlined, LoadingOutlined } from "@ant-design/icons-vue";
+import { CodeOutlined, DeleteOutlined, DownOutlined, LoadingOutlined } from "@ant-design/icons-vue";
 import { Terminal } from "@xterm/xterm";
 import { message } from "ant-design-vue";
 import { onMounted, ref, watch } from "vue";
@@ -51,6 +51,18 @@ const socketError = ref<Error>();
 const { isXhrPollError, xhrPollErrorReason } = useXhrPollError(socketError);
 
 let term: Terminal | undefined;
+
+// Show a "jump to latest" button while the user has scrolled up the console.
+const showScrollBottom = ref(false);
+const updateScrollState = () => {
+  if (!term) return;
+  const b = term.buffer.active;
+  showScrollBottom.value = b.viewportY < b.baseY;
+};
+const scrollToBottom = () => {
+  term?.scrollToBottom();
+  showScrollBottom.value = false;
+};
 
 let inputRef = ref<HTMLElement | null>(null);
 
@@ -159,6 +171,10 @@ onMounted(async () => {
       });
     }
     term = await initTerminal();
+    if (term) {
+      term.onScroll(() => updateScrollState());
+      updateScrollState();
+    }
   } catch (error: any) {
     console.error(error);
     throw error;
@@ -194,6 +210,14 @@ onMounted(async () => {
         <div v-else :style="{ height: props.height }">
           <p class="terminal-design-tip">{{ $t("TXT_CODE_7ac6f85c") }}</p>
         </div>
+      </div>
+      <div
+        v-if="showScrollBottom"
+        class="scroll-bottom-btn"
+        :title="t('TXT_CODE_terminal_scroll_bottom')"
+        @click="scrollToBottom"
+      >
+        <DownOutlined />
       </div>
     </div>
     <div class="command-input">
@@ -375,6 +399,30 @@ onMounted(async () => {
     .terminal-container {
       // min-width: 1200px;
       height: 100%;
+    }
+
+    .scroll-bottom-btn {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      z-index: 6;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background-color: rgba(40, 40, 40, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: #3e3e3e;
+      }
     }
 
     margin-bottom: 12px;

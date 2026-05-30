@@ -475,8 +475,9 @@ const canInstall = computed(() => {
   // name + target node are required.
   if (!dialog.daemonId) return false;
   if (!isReinstall.value && !dialog.instanceName) return false;
-  // custom (built-in versions) auto-accept the EULA; the MC version is the row
-  if (source.value === "custom") return !!dialog.item?.id;
+  // custom (built-in versions): the MC version is the selected row; EULA still
+  // required for consistency with the modpack flow.
+  if (source.value === "custom") return !!dialog.item?.id && dialog.acceptEula;
   return dialog.acceptEula && !!dialog.selectedVersion;
 });
 
@@ -902,8 +903,11 @@ onBeforeUnmount(() => {
           style="width: 100%"
           @wheel.prevent="onMemWheel"
         />
+        <a-typography-text type="secondary" style="font-size: 12px">
+          {{ t("TXT_CODE_modpack_memory_hint") }}
+        </a-typography-text>
       </a-form-item>
-      <a-form-item v-if="source !== 'custom'">
+      <a-form-item>
         <a-checkbox v-model:checked="dialog.acceptEula">
           {{ t("TXT_CODE_modpack_eula") }}
           <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener" @click.stop>
