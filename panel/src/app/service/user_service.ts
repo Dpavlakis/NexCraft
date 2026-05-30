@@ -17,7 +17,7 @@ const AVATAR_DATA_URL_RE = /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$
 const AVATAR_MAX_LEN = 400_000;
 export function validateAvatarString(avatar: string): void {
   if (avatar === "") return;
-  if (typeof avatar !== "string" || !AVATAR_DATA_URL_RE.test(avatar) || avatar.length > AVATAR_MAX_LEN) {
+  if (typeof avatar !== "string" || avatar.length > AVATAR_MAX_LEN || !AVATAR_DATA_URL_RE.test(avatar)) {
     throw new Error($t("TXT_CODE_avatar.invalid"));
   }
 }
