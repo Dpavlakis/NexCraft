@@ -19,6 +19,8 @@
     <img src="frontend/src/assets/curseforge.svg" alt="CurseForge" height="34" />
     &nbsp;&nbsp;&nbsp;
     <img src="frontend/src/assets/modrinth.svg" alt="Modrinth" height="34" />
+    &nbsp;&nbsp;&nbsp;
+    <img src="frontend/src/assets/ftb.svg" alt="FTB (Feed The Beast)" height="34" />
   </p>
 
   <p><strong>Loaders &amp; server software</strong></p>
@@ -56,7 +58,7 @@
 
 **NexCraft** is a self-hosted, web-based control panel for running **Minecraft** servers. It started as a personal fork of [MCSManager](https://github.com/MCSManager/MCSManager) and has been reshaped around a single goal: **make standing up, updating, and maintaining Minecraft servers effortless.**
 
-The headline feature is a **Prism-Launcher-style modpack browser** built directly into the panel. Search **CurseForge** and **Modrinth**, or build a **custom** server (Vanilla / Paper / Purpur / Folia / Fabric / Forge / NeoForge / Quilt) against accurate, live version lists — then install it as a running server in one click. Once installed, an instance can be **updated to a newer pack version** (with an automatic safety backup that preserves your world) or **reset/reinstalled** entirely, all from the same builder.
+The headline feature is a **Prism-Launcher-style modpack browser** built directly into the panel. Search **CurseForge**, **Modrinth** and **FTB** (Feed The Beast), or build a **custom** server (Vanilla / Paper / Purpur / Folia / Fabric / Forge / NeoForge / Quilt) against accurate, live version lists — then install it as a running server in one click. Once installed, an instance can be **updated to a newer pack version** (with an automatic safety backup that preserves your world) or **reset/reinstalled** entirely, all from the same builder.
 
 Everything is wrapped in the proven MCSManager foundation: a distributed multi-node, multi-user architecture with a drag-and-drop dashboard, real-time terminals, file management, and granular permissions.
 
@@ -65,7 +67,7 @@ Everything is wrapped in the proven MCSManager foundation: a distributed multi-n
 ## Features
 
 **Modpack & server builder**
-- **Modpack browser** — CurseForge / Modrinth / Custom, with real project search, version pickers, and one-click install as a server.
+- **Modpack browser** — CurseForge / Modrinth / FTB / Custom, with real project search, version pickers, and one-click install as a server.
 - **Custom builder** — Vanilla, **Paper**, **Purpur**, **Folia**, Fabric, Forge, NeoForge, Quilt, using official APIs for accurate version lists.
 - **Per-instance Update card** — bump an installed modpack to a newer version; the panel auto-backs up and preserves your world, configs, ops/whitelist and icon.
 - **Reset / Reinstall** — rebuild an instance from the same builder, with a choice of *auto-backup then wipe*, *full wipe*, or *preserve world & replace the rest*.
@@ -76,7 +78,6 @@ Everything is wrapped in the proven MCSManager foundation: a distributed multi-n
 - **Players** — RCON-based online list with op / deop / kick / ban.
 - **Metrics** — per-instance CPU / RAM (measured across the process tree) and player count, with zoom and selectable time ranges.
 - **Easy MOTD editor**, **server icon** upload, **autostart delay**, and **shutdown timeout** — all in instance settings.
-- Accurate **"Starting" → "Running"** status (waits for the server to actually be up).
 
 **Platform (from MCSManager)**
 - Distributed architecture — manage multiple machines from one panel.
