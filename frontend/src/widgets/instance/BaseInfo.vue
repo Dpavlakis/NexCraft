@@ -187,12 +187,6 @@ onMounted(async () => {
       <a-typography-paragraph>
         {{ t("TXT_CODE_46f575ae") }}{{ parseTimestamp(instanceInfo?.config.lastDatetime) }}
       </a-typography-paragraph>
-      <a-typography-paragraph v-if="!instanceGameServerInfo">
-        <span>{{ t("TXT_CODE_cec321b4") }}{{ instanceInfo?.config.oe.toUpperCase() }} </span>
-        <span class="ml-6">
-          {{ t("TXT_CODE_400a4210") }}{{ instanceInfo?.config.ie.toUpperCase() }}
-        </span>
-      </a-typography-paragraph>
       <a-typography-paragraph>
         <a-typography-text :title="instanceInfo?.instanceUuid">
           {{ t("TXT_CODE_30051f9b") }}

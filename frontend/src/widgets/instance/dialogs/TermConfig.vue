@@ -157,31 +157,6 @@ defineExpose({
             />
           </a-form-item>
 
-          <a-form-item>
-            <a-typography-title :level="5">{{ t("TXT_CODE_449d1581") }}</a-typography-title>
-            <a-typography-paragraph>
-              <a-typography-text type="secondary">
-                {{ t("TXT_CODE_d16d82ab") }}
-              </a-typography-text>
-            </a-typography-paragraph>
-            <a-select
-              v-model:value="options.config.ie"
-              class="mr-10 mb-20"
-              :placeholder="t('TXT_CODE_bd2559f3')"
-              :style="'width: ' + (isPhone ? '100%' : '220px')"
-            >
-              <a-select-option v-for="item in TERMINAL_CODE" :key="item" :value="item">
-              </a-select-option>
-            </a-select>
-            <a-select
-              v-model:value="options.config.oe"
-              :placeholder="t('TXT_CODE_6e96b2a9')"
-              :style="'width: ' + (isPhone ? '100%' : '220px')"
-            >
-              <a-select-option v-for="item in TERMINAL_CODE" :key="item" :value="item">
-              </a-select-option>
-            </a-select>
-          </a-form-item>
         </a-col>
       </a-row>
     </a-form>
