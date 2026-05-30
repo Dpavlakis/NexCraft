@@ -241,7 +241,10 @@ export function useTerminal() {
     const background = hasBgImage.value ? "#00000000" : "#1e1e1e";
     const term = new Terminal({
       convertEol: true,
-      disableStdin: false,
+      // Read-only console: input goes through the command box below (stream/input),
+      // not by typing directly into the log view. Keeps the terminal a clean,
+      // un-clobberable output surface.
+      disableStdin: true,
       cursorStyle: "underline",
       cursorBlink: true,
       fontSize: 14,
