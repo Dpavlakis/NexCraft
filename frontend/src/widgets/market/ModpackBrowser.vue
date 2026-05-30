@@ -149,9 +149,19 @@ const LOADER_ICON: Record<string, string> = {
 };
 const loaderIcon = computed(() => LOADER_ICON[customLoader.value] || "");
 const mcVersionsRaw = ref<McVersion[]>([]);
-// Paper/Purpur/Folia/Bedrock have their own version lists; the rest use Mojang's.
-const SERVER_SOFTWARE = ["paper", "purpur", "folia", "bedrock"];
-const isServerSoftware = (l: string) => SERVER_SOFTWARE.includes(l);
+// Every loader except plain Vanilla has its own curated version list (server
+// software APIs, or each loader's game-version API). Vanilla uses Mojang's list.
+const PER_LOADER_VERSIONS = [
+  "paper",
+  "purpur",
+  "folia",
+  "bedrock",
+  "fabric",
+  "quilt",
+  "forge",
+  "neoforge"
+];
+const isServerSoftware = (l: string) => PER_LOADER_VERSIONS.includes(l);
 const versionCache: Record<string, McVersion[]> = {};
 
 const loading = ref(false);
