@@ -119,6 +119,14 @@ const customLoaders = [
 ];
 const customLoader = ref("vanilla");
 const showSnapshots = ref(false);
+const customLoaderOptions = customLoaders.map((l) => ({ label: l.label, value: l.value }));
+
+// ---- pagination (numbered pages instead of infinite scroll) ----
+const PAGE_SIZE = 20;
+const currentPage = ref(1);
+const totalItems = ref(0);
+// Full filtered Custom version list (Custom is paged client-side).
+const customFiltered = ref<ResultItem[]>([]);
 
 // Per-loader logo (bundled local asset) shown on the Custom version rows.
 const LOADER_ICON: Record<string, string> = {
@@ -170,12 +178,18 @@ const fmtDate = (s?: string) => {
 };
 
 // Apply the search box + snapshot toggle to the fetched Mojang version list.
+const sliceCustomPage = () => {
+  const start = (currentPage.value - 1) * PAGE_SIZE;
+  results.value = customFiltered.value.slice(start, start + PAGE_SIZE);
+  nextTick(recomputeHeight);
+};
+
 const applyCustomFilter = () => {
   const q = searchText.value.trim().toLowerCase();
   // Server-software lists (Paper/Purpur/Folia/Bedrock) are already curated, so
   // show every entry — this also surfaces the Bedrock "preview" build.
   const showAll = showSnapshots.value || isServerSoftware(customLoader.value);
-  results.value = mcVersionsRaw.value
+  customFiltered.value = mcVersionsRaw.value
     .filter((v) => showAll || v.type === "release")
     .filter((v) => !q || v.id.toLowerCase().includes(q))
     .map((v) => ({
@@ -187,7 +201,9 @@ const applyCustomFilter = () => {
           : `${v.type}${v.releaseTime ? " · " + fmtDate(v.releaseTime) : ""}`,
       mcType: v.type
     }));
-  nextTick(recomputeHeight);
+  totalItems.value = customFiltered.value.length;
+  currentPage.value = 1;
+  sliceCustomPage();
 };
 
 const loadCustom = async () => {
@@ -214,7 +230,7 @@ const loadCustom = async () => {
 };
 
 const browseKey = () =>
-  `${source.value}|${sortField.value}|${searchText.value.trim().toLowerCase()}`;
+  `${source.value}|${sortField.value}|${searchText.value.trim().toLowerCase()}|${currentPage.value}`;
 
 const search = async () => {
   if (source.value === "custom") return applyCustomFilter();
@@ -223,7 +239,8 @@ const search = async () => {
   const key = browseKey();
   const cached = modpackBrowseCache.get(key);
   if (cached) {
-    results.value = cached;
+    results.value = cached.hits;
+    totalItems.value = cached.total;
     loading.value = false;
   } else {
     loading.value = true;
@@ -236,8 +253,8 @@ const search = async () => {
         source: source.value,
         type: "modpack",
         sort: sortField.value,
-        offset: 0,
-        limit: 30
+        offset: (currentPage.value - 1) * PAGE_SIZE,
+        limit: PAGE_SIZE
       },
       forceRequest: true
     });
@@ -251,7 +268,8 @@ const search = async () => {
       downloads: h.downloads
     }));
     results.value = mapped;
-    modpackBrowseCache.set(key, mapped);
+    totalItems.value = res.value?.total_hits || 0;
+    modpackBrowseCache.set(key, { hits: mapped, total: totalItems.value });
   } catch (err: any) {
     // Only surface the error if we had nothing cached to show.
     if (!cached) reportErrorMsg(err.message);
@@ -260,16 +278,37 @@ const search = async () => {
   }
 };
 
+// New search/sort submit + page change reset to page 1 where appropriate.
+const onSearchSubmit = () => {
+  currentPage.value = 1;
+  search();
+};
+const onSortChange = () => {
+  currentPage.value = 1;
+  search();
+};
+const onPageChange = (p: number) => {
+  currentPage.value = p;
+  if (source.value === "custom") sliceCustomPage();
+  else search();
+};
+const onTabChange = (k: any) => selectSource(k as Source);
+
 const selectSource = (s: Source) => {
   source.value = s;
   searchText.value = "";
+  currentPage.value = 1;
+  totalItems.value = 0;
   // Custom loads the local catalog; CF/Modrinth load popular packs (empty query).
   if (s === "custom") {
     results.value = [];
+    customFiltered.value = [];
     loadCustom();
   } else {
-    // Show this source's cached list immediately (if any) to avoid an empty flash.
-    results.value = modpackBrowseCache.get(browseKey()) || [];
+    // Show this source's cached page immediately (if any) to avoid an empty flash.
+    const cached = modpackBrowseCache.get(browseKey());
+    results.value = cached?.hits || [];
+    totalItems.value = cached?.total || 0;
     search();
   }
 };
@@ -544,28 +583,29 @@ onBeforeUnmount(() => {
         </BetweenMenus>
       </a-col>
 
-      <!-- Sidebar -->
-      <a-col :xs="24" :md="5">
+      <!-- Sources as tabs in a single block -->
+      <a-col :span="24">
         <CardPanel style="height: 100%">
           <template #body>
-            <a-menu :selected-keys="[source]" mode="vertical" style="border: none">
-              <a-menu-item v-for="s in sources" :key="s.key" @click="selectSource(s.key)">
-                <template #icon>
-                  <img v-if="s.img" :src="s.img" class="source-icon" alt="" />
-                  <BlockOutlined v-else />
+            <a-tabs :active-key="source" @change="onTabChange">
+              <a-tab-pane v-for="s in sources" :key="s.key">
+                <template #tab>
+                  <span class="source-tab">
+                    <img v-if="s.img" :src="s.img" class="source-icon" alt="" />
+                    <BlockOutlined v-else />
+                    {{ s.label }}
+                  </span>
                 </template>
-                {{ s.label }}
-              </a-menu-item>
-            </a-menu>
-          </template>
-        </CardPanel>
-      </a-col>
+              </a-tab-pane>
+            </a-tabs>
 
-      <!-- Results -->
-      <a-col :xs="24" :md="19">
-        <CardPanel style="height: 100%">
-          <template #body>
+            <!-- Custom: loader picker + version search -->
             <div v-if="source === 'custom'" class="mb-12 custom-controls">
+              <a-segmented
+                v-model:value="customLoader"
+                :options="customLoaderOptions"
+                class="loader-segmented"
+              />
               <div class="search-row">
                 <a-input-search
                   v-model:value="searchText"
@@ -584,18 +624,14 @@ onBeforeUnmount(() => {
                   {{ t("TXT_CODE_modpack_snapshots") }}
                 </a-checkbox>
               </div>
-              <a-radio-group v-model:value="customLoader" button-style="solid" class="loader-radio">
-                <a-radio-button v-for="l in customLoaders" :key="l.value" :value="l.value">
-                  {{ l.label }}
-                </a-radio-button>
-              </a-radio-group>
             </div>
+            <!-- CurseForge / Modrinth: search + sort -->
             <div v-else class="mb-12 search-row">
               <a-input-search
                 v-model:value="searchText"
                 :placeholder="t('TXT_CODE_modpack_search_ph')"
                 enter-button
-                @search="search"
+                @search="onSearchSubmit"
               >
                 <template #prefix><SearchOutlined /></template>
               </a-input-search>
@@ -603,40 +639,52 @@ onBeforeUnmount(() => {
                 v-model:value="sortField"
                 class="sort-select"
                 :options="sortOptions"
-                @change="search"
+                @change="onSortChange"
               />
             </div>
+
             <a-spin :spinning="loading">
               <div ref="resultsScrollEl" class="results-scroll" :style="{ maxHeight: scrollMaxHeight }">
                 <a-list item-layout="horizontal" :data-source="results">
-                <template #renderItem="{ item }">
-                  <a-list-item class="result-row" @click="openInstall(item)">
-                    <a-list-item-meta :description="item.description">
-                      <template #title>{{ item.title }}</template>
-                      <template #avatar>
-                        <a-avatar v-if="item.icon" :src="item.icon" shape="square" :size="44" />
-                        <a-avatar
-                          v-else-if="source === 'custom' && loaderIcon"
-                          :src="loaderIcon"
-                          shape="square"
-                          :size="44"
-                          :style="{ background: '#fff', border: '1px solid #eee' }"
-                        />
-                        <a-avatar v-else shape="square" :size="44">
-                          <template #icon><AppstoreOutlined /></template>
-                        </a-avatar>
+                  <template #renderItem="{ item }">
+                    <a-list-item class="result-row" @click="openInstall(item)">
+                      <a-list-item-meta :description="item.description">
+                        <template #title>{{ item.title }}</template>
+                        <template #avatar>
+                          <a-avatar v-if="item.icon" :src="item.icon" shape="square" :size="44" />
+                          <a-avatar
+                            v-else-if="source === 'custom' && loaderIcon"
+                            :src="loaderIcon"
+                            shape="square"
+                            :size="44"
+                            :style="{ background: '#fff', border: '1px solid #eee' }"
+                          />
+                          <a-avatar v-else shape="square" :size="44">
+                            <template #icon><AppstoreOutlined /></template>
+                          </a-avatar>
+                        </template>
+                      </a-list-item-meta>
+                      <template #actions>
+                        <a-button type="primary" @click="openInstall(item)">
+                          {{ t("TXT_CODE_modpack_install") }}
+                        </a-button>
                       </template>
-                    </a-list-item-meta>
-                    <template #actions>
-                      <a-button type="primary" @click="openInstall(item)">
-                        {{ t("TXT_CODE_modpack_install") }}
-                      </a-button>
-                    </template>
-                  </a-list-item>
-                </template>
+                    </a-list-item>
+                  </template>
                 </a-list>
               </div>
             </a-spin>
+
+            <div v-if="totalItems > PAGE_SIZE" class="pager-row">
+              <a-pagination
+                :current="currentPage"
+                :page-size="PAGE_SIZE"
+                :total="totalItems"
+                :show-size-changer="false"
+                size="small"
+                @change="onPageChange"
+              />
+            </div>
           </template>
         </CardPanel>
       </a-col>
@@ -802,10 +850,20 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   white-space: nowrap;
 }
-.custom-controls .loader-radio {
-  margin-top: 10px;
+.custom-controls .loader-segmented {
+  margin-bottom: 10px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.source-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pager-row {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 .sort-select {
   width: 200px;
