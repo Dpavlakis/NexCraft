@@ -26,11 +26,4 @@ Screenshots used by the docs pages and README. All are `.webp` (light mode, full
 | `settings.webp` | Settings → Basic | — |
 | `daemons.webp` | Daemons (node status + live CPU/RAM) | installation |
 
-## Needs a fresh capture
-
-These are still the older, lower-res shots and should be re-captured (light mode, browser maximized):
-
-- `terminal-overview.webp` — the hero (terminal + Manage grid)
-- `builder-custom.webp` — the **Custom** tab with the loader row + version list
-
-Capture with the browser window maximized so the panel uses full width and there's no empty margin.
+All current shots are full-resolution light-mode captures (browser maximized, full width). When replacing one, capture the same way and convert to `.webp`.
