@@ -282,6 +282,8 @@
   "TXT_CODE_shutdownTimeout_title": "Shutdown Timeout (seconds)",
   "TXT_CODE_shutdownTimeout_desc": "How long to wait for the server to shut down after the stop command before forcing the process to terminate. 0 = wait indefinitely.",
   "TXT_CODE_motd_title": "Server MOTD",
+  "TXT_CODE_startup_tab": "Startup",
+  "TXT_CODE_minecraft_tab": "Minecraft",
   "TXT_CODE_motd_desc": "The message shown in the server list. Use & colour codes (e.g. &6Gold &lBold) and a new line for a second row. Saved to server.properties; applies on next start.",
   "TXT_CODE_motd_placeholder": "A Minecraft Server",
   "TXT_CODE_modpack_update_card_title": "Update Modpack",

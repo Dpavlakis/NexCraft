@@ -66,6 +66,10 @@ enum TabSettings {
   // eslint-disable-next-line no-unused-vars
   Basic,
   // eslint-disable-next-line no-unused-vars
+  Startup,
+  // eslint-disable-next-line no-unused-vars
+  Minecraft,
+  // eslint-disable-next-line no-unused-vars
   Docker,
   // eslint-disable-next-line no-unused-vars
   Advanced,
@@ -913,6 +917,10 @@ defineExpose({
                 </a-form-item>
               </a-col>
 
+            </a-row>
+          </a-tab-pane>
+          <a-tab-pane :key="TabSettings.Startup" :tab="t('TXT_CODE_startup_tab')">
+            <a-row :gutter="20">
               <a-col :xs="24" :offset="0">
                 <a-form-item :name="['instance', 'config', 'startCommand']">
                   <a-typography-title :level="5">
@@ -954,6 +962,10 @@ defineExpose({
                 </a-form-item>
               </a-col>
 
+            </a-row>
+          </a-tab-pane>
+          <a-tab-pane v-if="showMotd" :key="TabSettings.Minecraft" :tab="t('TXT_CODE_minecraft_tab')">
+            <a-row :gutter="20">
               <a-col v-if="showMotd" :xs="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5">
