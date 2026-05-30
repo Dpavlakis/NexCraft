@@ -16,7 +16,9 @@ export interface BaseUserInfo {
   permission: number;
   apiKey: string;
   isInit: boolean;
-  secret: string;
+  // Not sent by the panel anymore (the TOTP seed was a leak); kept optional for
+  // local form defaults only.
+  secret?: string;
   open2FA: boolean;
   ssoSub: string;
   ssoBound: boolean;

@@ -471,7 +471,19 @@ export class ModloaderBootstrap {
         : `https://maven.neoforged.net/releases/net/neoforged/neoforge/${lv}/neoforge-${lv}-installer.jar`;
     const installerPath = path.join(cwd, "installer.jar");
     this.println($t("TXT_CODE_modpack.fetchLoader", { loader: kind, version: lv }));
-    await downloadManager.downloadFromUrl(installerUrl, installerPath);
+    try {
+      await downloadManager.downloadFromUrl(installerUrl, installerPath);
+    } catch {
+      // No published server installer for this loader/MC combo (e.g. a CF pack
+      // reporting a loader version with no server build) — same friendly error
+      // Fabric/Quilt raise instead of a raw 404 download failure.
+      throw new Error(
+        $t("TXT_CODE_modpack.noServerBuild", {
+          loader: kind === "forge" ? "Forge" : "NeoForge",
+          mc: mc || lv
+        })
+      );
+    }
 
     this.println($t("TXT_CODE_modpack.runInstaller"));
     await this.runJar(this.installerJava, "installer.jar", ["--installServer"]);

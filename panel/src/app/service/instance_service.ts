@@ -143,7 +143,9 @@ export async function getInstancesByUuid(
     apiKey: user.apiKey,
     isInit: user.isInit,
     open2FA: user.open2FA,
-    secret: user.secret,
+    // NOTE: `secret` (the TOTP seed) is intentionally NOT returned here. The 2FA
+    // setup flow gets a fresh seed via the dedicated /auth/bind2fa endpoint; the
+    // self-info response only needs `open2FA` to know whether 2FA is enabled.
     avatar: user.avatar,
     theme: user.theme,
     token: ""

@@ -433,7 +433,7 @@ async function listLoaderBuilds(loader: string, mc: string) {
       .filter((v) => v.startsWith(`${mc}-`))
       .map((v) => v.slice(mc.length + 1))
       .reverse()
-      .map((v) => ({ id: v, type: "release" }));
+      .map((v) => ({ id: v, type: /beta|alpha|rc/i.test(v) ? "snapshot" : "release" }));
   }
   loaderBuildCache[cacheKey] = { at: Date.now(), data: out };
   return out;
