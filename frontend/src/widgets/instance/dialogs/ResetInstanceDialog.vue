@@ -28,7 +28,10 @@ const reinstallTarget = computed(() => ({
 // A modpack instance focuses straight on that pack's popup (no browse chrome);
 // a custom/vanilla instance browses versions inside a framed dialog.
 const isModpack = computed(
-  () => props.packInfo?.source === "curseforge" || props.packInfo?.source === "modrinth"
+  () =>
+    props.packInfo?.source === "curseforge" ||
+    props.packInfo?.source === "modrinth" ||
+    props.packInfo?.source === "ftb"
 );
 
 const openDialog = () => {

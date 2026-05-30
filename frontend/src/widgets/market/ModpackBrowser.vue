@@ -65,7 +65,7 @@ const resetMode = ref<ResetMode>("backup_wipe");
 // popup and hide the browse chrome; custom/vanilla resets still browse versions.
 const hideChrome = computed(() => {
   const src = props.reinstallTarget?.packInfo?.source;
-  return isReinstall.value && (src === "curseforge" || src === "modrinth");
+  return isReinstall.value && (src === "curseforge" || src === "modrinth" || src === "ftb");
 });
 
 const { toPage } = useAppRouters();
@@ -582,7 +582,7 @@ watch(customLoader, () => {
 const focusInstalledPack = () => {
   const pk = props.reinstallTarget?.packInfo;
   if (!pk) return false;
-  if (pk.source === "curseforge" || pk.source === "modrinth") {
+  if (pk.source === "curseforge" || pk.source === "modrinth" || pk.source === "ftb") {
     selectSource(pk.source);
     openInstall({
       id: pk.projectId,
