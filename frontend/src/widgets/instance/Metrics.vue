@@ -78,9 +78,18 @@ const setupChart = () => {
       feature: {
         dataZoom: {
           yAxisIndex: "none",
+          // Cleaner custom glyphs: magnifier (area-zoom) + undo arrow (step back).
+          icon: {
+            zoom: "path://M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z",
+            back: "path://M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"
+          },
           title: { zoom: t("TXT_CODE_metrics_area_zoom"), back: t("TXT_CODE_metrics_reset_zoom") }
         },
-        restore: { title: t("TXT_CODE_metrics_reset_zoom") }
+        restore: {
+          // Refresh glyph for reset zoom.
+          icon: "path://M17.65 6.35A7.958 7.958 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z",
+          title: t("TXT_CODE_metrics_reset_zoom")
+        }
       }
     },
     grid: { top: 44, bottom: 70, left: 56, right: 64 },
