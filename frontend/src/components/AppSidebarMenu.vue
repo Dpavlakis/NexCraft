@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import nexcraftLogo from "@/assets/nexcraft_logo.svg";
+import UserAvatar from "@/components/UserAvatar.vue";
+import { useAppStateStore } from "@/stores/useAppStateStore";
 import {
   useHeaderMenus,
   type SidebarAppDropdownEntry,
@@ -24,6 +26,7 @@ import { useRoute } from "vue-router";
 
 const route = useRoute();
 const { sidebarItems, handleToPage } = useHeaderMenus();
+const { state: appState } = useAppStateStore();
 
 /** Whether route menu item is active (current path equals or is child of this path) */
 const isRouteActive = (path: string): boolean => {
@@ -105,7 +108,14 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
           :class="entry.customClass"
           @click.prevent="entry.click()"
         >
-          <component :is="entry.icon" v-if="entry.icon" class="sidebar-item-icon" />
+          <UserAvatar
+            v-if="entry.showAvatar"
+            :avatar="appState.userInfo?.avatar"
+            :name="appState.userInfo?.userName"
+            :size="20"
+            class="sidebar-item-icon"
+          />
+          <component :is="entry.icon" v-else-if="entry.icon" class="sidebar-item-icon" />
           <span class="sidebar-item-text">{{ entry.title }}</span>
         </a>
       </template>

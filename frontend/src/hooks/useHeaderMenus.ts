@@ -41,6 +41,8 @@ export type SidebarAppEntry = {
   icon?: Component;
   customClass?: string[];
   click: () => void;
+  // When true, the sidebar renders the user's avatar instead of `icon`.
+  showAvatar?: boolean;
 };
 
 /** Sidebar item: app menu with dropdown */
@@ -230,6 +232,7 @@ export function useHeaderMenus() {
       {
         title: t("TXT_CODE_8c3164c9"),
         inUserDropdown: true,
+        showAvatar: true,
         icon: UserOutlined,
         click: (): void => {
           appTools.showUserInfoDialog = true;
@@ -285,7 +288,8 @@ export function useHeaderMenus() {
           title: item.leftSideTitle || item.title,
           icon: item.icon,
           customClass: item.customClass,
-          click: item.click as () => void
+          click: item.click as () => void,
+          showAvatar: (item as { showAvatar?: boolean }).showAvatar
         };
       });
     return [...routeEntries, divider, ...appEntries];
