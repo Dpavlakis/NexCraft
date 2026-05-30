@@ -14,6 +14,9 @@ docs/package-lock.json
 # Temporary screenshot staging folders
 .shots_stage/
 .shots*/
+
+# Local UI mockups (never committed)
+.mockups/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
