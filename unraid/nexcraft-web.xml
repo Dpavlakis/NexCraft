@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>NexCraft-Web</Name>
+  <Repository>ghcr.io/dpavlakis/nexcraft-web:latest</Repository>
+  <Registry>https://github.com/Dpavlakis/NexCraft/pkgs/container/nexcraft-web</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Dpavlakis/NexCraft/issues</Support>
+  <Project>https://github.com/Dpavlakis/NexCraft</Project>
+  <Overview>NexCraft is a Minecraft-focused server control panel (a fork of MCSManager) with a built-in modpack installer and manager. Search and install modpacks from CurseForge, Modrinth and FTB, build custom servers (Vanilla/Paper/Purpur/Folia/Fabric/Forge/NeoForge/Quilt) or Bedrock, and manage backups, players (RCON), metrics and per-pack Java from one dashboard.&#xD;&#xA;&#xD;&#xA;This is the WEB (panel) container. You also need the NexCraft-Daemon container, which actually runs the servers. After both are running, open the web UI, complete first-time setup, and add the daemon node (default 24444) if it isn't auto-detected. Docs: https://dpavlakis.github.io/NexCraft/</Overview>
+  <Category>Tools: GameServers: Network:Web</Category>
+  <WebUI>http://[IP]:[PORT:23333]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/unraid/nexcraft-web.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/frontend/public/nexcraft_logo.svg</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Also install the NexCraft-Daemon container — the panel needs a daemon node to run servers.</Requires>
+  <Config Name="WebUI Port" Target="23333" Default="23333" Mode="tcp" Description="NexCraft panel web UI port." Type="Port" Display="always" Required="true" Mask="false">23333</Config>
+  <Config Name="Data" Target="/opt/mcsmanager/web/data" Default="/mnt/user/appdata/nexcraft/web/data" Mode="rw" Description="Panel data (users, settings, registered daemons)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/nexcraft/web/data</Config>
+  <Config Name="Logs" Target="/opt/mcsmanager/web/logs" Default="/mnt/user/appdata/nexcraft/web/logs" Mode="rw" Description="Panel logs." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft/web/logs</Config>
+</Container>

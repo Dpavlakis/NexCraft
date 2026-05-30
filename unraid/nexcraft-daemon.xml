@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>NexCraft-Daemon</Name>
+  <Repository>ghcr.io/dpavlakis/nexcraft-daemon:latest</Repository>
+  <Registry>https://github.com/Dpavlakis/NexCraft/pkgs/container/nexcraft-daemon</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Dpavlakis/NexCraft/issues</Support>
+  <Project>https://github.com/Dpavlakis/NexCraft</Project>
+  <Overview>The NexCraft daemon — the per-node agent that actually runs your Minecraft servers (downloads modpacks, bootstraps loaders, provisions Java, runs the processes). Pair it with the NexCraft-Web (panel) container.&#xD;&#xA;&#xD;&#xA;Ships with Java 21 and auto-provisions other JRE versions per pack. After it's running, add it as a node in the NexCraft panel (default port 24444) using the access key from its data/Config/global.json. The Docker socket mount is optional and only needed for the (legacy) Docker-instance mode; host/general process mode does not require it. Docs: https://dpavlakis.github.io/NexCraft/</Overview>
+  <Category>Tools: GameServers:</Category>
+  <WebUI/>
+  <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/unraid/nexcraft-daemon.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/frontend/public/nexcraft_logo.svg</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Install the NexCraft-Web container too — it's the dashboard that connects to this daemon.</Requires>
+  <Config Name="Daemon Port" Target="24444" Default="24444" Mode="tcp" Description="Daemon RPC port the panel connects to." Type="Port" Display="always" Required="true" Mask="false">24444</Config>
+  <Config Name="Data" Target="/opt/mcsmanager/daemon/data" Default="/mnt/user/appdata/nexcraft/daemon/data" Mode="rw" Description="Daemon data: instances, configs, the access key and (with the backup mount below) backups." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/nexcraft/daemon/data</Config>
+  <Config Name="Logs" Target="/opt/mcsmanager/daemon/logs" Default="/mnt/user/appdata/nexcraft/daemon/logs" Mode="rw" Description="Daemon logs." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft/daemon/logs</Config>
+  <Config Name="Backups (optional)" Target="/opt/mcsmanager/daemon/data/backups" Default="/mnt/user/Backup/Minecraft" Mode="rw" Description="Optional: store instance backups on a separate share instead of inside appdata. Leave blank to keep backups under the Data path." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Instance Data Host Path" Target="MCSM_DOCKER_WORKSPACE_PATH" Default="/mnt/user/appdata/nexcraft/daemon/data/InstanceData" Mode="" Description="Host path to the InstanceData folder (used only by the legacy Docker-instance mode; harmless otherwise). Keep it pointing at &lt;Data path&gt;/InstanceData." Type="Variable" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft/daemon/data/InstanceData</Config>
+  <Config Name="Docker Socket (optional)" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Description="Optional: only needed for legacy Docker-instance mode. Host/general process mode does not need it." Type="Path" Display="advanced" Required="false" Mask="false"/>
+</Container>
