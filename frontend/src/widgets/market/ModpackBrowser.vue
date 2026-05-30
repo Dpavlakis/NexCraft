@@ -38,7 +38,10 @@ import fabricIcon from "@/assets/loaders/fabric.png";
 import forgeIcon from "@/assets/loaders/forge.jpg";
 import neoforgeIcon from "@/assets/loaders/neoforge.png";
 import quiltIcon from "@/assets/loaders/quilt.png";
-import { message } from "ant-design-vue";
+// Segmented isn't picked up by this project's unplugin-vue-components Ant
+// resolver (it's missing from components.d.ts), so <a-segmented> would render
+// as an empty element. Import it explicitly so the loader picker shows.
+import { message, Segmented as ASegmented } from "ant-design-vue";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
 const props = defineProps<{
