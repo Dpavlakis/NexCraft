@@ -297,7 +297,102 @@ class ModManagerService {
     return vn;
   }
 
+  // --- Modpack search cache (pre-warmed on startup, refreshed periodically) ---
+  private searchCache = new Map<string, { data: any; expires: number }>();
+  private readonly SEARCH_TTL_MS = 15 * 60 * 1000;
+
+  private searchCacheKey(
+    query: string,
+    offset: number,
+    limit: number,
+    filters?: {
+      source?: string;
+      version?: string;
+      type?: string;
+      loader?: string;
+      environment?: string;
+      sort?: string;
+    }
+  ) {
+    const f = filters || {};
+    return [
+      (query || "").trim().toLowerCase(),
+      offset,
+      limit,
+      f.source || "all",
+      f.version || "all",
+      f.type || "",
+      f.loader || "all",
+      f.environment || "all",
+      f.sort || "featured"
+    ].join("|");
+  }
+
+  // Cached entry point used by the router. Serves non-empty results from memory
+  // for SEARCH_TTL_MS so the modpack browser loads instantly and we don't hammer
+  // CurseForge/Modrinth on every tab open.
   public async searchProjects(
+    query: string,
+    offset = 0,
+    limit = 20,
+    filters?: {
+      source?: string;
+      version?: string;
+      type?: string;
+      loader?: string;
+      environment?: string;
+      sort?: string;
+    }
+  ) {
+    const key = this.searchCacheKey(query, offset, limit, filters);
+    const now = Date.now();
+    const hit = this.searchCache.get(key);
+    if (hit && hit.expires > now) return hit.data;
+
+    const data = await this.searchProjectsUncached(query, offset, limit, filters);
+    // Only cache non-empty results so a transient API hiccup isn't cached.
+    if (data && Array.isArray(data.hits) && data.hits.length > 0) {
+      if (this.searchCache.size > 200) {
+        const firstKey = this.searchCache.keys().next().value;
+        if (firstKey) this.searchCache.delete(firstKey);
+      }
+      this.searchCache.set(key, { data, expires: now + this.SEARCH_TTL_MS });
+    }
+    return data;
+  }
+
+  // Pre-warm + periodically refresh the default modpack lists (empty query,
+  // featured sort) for CurseForge and Modrinth so the first browse is instant.
+  private async refreshDefaultModpackCache() {
+    for (const source of ["curseforge", "modrinth"]) {
+      try {
+        const filters = {
+          source,
+          version: "all",
+          type: "modpack",
+          loader: "all",
+          environment: "all",
+          sort: "featured"
+        };
+        const data = await this.searchProjectsUncached("", 0, 30, filters);
+        if (data && Array.isArray(data.hits) && data.hits.length > 0) {
+          this.searchCache.set(this.searchCacheKey("", 0, 30, filters), {
+            data,
+            expires: Date.now() + this.SEARCH_TTL_MS
+          });
+        }
+      } catch {
+        // ignore — retried on the next interval, and lazily on demand
+      }
+    }
+  }
+
+  public startModpackCacheWarmer() {
+    this.refreshDefaultModpackCache();
+    setInterval(() => this.refreshDefaultModpackCache(), 10 * 60 * 1000);
+  }
+
+  private async searchProjectsUncached(
     query: string,
     offset = 0,
     limit = 20,
@@ -1119,3 +1214,7 @@ class ModManagerService {
 }
 
 export const modManagerService = new ModManagerService();
+
+// Warm the modpack browser cache on panel startup, then keep it fresh so the
+// CurseForge/Modrinth tabs load instantly instead of spinning on first open.
+modManagerService.startModpackCacheWarmer();
