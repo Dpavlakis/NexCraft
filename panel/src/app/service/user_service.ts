@@ -76,8 +76,8 @@ class UserSubsystem {
       instance.avatar = String(config.avatar);
     }
     if (config.theme != null) {
-      const t = String(config.theme);
-      if (t === "" || isValidThemeId(t)) instance.theme = t;
+      const themeId = String(config.theme);
+      if (themeId === "" || isValidThemeId(themeId)) instance.theme = themeId;
     }
     if (config.instances) this.setUserInstances(uuid, config.instances);
     if (config.passWord) {
