@@ -67,6 +67,7 @@ defineExpose({ openView });
     width="92%"
     :destroy-on-close="true"
     wrap-class-name="manage-instance-modal"
+    centered
   >
     <div class="manage-modal-body">
       <component :is="view" v-if="view" :key="title" :card="card" />
@@ -79,7 +80,6 @@ defineExpose({ openView });
   .ant-modal {
     max-width: 1500px;
     padding-bottom: 0;
-    top: 24px;
   }
   // Let the scroll container reach the modal edge so the scrollbar sits at the
   // side, and put the content padding inside it — that keeps a comfortable gap
