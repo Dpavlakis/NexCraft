@@ -3540,6 +3540,8 @@
   "TXT_CODE_modpack_sort_downloads": "Sort by Total Downloads",
   "TXT_CODE_modpack_install": "Install",
   "TXT_CODE_modpack_view_source": "View project page ↗",
+  "TXT_CODE_modpack_tab_details": "Details",
+  "TXT_CODE_modpack_tab_install": "Install",
   "TXT_CODE_modpack_updated": "Updated",
   "TXT_CODE_modpack_no_serverpack": "no server pack",
   "TXT_CODE_modpack_preview_warn": "preview · needs the Minecraft Preview client",

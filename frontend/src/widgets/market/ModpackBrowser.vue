@@ -330,7 +330,8 @@ const dialog = reactive({
   installing: false,
   detail: null as ModpackDetail | null,
   detailLoading: false,
-  acceptEula: false
+  acceptEula: false,
+  tab: "details" as "details" | "install"
 });
 
 const loadDetail = async (item: ResultItem) => {
@@ -371,6 +372,7 @@ const openInstall = (item: ResultItem) => {
   dialog.selectedVersion = "";
   dialog.versions = [];
   dialog.detail = null;
+  dialog.tab = "details"; // open on Details; Install tab is one click away
   // On a reset the instance already exists (EULA was accepted before), so
   // pre-tick it for convenience; a fresh install still requires explicit consent.
   dialog.acceptEula = isReinstall.value;
@@ -755,50 +757,79 @@ onBeforeUnmount(() => {
     :ok-button-props="{ disabled: !canInstall }"
     @ok="doInstall"
   >
-    <div v-if="dialog.item" class="pack-detail">
-      <img
-        v-if="dialog.item.icon"
-        :src="dialog.item.icon"
-        class="pack-hero"
-        alt=""
-        @error="dialog.item && (dialog.item.icon = '')"
-      />
-      <div class="pack-head">
-        <div class="pack-head-text">
-          <div class="pack-title">{{ dialog.item.title }}</div>
-          <div class="pack-meta">
-            <span v-if="dialog.item.author">{{ dialog.item.author }}</span>
-            <span v-if="dialog.item.downloads">
-              · {{ formatDownloads(dialog.item.downloads) }} ↓</span
-            >
-            <span v-if="dialog.detail?.updated">
-              · {{ t("TXT_CODE_modpack_updated") }} {{ formatUpdated(dialog.detail.updated) }}</span
-            >
+    <a-tabs v-model:activeKey="dialog.tab" class="install-tabs">
+      <!-- Details: hero, meta, tags + image-rich description -->
+      <a-tab-pane key="details" :tab="t('TXT_CODE_modpack_tab_details')">
+        <div v-if="dialog.item" class="pack-detail">
+          <img
+            v-if="dialog.item.icon"
+            :src="dialog.item.icon"
+            class="pack-hero"
+            alt=""
+            @error="dialog.item && (dialog.item.icon = '')"
+          />
+          <div class="pack-head">
+            <div class="pack-head-text">
+              <div class="pack-title">{{ dialog.item.title }}</div>
+              <div class="pack-meta">
+                <span v-if="dialog.item.author">{{ dialog.item.author }}</span>
+                <span v-if="dialog.item.downloads">
+                  · {{ formatDownloads(dialog.item.downloads) }} ↓</span
+                >
+                <span v-if="dialog.detail?.updated">
+                  · {{ t("TXT_CODE_modpack_updated") }}
+                  {{ formatUpdated(dialog.detail.updated) }}</span
+                >
+              </div>
+              <a v-if="dialogSourceUrl" :href="dialogSourceUrl" target="_blank" rel="noopener">
+                {{ t("TXT_CODE_modpack_view_source") }}
+              </a>
+            </div>
           </div>
-          <a v-if="dialogSourceUrl" :href="dialogSourceUrl" target="_blank" rel="noopener">
-            {{ t("TXT_CODE_modpack_view_source") }}
-          </a>
+
+          <div
+            v-if="dialog.detail?.categories?.length || dialog.detail?.gameVersions?.length"
+            class="pack-tags"
+          >
+            <a-tag v-for="c in dialog.detail?.categories?.slice(0, 6)" :key="'c' + c">{{ c }}</a-tag>
+            <a-tag v-for="g in dialog.detail?.gameVersions?.slice(0, 6)" :key="'g' + g" color="blue">
+              {{ g }}
+            </a-tag>
+          </div>
+
+          <a-spin :spinning="dialog.detailLoading">
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div v-if="packDescHtml" class="pack-desc pack-desc-html" v-html="packDescHtml"></div>
+            <div v-else class="pack-desc">
+              {{ dialog.detail?.description || dialog.item.description }}
+            </div>
+          </a-spin>
         </div>
-      </div>
+      </a-tab-pane>
 
-      <div v-if="dialog.detail?.categories?.length || dialog.detail?.gameVersions?.length" class="pack-tags">
-        <a-tag v-for="c in dialog.detail?.categories?.slice(0, 6)" :key="'c' + c">{{ c }}</a-tag>
-        <a-tag v-for="g in dialog.detail?.gameVersions?.slice(0, 6)" :key="'g' + g" color="blue">
-          {{ g }}
-        </a-tag>
-      </div>
-
-      <a-spin :spinning="dialog.detailLoading">
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-if="packDescHtml" class="pack-desc pack-desc-html" v-html="packDescHtml"></div>
-        <div v-else class="pack-desc">
-          {{ dialog.detail?.description || dialog.item.description }}
+      <!-- Install: compact header + the form (always reachable without scrolling) -->
+      <a-tab-pane
+        key="install"
+        :tab="isReinstall ? t('TXT_CODE_modpack_reset') : t('TXT_CODE_modpack_tab_install')"
+      >
+        <div v-if="dialog.item" class="install-pack-row">
+          <a-avatar v-if="dialog.item.icon" :src="dialog.item.icon" shape="square" :size="40" />
+          <a-avatar v-else shape="square" :size="40">
+            <template #icon><AppstoreOutlined /></template>
+          </a-avatar>
+          <div class="install-pack-text">
+            <div class="install-pack-title">{{ dialog.item.title }}</div>
+            <div class="pack-meta">
+              <span v-if="dialog.item.author">{{ dialog.item.author }}</span>
+              <span v-if="dialog.item.downloads">
+                · {{ formatDownloads(dialog.item.downloads) }} ↓</span
+              >
+            </div>
+          </div>
         </div>
-      </a-spin>
-    </div>
 
-    <a-form layout="vertical">
-      <!-- Reinstall mode: instance is fixed; let the user pick how to treat existing files -->
+        <a-form layout="vertical">
+          <!-- Reinstall mode: instance is fixed; let the user pick how to treat existing files -->
       <template v-if="isReinstall">
         <a-form-item :label="t('TXT_CODE_modpack_reset_target')">
           <a-input :value="reinstallTarget?.instanceName || reinstallTarget?.instanceId" disabled />
@@ -877,7 +908,9 @@ onBeforeUnmount(() => {
           </a>
         </a-checkbox>
       </a-form-item>
-    </a-form>
+        </a-form>
+      </a-tab-pane>
+    </a-tabs>
   </a-modal>
 </template>
 
@@ -941,6 +974,19 @@ onBeforeUnmount(() => {
 }
 .result-row:hover {
   background: rgba(128, 128, 128, 0.06);
+}
+.install-tabs :deep(.ant-tabs-content) {
+  min-height: 280px;
+}
+.install-pack-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.install-pack-title {
+  font-size: 15px;
+  font-weight: 600;
 }
 .pack-detail {
   margin-bottom: 16px;
