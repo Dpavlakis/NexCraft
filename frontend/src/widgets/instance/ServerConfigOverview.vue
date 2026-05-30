@@ -11,7 +11,8 @@ import { getConfigFileList } from "@/services/apis/instance";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types";
 import { FileExclamationOutlined, RollbackOutlined } from "@ant-design/icons-vue";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, provide, ref } from "vue";
+import ServerConfigFile from "./ServerConfigFile.vue";
 
 const props = defineProps<{
   card: LayoutCard;
@@ -70,7 +71,35 @@ const render = async () => {
   }
 };
 
+// In the Manage Instance popup, edit the file inline (drill-in) instead of
+// navigating to a separate page (which would close the popup).
+const editing = ref<{ configName: string; configPath: string; extName: string } | null>(null);
+const editCard = computed(
+  () =>
+    ({
+      id: "server-config-file",
+      type: "INSTANCE",
+      title: editing.value?.configName ?? "",
+      width: 0,
+      height: "100%",
+      meta: {
+        instanceId,
+        daemonId,
+        type,
+        configName: editing.value?.configName,
+        configPath: editing.value?.configPath,
+        extName: editing.value?.extName
+      }
+    }) as unknown as LayoutCard
+);
+// Let the embedded editor's back button return to this list instead of routing.
+provide("configEditorBack", () => (editing.value = null));
+
 const toEdit = (configName: string, configPath: string, extName: string) => {
+  if (embeddedInManageModal) {
+    editing.value = { configName, configPath, extName };
+    return;
+  }
   toPage({
     path: "/instances/terminal/serverConfig/fileEdit",
     query: {
@@ -88,7 +117,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div style="height: 100%" class="container">
+  <ServerConfigFile v-if="embeddedInManageModal && editing" :card="editCard" />
+  <div v-else style="height: 100%" class="container">
     <a-row :gutter="[24, 24]" style="height: 100%">
       <a-col :span="24">
         <BetweenMenus>

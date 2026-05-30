@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { inject, ref, onMounted } from "vue";
 import { t } from "@/lang/i18n";
 import type { LayoutCard } from "@/types";
 import { useScreen } from "@/hooks/useScreen";
@@ -28,7 +28,11 @@ const extName = getMetaOrRouteValue("extName");
 const type = getMetaOrRouteValue("type");
 const isFailure = ref(false);
 const { toPage } = useAppRouters();
+// When rendered inline inside the Server Config popup, go back to the file list
+// instead of navigating (which would close the popup).
+const editorBack = inject<(() => void) | null>("configEditorBack", null);
 const toConfigOverview = () => {
+  if (editorBack) return editorBack();
   toPage({
     path: "/instances/terminal/serverConfig",
     query: {
