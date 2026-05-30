@@ -20,6 +20,7 @@ export interface BaseUserInfo {
   open2FA: boolean;
   ssoSub: string;
   ssoBound: boolean;
+  avatar?: string;
 }
 
 export interface EditUserInfo extends BaseUserInfo {

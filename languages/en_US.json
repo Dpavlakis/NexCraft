@@ -3567,6 +3567,12 @@
   "TXT_CODE_autojava.detected": "Java version mismatch detected — this server needs Java {{major}}. Provisioning it automatically...",
   "TXT_CODE_autojava.failed": "Couldn't auto-provision Java {{major}}. Install it via the Java Manager, then start the server again.",
   "TXT_CODE_autojava.retry": "Java {{major}} is ready — restarting the server with it...",
+  "TXT_CODE_avatar.badType": "Unsupported image format. Use PNG, WebP, or JPEG.",
+  "TXT_CODE_avatar.change": "Change avatar",
+  "TXT_CODE_avatar.invalid": "Invalid avatar image. Use a PNG, WebP, or JPEG under 256 KB.",
+  "TXT_CODE_avatar.label": "Avatar",
+  "TXT_CODE_avatar.remove": "Remove avatar",
+  "TXT_CODE_avatar.tooLarge": "That image is too large. Please pick a smaller one.",
   "TXT_CODE_modpack.start": "Starting modpack installation...",
   "TXT_CODE_modpack.resetStopping": "Stopping the instance before reset...",
   "TXT_CODE_modpack.resetBackup": "Creating a full backup before reset...",
@@ -3654,5 +3660,6 @@
   "TXT_CODE_metrics_zoom_line2": "Or click the area-zoom button (top-right of the chart) then drag the area you'd like to zoom into.",
   "TXT_CODE_metrics_zoom_line3": "Drag the slider below the chart to pan across time. Use the restore button to reset.",
   "TXT_CODE_metrics_area_zoom": "Area zoom",
-  "TXT_CODE_metrics_reset_zoom": "Reset zoom"
+  "TXT_CODE_metrics_reset_zoom": "Reset zoom",
+  "TXT_CODE_user.profile": "Profile"
 }
