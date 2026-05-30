@@ -243,7 +243,8 @@ export function useHeaderMenus() {
             }
           });
         },
-        conditions: !containerState.isDesignMode && isAdmin.value,
+        // Custom Layout (design mode) hidden for now — machinery left intact.
+        conditions: false,
         onlyPC: true
       },
       {

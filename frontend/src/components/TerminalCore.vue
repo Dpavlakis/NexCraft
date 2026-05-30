@@ -52,11 +52,12 @@ const { isXhrPollError, xhrPollErrorReason } = useXhrPollError(socketError);
 
 let term: Terminal | undefined;
 
-// Show a "jump to latest" button while the user has scrolled up the console.
+// Show a "jump to latest" button the moment the user scrolls up the console.
 const showScrollBottom = ref(false);
 const updateScrollState = () => {
   if (!term) return;
   const b = term.buffer.active;
+  // Scrolled up = viewport is above the bottom of the scrollback.
   showScrollBottom.value = b.viewportY < b.baseY;
 };
 const scrollToBottom = () => {
@@ -172,7 +173,14 @@ onMounted(async () => {
     }
     term = await initTerminal();
     if (term) {
+      // xterm's onScroll is the primary signal, but it can miss small wheel
+      // ticks — also bind the native scroll on xterm's viewport element so the
+      // button appears immediately on any upward scroll.
       term.onScroll(() => updateScrollState());
+      const viewport = document.querySelector(
+        `#${terminalDomId} .xterm-viewport`
+      ) as HTMLElement | null;
+      viewport?.addEventListener("scroll", updateScrollState, { passive: true });
       updateScrollState();
     }
   } catch (error: any) {
