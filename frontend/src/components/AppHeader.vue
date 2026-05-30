@@ -16,7 +16,9 @@ const { containerState } = useLayoutContainerStore();
 
 const { menus, appMenus, handleToPage } = useHeaderMenus();
 const { state: appState, isLogged } = useAppStateStore();
-const userMenuItems = computed(() => (appMenus.value as any[]).filter((i) => i.inUserDropdown));
+const userMenuItems = computed(() =>
+  (appMenus.value as any[]).filter((i) => i.inUserDropdown && i.conditions)
+);
 
 /** Whether route menu item is active (current path equals or is child of this path) */
 const isRouteActive = (path: string): boolean => {
