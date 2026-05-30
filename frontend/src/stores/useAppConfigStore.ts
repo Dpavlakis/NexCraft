@@ -1,15 +1,14 @@
 /* eslint-disable no-unused-vars */
 import logo from "@/assets/logo.png";
 import { getCurrentLang, setLanguage } from "@/lang/i18n";
-import { AppTheme, THEME_KEY } from "@/types/const";
-import { createGlobalState, useBreakpoints, useLocalStorage, usePreferredDark } from "@vueuse/core";
+import { DEFAULT_THEME_ID, THEME_ID_KEY, themeById, type ThemeDef } from "@/config/themes";
+import { createGlobalState, useBreakpoints, useLocalStorage } from "@vueuse/core";
 import { theme as antTheme } from "ant-design-vue";
 import type { ThemeConfig } from "ant-design-vue/es/config-provider/context";
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useLayoutConfigStore } from "./useLayoutConfig";
 
 export const useAppConfigStore = createGlobalState(() => {
-  const isPreferredDark = usePreferredDark();
   const { getSettingsConfig } = useLayoutConfigStore();
 
   const theme: ThemeConfig = reactive({
@@ -31,13 +30,10 @@ export const useAppConfigStore = createGlobalState(() => {
 
   const logoImage = computed(() => appConfig.logoImage);
 
-  const currentTheme = useLocalStorage<AppTheme>(THEME_KEY, AppTheme.LIGHT);
+  const currentThemeId = useLocalStorage<string>(THEME_ID_KEY, DEFAULT_THEME_ID);
+  const activeBase = ref<"light" | "dark">("light");
 
-  const isDarkTheme = computed(() => {
-    if (currentTheme.value === AppTheme.DARK) return true;
-    if (currentTheme.value === AppTheme.AUTO) return isPreferredDark.value;
-    return false;
-  });
+  const isDarkTheme = computed(() => activeBase.value === "dark");
 
   const hasBgImage = ref(false);
 
@@ -83,33 +79,34 @@ export const useAppConfigStore = createGlobalState(() => {
     document.body.classList.remove("app-light-theme");
   };
 
-  const resetTheme = () => (currentTheme.value = AppTheme.LIGHT);
+  const applyTheme = (themeDef: ThemeDef) => {
+    const body = document.body;
+    body.style.setProperty("--nx-header-grad", themeDef.headerGradient);
+    body.style.setProperty("--nx-sidebar-grad", themeDef.sidebarGradient);
+    body.style.setProperty("--nx-accent", themeDef.accent);
+    if (theme.token) {
+      theme.token.colorPrimary = themeDef.accent;
+      theme.token.colorLink = themeDef.accent;
+    }
+    activeBase.value = themeDef.base;
+    if (themeDef.base === "dark") setDark();
+    else setLight();
+  };
+
+  const setThemeId = (id?: string) => {
+    const def = themeById(id);
+    currentThemeId.value = def.id;
+    applyTheme(def);
+  };
 
   const initAppTheme = async () => {
-    if (
-      isNaN(currentTheme.value) ||
-      currentTheme.value < AppTheme.AUTO ||
-      currentTheme.value > AppTheme.DARK
-    ) {
-      resetTheme();
-    }
-    const fn = {
-      [AppTheme.AUTO]: () => (isPreferredDark.value ? setDark() : setLight()),
-      [AppTheme.LIGHT]: () => setLight(),
-      [AppTheme.DARK]: () => setDark()
-    };
-    fn[currentTheme.value]?.();
+    setThemeId(currentThemeId.value);
 
     const frontendSettings = await getSettingsConfig();
     if (frontendSettings?.theme?.backgroundImage)
       setBackgroundImage(frontendSettings.theme.backgroundImage);
     const pos = frontendSettings?.theme?.sidebarPosition;
     sidebarPosition.value = pos === "left" || pos === "right" ? pos : "left";
-  };
-
-  const setTheme = (t: AppTheme) => {
-    currentTheme.value = t;
-    initAppTheme();
   };
 
   const changeLanguage = (lang: string) => {
@@ -125,12 +122,6 @@ export const useAppConfigStore = createGlobalState(() => {
       appConfig.logoImage = url;
     }
   };
-
-  watch(isPreferredDark, () => {
-    if (currentTheme.value === AppTheme.AUTO) {
-      initAppTheme();
-    }
-  });
 
   onMounted(async () => {
     try {
@@ -154,9 +145,10 @@ export const useAppConfigStore = createGlobalState(() => {
     getCurrentLanguage,
     isDarkTheme,
     initAppTheme,
-    setTheme,
+    setThemeId,
+    applyTheme,
     setBackgroundImage,
-    currentTheme,
+    currentThemeId,
     themeConfig: theme
   };
 });

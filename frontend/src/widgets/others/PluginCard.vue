@@ -17,7 +17,7 @@ const props = defineProps<{
 const DOM_ID = v4().replace(/[-]/g, "");
 const { containerState } = useLayoutContainerStore();
 const { getMetaValue, setMetaValue } = useLayoutCardTools(props.card);
-const { currentTheme } = useAppConfigStore();
+const { currentThemeId } = useAppConfigStore();
 
 const originUrl = ref(getMetaValue<string>("url", ""));
 let sandbox: ProxySandBox;
@@ -36,7 +36,7 @@ const loadRemoteHtml = async () => {
   if (data && dom) {
     dom.innerHTML = data;
     const scriptDoms = dom.querySelectorAll("script");
-    sandbox = new ProxySandBox({ theme: String(currentTheme.value) });
+    sandbox = new ProxySandBox({ theme: String(currentThemeId.value) });
     for (const remoteScript of scriptDoms) {
       if (remoteScript.src) {
         const script = document.createElement("script");
