@@ -94,7 +94,9 @@ const beforeUpload: UploadProps["beforeUpload"] = async (file) => {
   if (isImportMode) {
     const extName = file.name.split(".").pop()?.toLowerCase() || "";
     if (!["zip", "jar"].includes(extName)) return reportErrorMsg(t("TXT_CODE_808e5ad9"));
-    selectUnzipCodeDialog.value?.openDialog();
+    // NexCraft is UTF-8 only: skip the decompression-encoding prompt and use the
+    // default (utf-8, already set on `zipCode`). One fewer click on import.
+    finalConfirm();
   } else {
     finalConfirm();
   }
