@@ -1,7 +1,7 @@
 # NexCraft — project guide for Claude
 
 **NexCraft** — a Minecraft-server control panel, built on (originally forked from) **MCSManager**.
-Repo: `github.com/Dpavlakis/NexCraft` (standalone, **not** a fork anymore). Default/working branch: **`main`** (push remote alias `nexcraft`; `origin` still points at upstream `MCSManager/MCSManager` for reference).
+Repo: `github.com/Dpavlakis/NexCraft` (standalone, **not** a fork anymore). Default/working branch: **`main`**. Remotes (renamed 2026-05-31): **`origin` = `Dpavlakis/NexCraft`** (push here), **`upstream` = `MCSManager/MCSManager`** (reference only).
 The original MCSManager is credited (login footer + Settings → About). Keep changes Minecraft-focused.
 
 ## Workflow (standing preferences)
@@ -20,7 +20,7 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
   - daemon: `npm run build --prefix daemon` · panel: `npm run build --prefix panel` · frontend: `npm run type-check --prefix frontend` (full: `npm run build --prefix frontend`).
   - PowerShell gotcha: each shell starts with a **stale PATH** and cwd resets — prefix commands with `$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` then `Set-Location D:\NexCraft`.
   - The OneDrive copy at `C:\Users\dimit\OneDrive\Documents\MCS` is the old location — work in `D:\NexCraft`.
-- After local checks pass, commit + push to `nexcraft main`; the user pulls on Unraid (`/mnt/user/appdata/nexcraft-src`) and rebuilds the Docker image(s). The Docker build remains the final gate.
+- After local checks pass, commit + push to `origin main`; the user pulls on Unraid (`/mnt/user/appdata/nexcraft-src`) and rebuilds the Docker image(s). The Docker build remains the final gate.
 - **Always paste the FULL copy-paste rebuild block EVERY time a rebuild is suggested** — `cd` + `git pull` + both `docker build` + `docker rm -f` + BOTH `docker run` commands (daemon incl. the `/mnt/user/Backup/Minecraft` backup mount) + `docker ps | grep nexcraft`. NEVER abbreviate with "use the block from before" or omit the run commands. Say which image(s) changed:
   - daemon (`daemon/`, `common/`) → `nexcraft-daemon` (container `nexcraft-daemon`)
   - web (`frontend/`, `panel/`, `languages/`) → `nexcraft-web` (container `nexcraft-web`)
