@@ -19,6 +19,10 @@ export interface ModrinthVersion {
 
 class ModManagerService {
   private readonly baseUrl = "https://api.modrinth.com/v2";
+  // CurseForge proxy. Most endpoints live under `/v1/cf/...`, BUT the fingerprint
+  // match endpoint is at `/v1/fingerprints` (verified working via this proxy:
+  // POST {fingerprints:[...]} -> 200 { data: { exactMatches: [...] } }). Used by
+  // the Import-existing-server pack identification.
   private readonly curseforgeUrl = "https://api.curse.tools";
   private readonly MAX_CACHE_SIZE = 1000;
   private cache = new Map<string, any>();
