@@ -100,3 +100,46 @@ export function setMotd(instance: Instance, motd: string): void {
   }
   fs.writeFileSync(file, txt, "latin1");
 }
+
+// Generic single-key get/set for server.properties, UTF-8 and WITHOUT the
+// MOTD colour-code translation. Used for Bedrock's server-name / level-name.
+function propRegex(key: string): RegExp {
+  const k = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^${k}\\s*=(.*)$`, "m");
+}
+
+export function getServerProperty(instance: Instance, key: string): string {
+  const file = propsPath(instance);
+  if (!fs.existsSync(file)) return "";
+  let txt = "";
+  try {
+    txt = fs.readFileSync(file, "utf-8");
+  } catch {
+    return "";
+  }
+  const m = txt.match(propRegex(key));
+  return m ? m[1].trim() : "";
+}
+
+export function setServerProperty(instance: Instance, key: string, value: string): void {
+  const file = propsPath(instance);
+  const v = String(value ?? "");
+  const re = propRegex(key);
+  if (!fs.existsSync(file)) {
+    if (v === "") return;
+    fs.writeFileSync(file, `${key}=${v}\n`, "utf-8");
+    return;
+  }
+  let txt = "";
+  try {
+    txt = fs.readFileSync(file, "utf-8");
+  } catch {
+    txt = "";
+  }
+  if (re.test(txt)) {
+    txt = txt.replace(re, () => `${key}=${v}`);
+  } else {
+    txt = (txt && !txt.endsWith("\n") ? txt + "\n" : txt) + `${key}=${v}\n`;
+  }
+  fs.writeFileSync(file, txt, "utf-8");
+}
