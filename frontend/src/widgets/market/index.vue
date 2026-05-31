@@ -6,11 +6,9 @@ import { QUICKSTART_METHOD } from "@/hooks/widgets/quickStartFlow";
 import { t } from "@/lang/i18n";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import type { LayoutCard } from "@/types";
-import InstallOptionButton from "@/widgets/market/InstallOptionButton.vue";
 import ModpackBrowser from "@/widgets/market/ModpackBrowser.vue";
 import { useMarketTour } from "@/widgets/market/useMarketTour";
 import CreateInstanceForm from "@/widgets/setupApp/CreateInstanceForm.vue";
-import { AppstoreAddOutlined, FileZipOutlined, FolderOpenOutlined } from "@ant-design/icons-vue";
 import { Tour } from "ant-design-vue";
 import { ref } from "vue";
 
@@ -20,8 +18,7 @@ const props = defineProps<{
 
 const { isAdmin } = useAppStateStore();
 
-const { step3Ref, openTour, tourCurrent, tourSteps, setStepRef, markTourDone } =
-  useMarketTour(isAdmin);
+const { step3Ref, openTour, tourCurrent, tourSteps, markTourDone } = useMarketTour(isAdmin);
 
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const daemonId = getMetaOrRouteValue("daemonId", false) ?? "";
@@ -60,58 +57,12 @@ const handleInstallAction = async (createMethod: QUICKSTART_METHOD) => {
   }
 };
 
-const manualInstallOptions = [
-  {
-    label: t("TXT_CODE_a3efb1cc"),
-    icon: FileZipOutlined,
-    description: t("TXT_CODE_f09da050"),
-    action: (e: Event) => {
-      handleInstallAction(QUICKSTART_METHOD.IMPORT);
-      e.preventDefault();
-    }
-  },
-  {
-    label: t("TXT_CODE_e0fca76"),
-    icon: FolderOpenOutlined,
-    description: t("TXT_CODE_b3844cf8"),
-    action: (e: Event) => {
-      handleInstallAction(QUICKSTART_METHOD.EXIST);
-      e.preventDefault();
-    }
-  }
-];
-
 </script>
 
 <template>
   <div style="height: 100%">
-    <div v-if="isAdmin" style="margin-bottom: 30px">
-      <a-typography-title :level="4" style="margin-bottom: 8px">
-        <AppstoreAddOutlined />
-        {{ t("TXT_CODE_5a74975b") }}
-      </a-typography-title>
-      <a-typography-paragraph>
-        <p style="opacity: 0.6">
-          {{ t("TXT_CODE_81ad9e80") }}
-        </p>
-      </a-typography-paragraph>
-      <div class="manual-install-options">
-        <a-row :gutter="[16, 16]">
-          <a-col
-            v-for="(option, index) in manualInstallOptions"
-            :key="index"
-            :ref="(el) => setStepRef(index, el)"
-            :span="24"
-            :md="12"
-            :lg="8"
-          >
-            <InstallOptionButton :option="option" />
-          </a-col>
-        </a-row>
-      </div>
-    </div>
     <div ref="step3Ref">
-      <ModpackBrowser :card="card" />
+      <ModpackBrowser :card="card" @manual-install="handleInstallAction" />
     </div>
 
     <Tour
@@ -137,9 +88,3 @@ const manualInstallOptions = [
     </a-modal>
   </div>
 </template>
-
-<style lang="scss" scoped>
-.manual-install-options {
-  margin: 24px auto;
-}
-</style>

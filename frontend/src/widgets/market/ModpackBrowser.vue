@@ -2,6 +2,8 @@
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
 import { useAppRouters } from "@/hooks/useAppRouters";
+import { QUICKSTART_METHOD } from "@/hooks/widgets/quickStartFlow";
+import { useAppStateStore } from "@/stores/useAppStateStore";
 import { t } from "@/lang/i18n";
 import { remoteNodeList } from "@/services/apis";
 import {
@@ -27,7 +29,13 @@ import { modpackBrowseCache } from "./modpackBrowseCache";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import type { LayoutCard, NodeStatus } from "@/types";
-import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
+import {
+  AppstoreOutlined,
+  BlockOutlined,
+  FileZipOutlined,
+  FolderOpenOutlined,
+  SearchOutlined
+} from "@ant-design/icons-vue";
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
 import ftbIcon from "@/assets/ftb.svg";
@@ -58,9 +66,18 @@ const props = defineProps<{
     packInfo?: IModpackInfo;
   };
 }>();
-const emit = defineEmits<{ (e: "close"): void }>();
+const emit = defineEmits<{
+  (e: "close"): void;
+  (e: "manual-install", method: QUICKSTART_METHOD): void;
+}>();
+
+const { isAdmin } = useAppStateStore();
 
 const isReinstall = computed(() => !!props.reinstallTarget);
+// The Import / Existing tab replaces the old "Create Instance" cards: it only
+// makes sense in browse mode (never when reinstalling into an existing
+// instance) and was admin-gated like those cards.
+const showImportTab = computed(() => !props.reinstallTarget && isAdmin.value);
 // Reset behaviour chosen by the user (only used in reinstall mode).
 const resetMode = ref<ResetMode>("backup_wipe");
 // For a modpack (CurseForge/Modrinth) reset we focus straight on that pack's
@@ -72,14 +89,18 @@ const hideChrome = computed(() => {
 
 const { toPage } = useAppRouters();
 
-type Source = "custom" | "curseforge" | "modrinth" | "ftb";
+type Source = "custom" | "curseforge" | "modrinth" | "ftb" | "import";
 const source = ref<Source>("custom");
-const sources: { key: Source; label: string; img?: string }[] = [
-  { key: "custom", label: t("TXT_CODE_modpack_custom") },
-  { key: "curseforge", label: "CurseForge", img: curseforgeIcon },
-  { key: "modrinth", label: "Modrinth", img: modrinthIcon },
-  { key: "ftb", label: "FTB", img: ftbIcon }
-];
+const sources = computed<{ key: Source; label: string; img?: string }[]>(() => {
+  const list: { key: Source; label: string; img?: string }[] = [
+    { key: "custom", label: t("TXT_CODE_modpack_custom") },
+    { key: "curseforge", label: "CurseForge", img: curseforgeIcon },
+    { key: "modrinth", label: "Modrinth", img: modrinthIcon },
+    { key: "ftb", label: "FTB", img: ftbIcon }
+  ];
+  if (showImportTab.value) list.push({ key: "import", label: t("TXT_CODE_import_tab") });
+  return list;
+});
 
 // ---- nodes ----
 const nodes = ref<NodeStatus[]>([]);
@@ -319,7 +340,11 @@ const selectSource = (s: Source) => {
   currentPage.value = 1;
   totalItems.value = 0;
   // Custom loads the local catalog; CF/Modrinth load popular packs (empty query).
-  if (s === "custom") {
+  if (s === "import") {
+    // No browsing — the import panel just exposes the existing upload/create flow.
+    results.value = [];
+    customFiltered.value = [];
+  } else if (s === "custom") {
     results.value = [];
     customFiltered.value = [];
     loadCustom();
@@ -709,8 +734,27 @@ onBeforeUnmount(() => {
               </a-tab-pane>
             </a-tabs>
 
+            <!-- Import / Existing: reuse the existing upload + create-directly
+                 flows (handled by the parent via the manual-install event). -->
+            <div v-if="source === 'import'" class="import-panel">
+              <FolderOpenOutlined class="import-icon" />
+              <div class="import-title">{{ t("TXT_CODE_a3efb1cc") }}</div>
+              <div class="import-desc">{{ t("TXT_CODE_f09da050") }}</div>
+              <a-button
+                type="primary"
+                size="large"
+                @click="emit('manual-install', QUICKSTART_METHOD.IMPORT)"
+              >
+                <template #icon><FileZipOutlined /></template>
+                {{ t("TXT_CODE_modpack_select_zip") }}
+              </a-button>
+              <a class="import-empty-link" @click="emit('manual-install', QUICKSTART_METHOD.EXIST)">
+                {{ t("TXT_CODE_e0fca76") }}
+              </a>
+            </div>
+
             <!-- Custom: loader picker + version search -->
-            <div v-if="source === 'custom'" class="mb-12 custom-controls">
+            <div v-else-if="source === 'custom'" class="mb-12 custom-controls">
               <a-segmented
                 v-model:value="customLoader"
                 :options="customLoaderOptions"
@@ -766,7 +810,7 @@ onBeforeUnmount(() => {
               :message="t('TXT_CODE_modpack_ftb_note')"
             />
 
-            <a-spin :spinning="loading">
+            <a-spin v-if="source !== 'import'" :spinning="loading">
               <div ref="resultsScrollEl" class="results-scroll" :style="{ maxHeight: scrollMaxHeight }">
                 <a-list item-layout="horizontal" :data-source="results">
                   <template #renderItem="{ item }">
@@ -1045,6 +1089,34 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.import-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 32px 16px;
+}
+.import-panel .import-icon {
+  font-size: 40px;
+  opacity: 0.5;
+}
+.import-panel .import-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.import-panel .import-desc {
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.7;
+}
+.import-panel .import-empty-link {
+  cursor: pointer;
+  font-size: 13px;
 }
 .pager-row {
   display: flex;
