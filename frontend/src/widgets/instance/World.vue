@@ -159,6 +159,7 @@ watch(
       seenActive = true;
       clearUploadWatchdog();
     } else if (wasUploading && !v?.current) {
+      clearUploadWatchdog();
       wasUploading = false;
       seenActive = false;
       uploading.value = false;
