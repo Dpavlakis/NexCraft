@@ -35,7 +35,7 @@ export function detectServer(dir: string): IServerDetectResult {
     }
     return {
       kind: "bedrock",
-      loader: "bedrock" as ModLoader,
+      loader: "bedrock",
       worldName,
       startCommand: 'sh -c "LD_LIBRARY_PATH=. exec ./bedrock_server"'
     };
@@ -64,7 +64,7 @@ export function detectServer(dir: string): IServerDetectResult {
     try {
       const raw = fs.readJsonSync(cfManifest);
       result.manifest = { source: "curseforge", raw };
-      result.packName = raw?.name;
+      result.packName = typeof raw?.name === "string" ? raw.name : undefined;
     } catch {
       // ignore
     }
@@ -74,7 +74,7 @@ export function detectServer(dir: string): IServerDetectResult {
     try {
       const raw = fs.readJsonSync(mrIndex);
       result.manifest = { source: "modrinth", raw };
-      result.packName = raw?.name;
+      result.packName = typeof raw?.name === "string" ? raw.name : undefined;
     } catch {
       // ignore
     }
@@ -95,9 +95,8 @@ function detectMcVersion(dir: string): string | undefined {
   // 2) Forge/NeoForge libraries path: net/minecraft/server/<mc>-<...>/
   const mcLib = path.join(dir, "libraries", "net", "minecraft", "server");
   if (fs.existsSync(mcLib)) {
-    const entries = fs.readdirSync(mcLib);
-    if (entries[0]) {
-      const m = /^(\d+(?:\.\d+){1,2})/.exec(entries[0]);
+    for (const e of fs.readdirSync(mcLib)) {
+      const m = /^(\d+(?:\.\d+){1,2})/.exec(e);
       if (m) return m[1];
     }
   }
