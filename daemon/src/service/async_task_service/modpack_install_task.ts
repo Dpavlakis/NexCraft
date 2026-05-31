@@ -19,6 +19,7 @@ import {
   extractZipOverwrite,
   fetchFtbVersion,
   ftbTargets,
+  makeShouldPreserve,
   maybeFlatten,
   parseMrpackIndex,
   removeKnownClientMods,
@@ -278,7 +279,13 @@ export class ModpackInstallTask extends AsyncTask {
 
     this.phase = "extract";
     inst.println("INFO", $t("TXT_CODE_modpack.extracting"));
-    await extractZipOverwrite(tmp, cwd);
+    // On a preserve_world reinstall, clearForReset already kept the user's world
+    // and server config; the BDS zip ships a default worlds/Bedrock level/ plus
+    // server.properties/allowlist/permissions, so skip those entries here or the
+    // extraction would clobber the preserved files. Fresh installs (no resetMode
+    // / "wipe" / "backup_wipe") pass undefined and still extract everything.
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await extractZipOverwrite(tmp, cwd, skip);
 
     // The Bedrock server binary must be executable; libs load from the cwd.
     const bin = path.join(cwd, "bedrock_server");
