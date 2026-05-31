@@ -42,6 +42,10 @@ const computedValue = computed({
         value.value[key.value] = `${FLOAT_MAGIC_PREFIX}${v}`;
         return;
       }
+      // Plain string value: assign it directly. A bare `return` here previously
+      // discarded the edit, making every non-numeric/non-boolean field (e.g.
+      // level-name, level-seed, default-player-permission-level) impossible to edit.
+      value.value[key.value] = v;
       return;
     }
     value.value[key.value] = v;
