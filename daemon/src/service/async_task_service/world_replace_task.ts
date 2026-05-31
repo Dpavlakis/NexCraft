@@ -72,27 +72,17 @@ export class WorldReplaceTask extends AsyncTask {
     const wasRunning = status === Instance.STATUS_RUNNING;
     let succeeded = false;
 
+    // Becomes true only once we begin the destructive sequence (stop/backup/wipe).
+    // While false, the running server has not been touched.
+    let destructiveStarted = false;
+
     try {
       const archive = this.resolveArchive(uploadDir);
       inst.println("INFO", $t("TXT_CODE_world.replaceStart"));
 
-      // 1) Stop the server (mutating a live world is unsafe).
-      if (wasRunning) {
-        this.phase = "stop";
-        inst.println("INFO", $t("TXT_CODE_world.stopping"));
-        await inst.execPreset("stop");
-        await this.waitForStop();
-      }
-      inst.status(Instance.STATUS_BUSY);
-
-      // 2) World-only safety backup (skip if there is no world yet).
-      this.phase = "backup";
-      if (getActiveWorldPaths(cwd, kind, levelName).length > 0) {
-        inst.println("INFO", $t("TXT_CODE_world.backup"));
-        await backupActiveWorld(inst);
-      }
-
-      // 3) Extract the upload and detect the world root.
+      // 1) VALIDATE FIRST — extract the upload and confirm it is a real world
+      // (contains level.dat) BEFORE touching the running server. A bad archive is
+      // rejected here with no stop, no backup, no restart — the server keeps running.
       this.phase = "extract";
       inst.println("INFO", $t("TXT_CODE_world.extracting"));
       await fs.remove(extractDir);
@@ -106,7 +96,26 @@ export class WorldReplaceTask extends AsyncTask {
       const root = findWorldRoot(extractDir);
       if (!root) throw new Error($t("TXT_CODE_world.noLevelDat"));
 
-      // 4) Wipe the active world, then install the uploaded one.
+      // Archive is valid — begin the destructive sequence.
+      destructiveStarted = true;
+
+      // 2) Stop the server (mutating a live world is unsafe).
+      if (wasRunning) {
+        this.phase = "stop";
+        inst.println("INFO", $t("TXT_CODE_world.stopping"));
+        await inst.execPreset("stop");
+        await this.waitForStop();
+      }
+      inst.status(Instance.STATUS_BUSY);
+
+      // 3) World-only safety backup (skip if there is no world yet).
+      this.phase = "backup";
+      if (getActiveWorldPaths(cwd, kind, levelName).length > 0) {
+        inst.println("INFO", $t("TXT_CODE_world.backup"));
+        await backupActiveWorld(inst);
+      }
+
+      // 4) Wipe the active world, then install the validated upload.
       this.phase = "apply";
       inst.println("INFO", $t("TXT_CODE_world.placing"));
       await wipeActiveWorld(cwd, kind, levelName);
@@ -116,22 +125,25 @@ export class WorldReplaceTask extends AsyncTask {
       this.phase = "done";
       inst.println("INFO", $t("TXT_CODE_world.done"));
     } catch (error: any) {
-      inst.status(Instance.STATUS_STOP);
+      // Only force STOP if we actually began mutating. A validation failure
+      // leaves the server running and untouched.
+      if (destructiveStarted) inst.status(Instance.STATUS_STOP);
       this.error(error);
       return;
     } finally {
       await fs.remove(extractDir).catch(() => {});
       await fs.remove(uploadDir).catch(() => {});
-      if (inst.status() === Instance.STATUS_BUSY) inst.status(Instance.STATUS_STOP);
-      // Restart only on success: a mid-apply failure may have wiped the world
-      // (the safety backup is the recovery path), so do not relaunch onto it.
+      if (destructiveStarted && inst.status() === Instance.STATUS_BUSY)
+        inst.status(Instance.STATUS_STOP);
+      // Restart only on success. On a mid-apply failure the world may be half-wiped
+      // (the safety backup is the recovery path), so don't relaunch onto it.
       if (wasRunning && succeeded) {
         try {
           await inst.execPreset("start");
         } catch {
           // ignore restart failure
         }
-      } else if (wasRunning && !succeeded) {
+      } else if (wasRunning && destructiveStarted && !succeeded) {
         inst.println("WARN", $t("TXT_CODE_world.failedStopped"));
       }
     }
