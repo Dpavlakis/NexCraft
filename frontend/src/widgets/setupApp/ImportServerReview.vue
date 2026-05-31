@@ -146,6 +146,12 @@ const runIdentify = async () => {
 
 const hasPack = computed(() => !!packGuess.value);
 
+// Scroll-wheel adjusts Max Memory by one step (matches the input's min/step).
+const onMemWheel = (e: WheelEvent) => {
+  const delta = e.deltaY < 0 ? 1024 : -1024;
+  form.maxMemory = Math.max(1024, (form.maxMemory || 0) + delta);
+};
+
 // ---- finalize / actions ----
 const submitting = ref(false);
 
@@ -396,6 +402,7 @@ onBeforeUnmount(() => stopPolling());
                 :min="1024"
                 :step="1024"
                 style="width: 100%"
+                @wheel.prevent="onMemWheel"
               />
             </a-form-item>
           </a-col>

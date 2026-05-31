@@ -263,7 +263,7 @@ const createInstance = async () => {
           </a-form-item>
         </a-col>
 
-        <a-col :xs="24" :md="12">
+        <a-col v-if="!isImportMode" :xs="24" :md="12">
           <a-form-item>
             <a-typography-title :level="5" class="require-field">
               {{ t("TXT_CODE_2f291d8b") }}
@@ -368,7 +368,7 @@ const createInstance = async () => {
         </a-col>
       </a-row>
 
-      <a-form-item name="startCommand">
+      <a-form-item v-if="!isImportMode" name="startCommand">
         <a-typography-title :level="5">
           {{ t("TXT_CODE_d12fa808") }}
         </a-typography-title>
@@ -395,7 +395,7 @@ const createInstance = async () => {
         </a-input-group>
       </a-form-item>
 
-      <a-form-item>
+      <a-form-item v-if="!isImportMode">
         <!-- Update Command -->
         <a-typography-title :level="5">{{ t("TXT_CODE_2e2c6b7b") }}</a-typography-title>
         <a-typography-paragraph>
@@ -426,7 +426,7 @@ const createInstance = async () => {
         </a-form-item>
       </a-form-item>
 
-      <a-row :gutter="20">
+      <a-row v-if="!isImportMode" :gutter="20">
         <a-col :xs="24" :sm="12">
           <a-form-item name="stopCommand">
             <a-typography-title :level="5" class="require-field">
