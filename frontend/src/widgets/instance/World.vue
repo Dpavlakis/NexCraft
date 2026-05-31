@@ -132,7 +132,21 @@ const onDownload = async () => {
 };
 
 let wasUploading = false;
+let seenActive = false;
+let uploadWatchdog: ReturnType<typeof setTimeout> | null = null;
 let pendingReplaceFileName = "";
+
+const clearUploadWatchdog = () => {
+  if (uploadWatchdog) clearTimeout(uploadWatchdog);
+  uploadWatchdog = null;
+};
+const resetUploadState = () => {
+  clearUploadWatchdog();
+  wasUploading = false;
+  seenActive = false;
+  pendingReplaceFileName = "";
+  uploading.value = false;
+};
 
 watch(
   () => uploadService.uiData.value,
@@ -142,8 +156,11 @@ watch(
       v?.instanceInfo?.daemonId === daemonId;
     if (v?.current && mine) {
       wasUploading = true;
+      seenActive = true;
+      clearUploadWatchdog();
     } else if (wasUploading && !v?.current) {
       wasUploading = false;
+      seenActive = false;
       uploading.value = false;
       if (pendingReplaceFileName) {
         const name = pendingReplaceFileName;
@@ -200,9 +217,16 @@ const onFileChange = async (e: Event) => {
     uploadService.append(file, addr, cfg.value.password, { overwrite: true }, (task) => {
       task.instanceInfo = { instanceId, daemonId };
     });
+    seenActive = false;
+    clearUploadWatchdog();
+    uploadWatchdog = setTimeout(() => {
+      if (!seenActive) {
+        resetUploadState();
+        reportErrorMsg(t("TXT_CODE_world_upload_failed"));
+      }
+    }, 15000);
   } catch (e: any) {
-    uploading.value = false;
-    pendingReplaceFileName = "";
+    resetUploadState();
     reportErrorMsg(e?.message || String(e));
   }
 };
@@ -231,7 +255,10 @@ const toConsole = () => {
 };
 
 onMounted(loadInfo);
-onBeforeUnmount(stopPolling);
+onBeforeUnmount(() => {
+  stopPolling();
+  clearUploadWatchdog();
+});
 </script>
 
 <template>
