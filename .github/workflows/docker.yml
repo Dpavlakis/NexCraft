@@ -12,6 +12,11 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# Opt the bundled JS actions (checkout, buildx, metadata, login, build-push) into
+# Node 24 — GitHub deprecated Node 20 on the runners (forced switch ~2026-06-16).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 permissions:
   contents: read
   packages: write
