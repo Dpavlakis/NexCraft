@@ -12,8 +12,8 @@
   <Overview>TEST STACK — runs the :test image (a feature branch), with its OWN data dir so it never touches your production NexCraft. Give this container its own IP and pair it with NexCraft-Web-Test.&#xD;&#xA;&#xD;&#xA;The NexCraft daemon — the per-node agent that actually runs your Minecraft servers (downloads modpacks, bootstraps loaders, provisions Java, runs the processes). Ships with Java 21. After it's running, add it as a node in the NexCraft-Web-Test panel (default port 24444) using the access key from its data/Config/global.json. Docs: https://dpavlakis.github.io/NexCraft/</Overview>
   <Category>Tools: GameServers:</Category>
   <WebUI/>
-  <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/unraid/nexcraft-daemon-test.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/feat/import-existing-server/unraid/nexcraft_logo_test.webp</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/test/unraid/nexcraft-daemon-test.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/test/unraid/nexcraft_logo_test.webp</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
