@@ -175,7 +175,11 @@ export class ModpackInstallTask extends AsyncTask {
 
     this.phase = "extract";
     this.instance.println("INFO", $t("TXT_CODE_modpack.extracting"));
-    await extractZipOverwrite(tmp, cwd);
+    // On a preserve_world reinstall, skip entries that would clobber the
+    // preserved world/server config (a server pack can ship those). Fresh
+    // installs pass undefined and extract everything (unchanged behaviour).
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await extractZipOverwrite(tmp, cwd, skip);
     await maybeFlatten(cwd, [".mcsm_serverpack.zip"]);
 
     return {
@@ -208,7 +212,10 @@ export class ModpackInstallTask extends AsyncTask {
       }
     });
     this.instance.println("INFO", $t("TXT_CODE_modpack.extracting"));
-    await extractMrpackOverrides(tmp, cwd);
+    // On a preserve_world reinstall, skip overrides that would clobber the
+    // preserved world/server config. Fresh installs extract everything.
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await extractMrpackOverrides(tmp, cwd, skip);
 
     return { mc, loader, loaderVersion };
   }
@@ -223,14 +230,22 @@ export class ModpackInstallTask extends AsyncTask {
     const manifest = await fetchFtbVersion(packId, versionId);
     const { mc, loader, loaderVersion } = ftbTargets(manifest);
 
-    await downloadFtbFiles(manifest, cwd, (done, total) => {
-      this.downloadProgress.percentage = total ? Math.round((done / total) * 100) : 0;
-      const now = Date.now();
-      if (now - this.lastProgressOutput >= 1000) {
-        this.instance.println("INFO", $t("TXT_CODE_modpack.files", { done, total }));
-        this.lastProgressOutput = now;
-      }
-    });
+    // On a preserve_world reinstall, skip manifest files that would clobber the
+    // preserved world/server config. Fresh installs download everything.
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await downloadFtbFiles(
+      manifest,
+      cwd,
+      (done, total) => {
+        this.downloadProgress.percentage = total ? Math.round((done / total) * 100) : 0;
+        const now = Date.now();
+        if (now - this.lastProgressOutput >= 1000) {
+          this.instance.println("INFO", $t("TXT_CODE_modpack.files", { done, total }));
+          this.lastProgressOutput = now;
+        }
+      },
+      skip
+    );
 
     return { mc, loader, loaderVersion };
   }

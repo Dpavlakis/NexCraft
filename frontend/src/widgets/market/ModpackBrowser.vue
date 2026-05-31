@@ -79,7 +79,7 @@ const isReinstall = computed(() => !!props.reinstallTarget);
 // instance) and was admin-gated like those cards.
 const showImportTab = computed(() => !props.reinstallTarget && isAdmin.value);
 // Reset behaviour chosen by the user (only used in reinstall mode).
-const resetMode = ref<ResetMode>("backup_wipe");
+const resetMode = ref<ResetMode>("preserve_world");
 // For a modpack (CurseForge/Modrinth) reset we focus straight on that pack's
 // popup and hide the browse chrome; custom/vanilla resets still browse versions.
 const hideChrome = computed(() => {
