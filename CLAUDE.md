@@ -4,6 +4,10 @@
 Repo: `github.com/Dpavlakis/NexCraft` (standalone, **not** a fork anymore). Default/working branch: **`main`** (push remote alias `nexcraft`; `origin` still points at upstream `MCSManager/MCSManager` for reference).
 The original MCSManager is credited (login footer + Settings → About). Keep changes Minecraft-focused.
 
+## Workflow (standing preferences)
+- Features go **brainstorm → spec (`docs/superpowers/specs/`) → plan (`docs/superpowers/plans/`) → execution**.
+- **Execution is ALWAYS subagent-driven** (superpowers:subagent-driven-development): one fresh subagent per task, with spec-compliance + code-quality review between tasks. Never inline-execute a plan unless the user explicitly overrides. (User's standing instruction — "always subagent.")
+
 ## Monorepo layout
 - `daemon/` — per-node agent. Socket RPC: `routerApp.on("ns/action", (ctx,data)=>{ protocol.response/responseError })`, registered via imports in `daemon/src/service/router.ts`. Async work in `src/service/async_task_service/`.
 - `panel/` — Koa backend; proxies to daemon via `new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request("event", data)`. Routers mounted in `src/app/index.ts`. An `Error` set on `ctx.body` becomes HTTP 500.
