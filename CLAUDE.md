@@ -42,6 +42,7 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
 - vue-tsc: `a-select` v-model rejects `null` (use `undefined`); cast when feeding a widened union into a strict-typed API.
 - Bundled loader logos live in `frontend/src/assets/loaders/`; brand SVGs (`curseforge.svg`, `modrinth.svg`) in `assets/`.
 - Use real assets/live data, not placeholders or curated lists. Keep UI consistent (e.g. "Return" back button + power-off stop icon everywhere). Everything sans-serif.
+- **Per-instance cards in the manage popup:** when a card is opened in the manage modal (via `ManagerBtns` → `openManage`), HIDE the in-card "Return" button **and** the redundant in-card title — the modal's own ✕ + header replace them. Use `const embeddedInManageModal = inject<boolean>("embeddedInManageModal", false)` and gate with `v-if="!embeddedInManageModal"` (title also `&& !isPhone`). The Return button is for full-page card mode only. (Pattern: `ModpackUpdate.vue`, `World.vue`.)
 - Status: Minecraft instances stay **Starting** until the server logs ready, then flip to **Running** (daemon `instance.ts` readiness watch). Toasts/UI key off the real RUNNING status, not the process-open event. Start needs no confirm; stop/restart/kill do.
 - Instance management is full-page cards keyed by route (`/instances/<page>`): register the card in `frontend/config/index.ts`, the route in `config/router.ts`, the default page in `panel/.../frontend_layout.ts` (now **auto-merges missing default pages** into a saved layout), and a nav button in `ManagerBtns.vue`.
 

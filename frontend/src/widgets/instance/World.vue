@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed, watch, createVNode } from "vue";
+import { onMounted, onBeforeUnmount, ref, computed, watch, createVNode, inject } from "vue";
 import { Modal, message } from "ant-design-vue";
 import {
   CloudDownloadOutlined,
@@ -34,6 +34,9 @@ const props = defineProps<{ card: LayoutCard }>();
 
 const { isPhone } = useScreen();
 const { toPage } = useAppRouters();
+// When shown inside the manage popup, the modal's own close (✕) replaces the
+// in-card Return button, and the modal already shows the card title — so hide both.
+const embeddedInManageModal = inject<boolean>("embeddedInManageModal", false);
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
 const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
@@ -267,7 +270,7 @@ onBeforeUnmount(() => {
     <a-row :gutter="[24, 24]" style="height: 100%">
       <a-col :span="24">
         <BetweenMenus>
-          <template v-if="!isPhone" #left>
+          <template v-if="!isPhone && !embeddedInManageModal" #left>
             <a-typography-title class="mb-0" :level="4">
               <RollbackOutlined />
               {{ t("TXT_CODE_world_card_title") }}
@@ -278,7 +281,7 @@ onBeforeUnmount(() => {
               <template #icon><ReloadOutlined /></template>
               {{ t("TXT_CODE_b76d94e0") }}
             </a-button>
-            <a-button @click="toConsole">
+            <a-button v-if="!embeddedInManageModal" @click="toConsole">
               <template #icon><RollbackOutlined /></template>
               {{ t("TXT_CODE_backup_to_console") }}
             </a-button>
