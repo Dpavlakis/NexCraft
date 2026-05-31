@@ -294,7 +294,7 @@ const loadBedrockProps = async () => {
   originalBedrockServerName.value = "";
   bedrockLevelName.value = "";
   originalBedrockLevelName.value = "";
-  if (!props.instanceId || !props.daemonId || !isMinecraftBedrock.value) return;
+  if (!props.instanceId || !props.daemonId || !props.instanceInfo?.config?.type?.startsWith("minecraft/bedrock")) return;
   try {
     const nameRes = await executeGetServerProperty({
       params: { uuid: props.instanceId, daemonId: props.daemonId, key: "server-name" }
