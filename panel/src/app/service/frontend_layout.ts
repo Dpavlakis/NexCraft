@@ -429,6 +429,28 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
       ]
     },
     {
+      page: "/instances/world",
+      items: [
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "InstanceWorld",
+          title: t("TXT_CODE_world_card_title"),
+          width: 12,
+          height: LayoutCardHeight.AUTO,
+          disableDelete: true
+        },
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "EmptyCard",
+          title: "",
+          width: 12,
+          height: LayoutCardHeight.MINI
+        }
+      ]
+    },
+    {
       page: "/instances/metrics",
       items: [
         {

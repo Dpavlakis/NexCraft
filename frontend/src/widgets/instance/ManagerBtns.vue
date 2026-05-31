@@ -22,6 +22,7 @@ import {
   ControlOutlined,
   DashboardOutlined,
   FieldTimeOutlined,
+  GlobalOutlined,
   LineChartOutlined,
   TeamOutlined,
   FolderOpenOutlined,
@@ -49,6 +50,7 @@ import InstanceMetrics from "./Metrics.vue";
 import InstanceModManager from "./ModManager.vue";
 import InstanceModpackUpdate from "./ModpackUpdate.vue";
 import InstancePlayers from "./Players.vue";
+import InstanceWorld from "./World.vue";
 import InstanceSchedule from "./Schedule.vue";
 import InstanceServerConfigOverview from "./ServerConfigOverview.vue";
 
@@ -226,6 +228,14 @@ const btns = computed(() => {
             ? t("TXT_CODE_version_update_card_title")
             : t("TXT_CODE_modpack_update_card_title")
         );
+      }
+    },
+    {
+      title: t("TXT_CODE_world_card_title"),
+      icon: GlobalOutlined,
+      condition: () => isAdmin.value && !isGlobalTerminal.value,
+      click: () => {
+        openManage(InstanceWorld, t("TXT_CODE_world_card_title"));
       }
     },
     {

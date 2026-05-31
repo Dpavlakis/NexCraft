@@ -195,6 +195,14 @@ const originRouterConfig: RouterConfig[] = [
             meta: {
               permission: ROLE.USER
             }
+          },
+          {
+            path: `/instances/world`,
+            name: t("TXT_CODE_world_card_title"),
+            component: LayoutContainer,
+            meta: {
+              permission: ROLE.USER
+            }
           }
         ]
       }

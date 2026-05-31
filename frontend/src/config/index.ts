@@ -12,6 +12,7 @@ import InstanceManagerBtns from "@/widgets/instance/ManagerBtns.vue";
 import InstanceMetrics from "@/widgets/instance/Metrics.vue";
 import InstanceModManager from "@/widgets/instance/ModManager.vue";
 import InstanceModpackUpdate from "@/widgets/instance/ModpackUpdate.vue";
+import InstanceWorld from "@/widgets/instance/World.vue";
 import InstancePlayers from "@/widgets/instance/Players.vue";
 import Schedule from "@/widgets/instance/Schedule.vue";
 import InstanceServerConfigFile from "@/widgets/instance/ServerConfigFile.vue";
@@ -83,6 +84,7 @@ export const LAYOUT_CARD_TYPES: { [key: string]: any } = {
   InstanceMetrics,
   InstanceModManager,
   InstanceModpackUpdate,
+  InstanceWorld,
   UserAccessSettings,
   ImageBox,
   QuickStartFlow,
@@ -408,6 +410,34 @@ export function getLayoutCardPool() {
       title: t("TXT_CODE_modpack_update_card_title"),
       width: 12,
       description: t("TXT_CODE_modpack_update_card_desc"),
+      height: LayoutCardHeight.MEDIUM,
+      category: NEW_CARD_TYPE.INSTANCE,
+      params: [
+        {
+          field: "instanceId",
+          label: t("TXT_CODE_e6a5c12b"),
+          type: "string"
+        },
+        {
+          field: "daemonId",
+          label: t("TXT_CODE_72cfab69"),
+          type: "string"
+        },
+        {
+          field: "instance",
+          label: t("TXT_CODE_cb043d10"),
+          type: "instance"
+        }
+      ]
+    },
+    {
+      id: getRandomId(),
+      permission: ROLE.ADMIN,
+      meta: {},
+      type: "InstanceWorld",
+      title: t("TXT_CODE_world_card_title"),
+      width: 12,
+      description: t("TXT_CODE_world_card_desc"),
       height: LayoutCardHeight.MEDIUM,
       category: NEW_CARD_TYPE.INSTANCE,
       params: [
