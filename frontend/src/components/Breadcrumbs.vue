@@ -4,15 +4,17 @@ import { useAppRouters } from "@/hooks/useAppRouters";
 import { t } from "@/lang/i18n";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import { computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 export interface BreadcrumbItem {
   title: string;
   disabled: boolean;
-  href: string;
+  // SPA target for router.push. undefined => not clickable (current page / home root).
+  to?: string;
 }
 
 const route = useRoute();
+const router = useRouter();
 const { getRouteParamsUrl } = useAppRouters();
 const { state: appState } = useAppStateStore();
 
@@ -21,7 +23,7 @@ const items = computed<BreadcrumbItem[]>(() => {
     {
       title: t("TXT_CODE_f5b9d58f"),
       disabled: false,
-      href: "."
+      to: "/"
     }
   ];
 
@@ -35,26 +37,32 @@ const items = computed<BreadcrumbItem[]>(() => {
       arr.push({
         title: v.name,
         disabled: false,
-        href: `./#${v.path}${params}`
+        to: `${v.path}${params}`
       });
     });
   }
 
   arr.push({
     title: String(route.name),
-    disabled: true,
-    href: `./#${route.fullPath}`
+    disabled: true
   });
 
   return arr;
 });
+
+// Navigate within the SPA (Vue Router) instead of following an <a href>, which
+// would trigger a full page reload (the blank "Rendering Application..." screen).
+const go = (item: BreadcrumbItem) => {
+  if (item.disabled || !item.to) return;
+  router.push(item.to);
+};
 </script>
 
 <template>
   <div class="breadcrumbs">
     <a-breadcrumb>
       <a-breadcrumb-item v-for="item in items" :key="item.title">
-        <a v-if="!item.disabled" :href="item.href">{{ item.title }}</a>
+        <a v-if="!item.disabled" href="javascript:void(0)" @click="go(item)">{{ item.title }}</a>
         <span v-else>{{ item.title }}</span>
       </a-breadcrumb-item>
     </a-breadcrumb>
