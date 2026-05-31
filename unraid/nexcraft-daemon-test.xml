@@ -13,7 +13,7 @@
   <Category>Tools: GameServers:</Category>
   <WebUI/>
   <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/unraid/nexcraft-daemon-test.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/main/unraid/nexcraft_logo.webp</Icon>
+  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/feat/import-existing-server/unraid/nexcraft_logo_test.webp</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
