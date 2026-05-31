@@ -330,7 +330,6 @@ const openPhoneMenu = (b = false) => {
   .nav-button {
     margin: 0 4px;
     font-size: 14px;
-    font-weight: 600;
     transition: all 0.4s;
     color: var(--app-header-text-color) !important;
     text-align: center;
