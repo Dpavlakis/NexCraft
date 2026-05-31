@@ -10,6 +10,8 @@ import {
 import {
   modpackTaskStatus,
   reinstallModpack,
+  reinstallServer,
+  serverVersionsGet,
   type ModpackVersion,
   type ResetMode
 } from "@/services/apis/modpack";
@@ -72,6 +74,9 @@ function startCommandTemplate(loader?: string): string {
 const detecting = ref(false);
 const detectResult = ref<IServerDetectResult | null>(null);
 
+// Latest Bedrock Dedicated Server release id, resolved when Bedrock is detected.
+const latestBedrockVersion = ref<string>("");
+
 // ---- pack identification ----
 const identifying = ref(false);
 const packGuess = ref<IPackGuess | null>(null);
@@ -94,6 +99,7 @@ const runDetect = async () => {
   detecting.value = true;
   packGuess.value = null;
   selectedVersion.value = "";
+  latestBedrockVersion.value = "";
   try {
     const res = await importDetect().execute({
       params: { daemonId: props.daemonId },
@@ -116,6 +122,10 @@ const runDetect = async () => {
         form.startCommand = startCommandTemplate(form.loader);
       }
     }
+    // For Bedrock, resolve the latest server version so the default action can
+    // install it (Bedrock clients version-lock, so importing the old binary as
+    // -is usually yields an unjoinable server).
+    if (isBedrock.value) resolveLatestBedrock();
     // Identify the pack in parallel (non-fatal).
     runIdentify();
   } catch (err: any) {
@@ -141,6 +151,26 @@ const runIdentify = async () => {
     packGuess.value = null;
   } finally {
     identifying.value = false;
+  }
+};
+
+// Fetch the Bedrock Dedicated Server versions and pick the stable release id
+// (fallback: first entry). Best-effort — failure just leaves it empty and the
+// UI falls back to the import-as-is path.
+const resolveLatestBedrock = async () => {
+  latestBedrockVersion.value = "";
+  try {
+    const res = await serverVersionsGet().execute({
+      params: { software: "bedrock" },
+      forceRequest: true
+    });
+    const list = res.value || [];
+    const stable = list.find((v) => v.type === "release") || list[0];
+    latestBedrockVersion.value = stable ? stable.id : "";
+    if (latestBedrockVersion.value) form.mcVersion = latestBedrockVersion.value;
+  } catch {
+    // non-fatal — opt-out (import as-is) remains available
+    latestBedrockVersion.value = "";
   }
 };
 
@@ -306,6 +336,33 @@ const reinstallKeep = async () => {
   }
 };
 
+// Bedrock default: install the latest Bedrock Dedicated Server while keeping
+// the uploaded world (daemon preserves it). Reuses the reinstall + poll flow.
+const installLatestBedrock = async () => {
+  if (taskRunning.value) return;
+  if (!latestBedrockVersion.value) {
+    // Couldn't resolve a version — fall back to importing the uploaded binary.
+    return importAsIs();
+  }
+  try {
+    const res = await reinstallServer().execute({
+      params: { daemonId: props.daemonId, uuid: props.instanceUuid },
+      data: {
+        mcVersion: latestBedrockVersion.value,
+        loader: "bedrock",
+        acceptEula: true,
+        resetMode: "preserve_world" as ResetMode
+      }
+    });
+    const taskId = res.value?.taskId || "";
+    if (!taskId) throw new Error(t("TXT_CODE_import_reinstall_failed"));
+    message.success(t("TXT_CODE_import_reinstall_started"));
+    pollTask(taskId, () => onSuccess());
+  } catch (err: any) {
+    reportErrorMsg(err.message);
+  }
+};
+
 // Loader drives the start command. When the user changes the loader:
 //  - switching to bedrock always sets the fixed bedrock command;
 //  - switching to a java loader sets the java template ONLY if the field is
@@ -378,6 +435,7 @@ onBeforeUnmount(() => stopPolling());
               <a-input
                 v-model:value="form.mcVersion"
                 :placeholder="t('TXT_CODE_import_mcVersion_ph')"
+                :disabled="isBedrock"
               />
             </a-form-item>
           </a-col>
@@ -451,9 +509,50 @@ onBeforeUnmount(() => stopPolling());
         :message="t('TXT_CODE_import_reinstallNote')"
       />
 
+      <!-- Bedrock note -->
+      <a-alert
+        v-if="isBedrock"
+        class="mt-16"
+        type="info"
+        show-icon
+        :message="t('TXT_CODE_import_bedrock_latest_note')"
+      />
+
       <!-- Actions -->
       <div class="action-grid mt-16">
-        <div class="action-block">
+        <!-- Bedrock: install latest + keep world (default) -->
+        <div v-if="isBedrock" class="action-block">
+          <a-button
+            block
+            type="primary"
+            :disabled="taskRunning || submitting"
+            :loading="taskRunning"
+            @click="installLatestBedrock"
+          >
+            {{ t("TXT_CODE_import_bedrock_latest") }}
+          </a-button>
+          <a-typography-text type="secondary" class="action-hint">
+            {{ t("TXT_CODE_import_bedrock_latest_note") }}
+          </a-typography-text>
+        </div>
+
+        <!-- Bedrock opt-out: import the uploaded binary as-is -->
+        <div v-if="isBedrock" class="action-block">
+          <a-button
+            block
+            :disabled="!canImportAsIs"
+            :loading="submitting"
+            @click="importAsIs"
+          >
+            {{ t("TXT_CODE_import_bedrock_asis") }}
+          </a-button>
+          <a-typography-text type="secondary" class="action-hint">
+            {{ t("TXT_CODE_import_importAsIs_hint") }}
+          </a-typography-text>
+        </div>
+
+        <!-- Java: import the uploaded server as-is (default) -->
+        <div v-if="!isBedrock" class="action-block">
           <a-button
             block
             type="primary"
@@ -468,7 +567,7 @@ onBeforeUnmount(() => stopPolling());
           </a-typography-text>
         </div>
 
-        <div v-if="hasPack" class="action-block">
+        <div v-if="!isBedrock && hasPack" class="action-block">
           <a-button
             block
             :disabled="submitting || taskRunning"
@@ -481,7 +580,7 @@ onBeforeUnmount(() => stopPolling());
           </a-typography-text>
         </div>
 
-        <div v-if="hasPack" class="action-block">
+        <div v-if="!isBedrock && hasPack" class="action-block">
           <a-popconfirm
             :title="t('TXT_CODE_import_reinstallNote')"
             :ok-text="t('TXT_CODE_import_reinstallKeep')"
