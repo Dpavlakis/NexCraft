@@ -78,11 +78,6 @@ enum TabSettings {
 }
 const activeKey = ref<TabSettings>(TabSettings.Basic);
 
-const UPDATE_CMD_DESCRIPTION = t("TXT_CODE_fa487a47");
-const UPDATE_CMD_TEMPLATE =
-  t("TXT_CODE_61ca492b") +
-  '"C:/SteamCMD/steamcmd.exe" +login anonymous +force_install_dir "{mcsm_workspace}" "+app_update 380870 validate" +quit';
-
 const formType = ref<"template" | "normal">("normal");
 const isEditMode = ref(false);
 const isTemplateMode = computed(() => formType.value === "template");
@@ -1018,53 +1013,6 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input v-model:value="formData.instance.config.cwd" />
-                </a-form-item>
-              </a-col>
-              <a-col :xs="24" :offset="0">
-                <a-form-item>
-                  <!-- Update Command -->
-                  <a-typography-title :level="5">{{ t("TXT_CODE_bb0b9711") }}</a-typography-title>
-                  <a-typography-paragraph>
-                    <a-tooltip :title="UPDATE_CMD_DESCRIPTION" placement="top">
-                      <a-typography-text type="secondary" class="typography-text-ellipsis">
-                        <span>{{ t("TXT_CODE_4f387c5a") }}</span>
-                        <br />
-                        <!-- eslint-disable-next-line vue/no-v-html -->
-                        <span v-html="UPDATE_CMD_DESCRIPTION"> </span>
-                      </a-typography-text>
-                    </a-tooltip>
-                  </a-typography-paragraph>
-                  <!-- eslint-disable-next-line vue/html-quotes -->
-                  <a-input
-                    v-model:value="formData.instance.config.updateCommand"
-                    :placeholder="UPDATE_CMD_TEMPLATE"
-                    :disabled="isGlobalTerminal"
-                  />
-                </a-form-item>
-              </a-col>
-              <a-col :xs="24" :lg="24" :offset="0">
-                <a-form-item>
-                  <a-typography-title :level="5">
-                    {{ t("TXT_CODE_a3bcd4b5") }}
-                  </a-typography-title>
-                  <a-typography-paragraph>
-                    <a-tooltip :title="t('TXT_CODE_3bbdf523')" placement="top">
-                      <a-typography-text type="secondary" :class="['typography-text-ellipsis']">
-                        {{ t("TXT_CODE_3bbdf523") }}
-                      </a-typography-text>
-                    </a-tooltip>
-                  </a-typography-paragraph>
-                  <DockerImageSelect
-                    :is-allow-empty="true"
-                    :is-allow-text="t('TXT_CODE_8aca7994')"
-                    :model-value="formData.instance.config?.docker?.updateCommandImage ?? ''"
-                    :image-select-method="formData.instance.imageSelectMethod ?? 'SELECT'"
-                    :daemon-id="daemonId ?? ''"
-                    @update:model-value="
-                      (v) => (formData.instance.config!.docker!.updateCommandImage = v)
-                    "
-                    @update:image-select-method="(v) => (formData.instance.imageSelectMethod = v)"
-                  />
                 </a-form-item>
               </a-col>
               <a-col :xs="24" :lg="24" :offset="0">
