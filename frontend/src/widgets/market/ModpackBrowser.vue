@@ -465,6 +465,7 @@ const openInstall = (item: ResultItem) => {
 };
 
 const formatUpdated = (d?: string) => (d ? new Date(d).toLocaleDateString() : "");
+const capitalize = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
 
 const onMemWheel = (e: WheelEvent) => {
   const delta = e.deltaY < 0 ? 1024 : -1024;
@@ -885,7 +886,24 @@ onBeforeUnmount(() => {
               </a>
             </div>
           </div>
+
+          <div v-if="currentLoaderInfo" class="pack-tags">
+            <a-tag color="blue">{{ dialog.item.id }}</a-tag>
+            <a-tag v-if="dialog.item.mcType">{{ capitalize(dialog.item.mcType) }}</a-tag>
+            <a-tag v-for="ck in currentLoaderInfo.categoryKeys" :key="ck">{{ t(ck) }}</a-tag>
+          </div>
+
           <p v-if="currentLoaderInfo" class="pack-desc">{{ t(currentLoaderInfo.blurbKey) }}</p>
+
+          <template v-if="currentLoaderInfo">
+            <div class="loader-feat-h">{{ t("TXT_CODE_loader_features") }}</div>
+            <ul class="loader-feat">
+              <li v-for="fk in currentLoaderInfo.featureKeys" :key="fk">{{ t(fk) }}</li>
+            </ul>
+            <div v-if="customLoader !== 'bedrock'" class="loader-java-note">
+              {{ t("TXT_CODE_loader_java_autoprovision") }}
+            </div>
+          </template>
         </div>
         <div v-else-if="dialog.item" class="pack-detail">
           <img
@@ -1233,5 +1251,25 @@ onBeforeUnmount(() => {
 .custom-detail .pack-head {
   display: flex;
   align-items: center;
+}
+.custom-detail .loader-feat-h {
+  margin: 14px 0 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.custom-detail .loader-feat {
+  margin: 0;
+  padding-left: 18px;
+  li {
+    margin: 3px 0;
+  }
+}
+.custom-detail .loader-java-note {
+  margin-top: 14px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  border-radius: 6px;
+  border: 1px solid rgba(74, 144, 217, 0.5);
+  background: rgba(74, 144, 217, 0.1);
 }
 </style>
