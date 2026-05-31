@@ -196,12 +196,16 @@ const sortField = ref("featured");
 // Auto-size the results list to the window, leaving padding at the bottom.
 const resultsScrollEl = ref<HTMLElement>();
 const scrollMaxHeight = ref("520px");
-const BOTTOM_PADDING = 24;
+const BOTTOM_PADDING = 32;
 const recomputeHeight = () => {
   const el = resultsScrollEl.value;
   if (!el) return;
   const top = el.getBoundingClientRect().top;
-  const h = window.innerHeight - top - BOTTOM_PADDING;
+  // The pager row sits BELOW this scroll area (a sibling) and only when paginated.
+  // Reserve room for it + the bottom margin so the list/pager never touch the
+  // screen edge, and so it reflows correctly on window resize.
+  const pagerReserve = totalItems.value > PAGE_SIZE ? 56 : 0;
+  const h = window.innerHeight - top - BOTTOM_PADDING - pagerReserve;
   scrollMaxHeight.value = Math.max(320, Math.round(h)) + "px";
 };
 const sortOptions = [
