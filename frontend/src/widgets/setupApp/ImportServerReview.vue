@@ -16,6 +16,7 @@ import {
   type ResetMode
 } from "@/services/apis/modpack";
 import { reportErrorMsg } from "@/tools/validator";
+import { openResetInstanceDialog } from "@/components/fc";
 import { message } from "ant-design-vue";
 import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
 
@@ -336,6 +337,22 @@ const reinstallKeep = async () => {
   }
 };
 
+// "Find my modpack": hand off to the existing Reset/Reinstall flow. Mounting
+// the dialog with NO packInfo makes it render the full ModpackBrowser search
+// (CurseForge/Modrinth/Custom) so the user can find their pack, pick a version
+// and reinstall into this imported instance while preserving the world. We use
+// the same independent mount helper the instance Reset button uses, then close
+// the wizard so the reset dialog takes over cleanly (its own lifecycle).
+const findMyModpack = () => {
+  openResetInstanceDialog(
+    props.daemonId,
+    props.instanceUuid,
+    form.instanceName || undefined
+    // no packInfo → ModpackBrowser search path
+  );
+  emit("update:open", false);
+};
+
 // Bedrock default: install the latest Bedrock Dedicated Server while keeping
 // the uploaded world (daemon preserves it). Reuses the reinstall + poll flow.
 const installLatestBedrock = async () => {
@@ -564,6 +581,21 @@ onBeforeUnmount(() => stopPolling());
           </a-button>
           <a-typography-text type="secondary" class="action-hint">
             {{ t("TXT_CODE_import_importAsIs_hint") }}
+          </a-typography-text>
+        </div>
+
+        <!-- Java: find my modpack → opens the reset/search browser (keep world) -->
+        <div v-if="!isBedrock" class="action-block">
+          <a-button
+            block
+            :type="!hasPack ? 'primary' : 'default'"
+            :disabled="submitting || taskRunning"
+            @click="findMyModpack"
+          >
+            {{ t("TXT_CODE_import_find_pack") }}
+          </a-button>
+          <a-typography-text type="secondary" class="action-hint">
+            {{ t("TXT_CODE_import_find_pack_hint") }}
           </a-typography-text>
         </div>
 

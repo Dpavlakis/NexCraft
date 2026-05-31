@@ -3580,6 +3580,8 @@
   "TXT_CODE_import_pack_version": "Matched version",
   "TXT_CODE_import_importAsIs": "Import as-is",
   "TXT_CODE_import_importAsIs_hint": "Keep the existing files exactly as uploaded and just register the server.",
+  "TXT_CODE_import_find_pack": "Find my modpack (reinstall & keep your world)",
+  "TXT_CODE_import_find_pack_hint": "Search CurseForge/Modrinth for your modpack, pick a version, and reinstall it into this server while preserving your world.",
   "TXT_CODE_import_linkPack": "Link to pack",
   "TXT_CODE_import_linkPack_hint": "Import as-is, but tag the instance with this pack so it can be updated later.",
   "TXT_CODE_import_reinstallKeep": "Reinstall fresh + keep world",
