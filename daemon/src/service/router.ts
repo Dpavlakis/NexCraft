@@ -84,6 +84,7 @@ import "../routers/import_router";
 import "../routers/metrics_router";
 import "../routers/modpack_router";
 import "../routers/passport_router";
+import "../routers/world_router";
 import "../routers/player_router";
 import "../routers/schedule_router";
 import "../routers/stream_router";
