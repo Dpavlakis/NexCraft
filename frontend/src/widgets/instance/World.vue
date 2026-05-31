@@ -48,7 +48,7 @@ const fileInput = ref<HTMLInputElement>();
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const formatBytes = (n: number) => {
-  if (!n) return "0 B";
+  if (!n || n <= 0) return "0 B";
   const u = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(n) / Math.log(1024));
   return `${(n / Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${u[i]}`;
@@ -85,6 +85,7 @@ const stopPolling = () => {
 const pollTask = (taskId: string, doneMsg: string) => {
   taskRunning.value = true;
   stopPolling();
+  let fails = 0;
   pollTimer = setInterval(async () => {
     try {
       const { execute } = worldTaskStatus();
@@ -92,6 +93,7 @@ const pollTask = (taskId: string, doneMsg: string) => {
         params: { uuid: instanceId, daemonId, task_id: taskId },
         forceRequest: true
       });
+      fails = 0;
       const task = res.value;
       if (!task || task.status !== 1) {
         stopPolling();
@@ -104,7 +106,13 @@ const pollTask = (taskId: string, doneMsg: string) => {
         await loadInfo();
       }
     } catch {
-      // transient daemon hiccup — keep polling
+      fails++;
+      if (fails >= 20) {
+        stopPolling();
+        taskRunning.value = false;
+        reportErrorMsg(t("TXT_CODE_world_task_failed"));
+        await loadInfo();
+      }
     }
   }, 1500);
 };
@@ -128,10 +136,13 @@ let pendingReplaceFileName = "";
 
 watch(
   () => uploadService.uiData.value,
-  (v) => {
-    if (v.current) {
+  (v: any) => {
+    const mine =
+      v?.instanceInfo?.instanceId === instanceId &&
+      v?.instanceInfo?.daemonId === daemonId;
+    if (v?.current && mine) {
       wasUploading = true;
-    } else if (wasUploading) {
+    } else if (wasUploading && !v?.current) {
       wasUploading = false;
       uploading.value = false;
       if (pendingReplaceFileName) {
@@ -173,12 +184,15 @@ const onFileChange = async (e: Event) => {
   if (!files || files.length === 0) return;
   const file = Array.from(files).find((f) => f.size > 0);
   if (fileInput.value) fileInput.value.value = "";
-  if (!file) return;
+  if (!file) {
+    message.error(t("TXT_CODE_world_select_file"));
+    return;
+  }
   try {
     uploading.value = true;
     const { state: cfg, execute: getCfg } = uploadAddress();
     await getCfg({
-      params: { upload_dir: UPLOAD_DIR, daemonId, uuid: instanceId }
+      params: { upload_dir: UPLOAD_DIR, daemonId, uuid: instanceId, file_name: file.name }
     });
     if (!cfg.value?.password) throw new Error("upload init failed");
     const addr = parseForwardAddress(getFileConfigAddr(cfg.value), "http");
@@ -234,7 +248,7 @@ onBeforeUnmount(stopPolling);
           <template #right>
             <a-button :loading="loading" @click="loadInfo">
               <template #icon><ReloadOutlined /></template>
-              {{ t("TXT_CODE_world_current") }}
+              {{ t("TXT_CODE_b76d94e0") }}
             </a-button>
             <a-button @click="toConsole">
               <template #icon><RollbackOutlined /></template>
