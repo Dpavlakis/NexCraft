@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- isometric grass block (stylised, non-trademark) -->
+  <polygon points="6,21 32,36 32,60 6,45" fill="#9b6a3f"/>
+  <polygon points="58,21 32,36 32,60 58,45" fill="#7d5230"/>
+  <polygon points="6,21 32,36 32,42 6,27" fill="#5aa23a"/>
+  <polygon points="58,21 32,36 32,42 58,27" fill="#4e8c31"/>
+  <polygon points="32,6 58,21 32,36 6,21" fill="#74c34d"/>
+</svg>

@@ -39,6 +39,8 @@ import {
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
 import ftbIcon from "@/assets/ftb.svg";
+import grassBlockIcon from "@/assets/grass-block.svg";
+import fileUploadIcon from "@/assets/file-upload.svg";
 import vanillaIcon from "@/assets/loaders/vanilla.svg";
 import bedrockIcon from "@/assets/loaders/bedrock.svg";
 import paperIcon from "@/assets/loaders/paper.png";
@@ -93,12 +95,12 @@ type Source = "custom" | "curseforge" | "modrinth" | "ftb" | "import";
 const source = ref<Source>("custom");
 const sources = computed<{ key: Source; label: string; img?: string }[]>(() => {
   const list: { key: Source; label: string; img?: string }[] = [
-    { key: "custom", label: t("TXT_CODE_modpack_custom") },
+    { key: "custom", label: t("TXT_CODE_modpack_vanilla"), img: grassBlockIcon },
     { key: "curseforge", label: "CurseForge", img: curseforgeIcon },
     { key: "modrinth", label: "Modrinth", img: modrinthIcon },
     { key: "ftb", label: "FTB", img: ftbIcon }
   ];
-  if (showImportTab.value) list.push({ key: "import", label: t("TXT_CODE_import_tab") });
+  if (showImportTab.value) list.push({ key: "import", label: t("TXT_CODE_import_tab"), img: fileUploadIcon });
   return list;
 });
 
