@@ -139,7 +139,7 @@ const results = ref<ResultItem[]>([]);
 // Custom tab = Prism-style server builder: pick a mod loader + a real Minecraft
 // release version (from Mojang), then the daemon bootstraps it.
 const customLoaders = [
-  { value: "vanilla", label: "Vanilla" },
+  { value: "vanilla", label: "Java" },
   { value: "bedrock", label: "Bedrock" },
   { value: "paper", label: "PaperMC" },
   { value: "purpur", label: "Purpur" },
@@ -409,7 +409,7 @@ const loadVersions = async (item: ResultItem) => {
 };
 
 const currentLoaderLabel = () =>
-  customLoaders.find((l) => l.value === customLoader.value)?.label || "Vanilla";
+  customLoaders.find((l) => l.value === customLoader.value)?.label || "Java";
 const currentLoaderInfo = computed(() => LOADER_INFO[customLoader.value]);
 
 // Modloaders let the user choose the specific build; others auto-pick latest.
@@ -826,7 +826,7 @@ onBeforeUnmount(() => {
                             :src="loaderIcon"
                             shape="square"
                             :size="44"
-                            :style="{ background: '#fff', border: '1px solid #eee' }"
+                            :style="{ background: 'transparent' }"
                           />
                           <a-avatar v-else shape="square" :size="44">
                             <template #icon><AppstoreOutlined /></template>
