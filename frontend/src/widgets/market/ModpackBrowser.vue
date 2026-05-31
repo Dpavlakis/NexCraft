@@ -750,9 +750,6 @@ onBeforeUnmount(() => {
                 <template #icon><FileZipOutlined /></template>
                 {{ t("TXT_CODE_modpack_select_zip") }}
               </a-button>
-              <a class="import-empty-link" @click="emit('manual-install', QUICKSTART_METHOD.EXIST)">
-                {{ t("TXT_CODE_e0fca76") }}
-              </a>
             </div>
 
             <!-- Custom: loader picker + version search -->
@@ -1115,10 +1112,6 @@ onBeforeUnmount(() => {
   font-size: 13px;
   line-height: 1.6;
   opacity: 0.7;
-}
-.import-panel .import-empty-link {
-  cursor: pointer;
-  font-size: 13px;
 }
 .pager-row {
   display: flex;
