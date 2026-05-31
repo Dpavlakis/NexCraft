@@ -15,7 +15,9 @@ import { isCN, t } from "@/lang/i18n";
 import { getNetworkModeList } from "@/services/apis/envImage";
 import {
   getInstanceMotd,
+  getServerProperty,
   setInstanceMotd,
+  setServerProperty,
   updateAnyInstanceConfig
 } from "@/services/apis/instance";
 import { dockerPortsArray } from "@/tools/common";
@@ -24,7 +26,7 @@ import type { DockerNetworkModes, InstanceDetail, QuickStartPackages } from "@/t
 import { defaultQuickStartPackages } from "@/types/const";
 import { CheckOutlined, CloseOutlined, PictureOutlined } from "@ant-design/icons-vue";
 import type { FormInstance } from "ant-design-vue";
-import { message } from "ant-design-vue";
+import { Modal, message } from "ant-design-vue";
 import type { Rule } from "ant-design-vue/es/form";
 import { Dayjs } from "dayjs";
 import _ from "lodash";
@@ -252,8 +254,23 @@ const isMinecraftJava = computed(() =>
 const showMotd = computed(
   () => !isTemplateMode.value && !isGlobalTerminal.value && isMinecraftJava.value
 );
+const isMinecraftBedrock = computed(() =>
+  Boolean(formData?.value?.instance?.config?.type?.startsWith("minecraft/bedrock"))
+);
+// The Minecraft settings tab shows for Java OR Bedrock.
+const showMinecraftTab = computed(
+  () => !isTemplateMode.value && !isGlobalTerminal.value && (isMinecraftJava.value || isMinecraftBedrock.value)
+);
 const { execute: executeGetMotd } = getInstanceMotd();
 const { execute: executeSetMotd } = setInstanceMotd();
+const { execute: executeGetServerProperty } = getServerProperty();
+const { execute: executeSetServerProperty } = setServerProperty();
+
+// Bedrock: server-name and level-name from server.properties
+const bedrockServerName = ref("");
+const originalBedrockServerName = ref("");
+const bedrockLevelName = ref("");
+const originalBedrockLevelName = ref("");
 
 const serverIconDialog = ref<InstanceType<typeof SetServerIcon>>();
 
@@ -269,6 +286,28 @@ const loadMotd = async () => {
     originalMotd.value = motd.value;
   } catch {
     // server.properties may not exist yet — leave blank
+  }
+};
+
+const loadBedrockProps = async () => {
+  bedrockServerName.value = "";
+  originalBedrockServerName.value = "";
+  bedrockLevelName.value = "";
+  originalBedrockLevelName.value = "";
+  if (!props.instanceId || !props.daemonId || !isMinecraftBedrock.value) return;
+  try {
+    const nameRes = await executeGetServerProperty({
+      params: { uuid: props.instanceId, daemonId: props.daemonId, key: "server-name" }
+    });
+    bedrockServerName.value = String(nameRes.value ?? "");
+    originalBedrockServerName.value = bedrockServerName.value;
+    const lvlRes = await executeGetServerProperty({
+      params: { uuid: props.instanceId, daemonId: props.daemonId, key: "level-name" }
+    });
+    bedrockLevelName.value = String(lvlRes.value ?? "");
+    originalBedrockLevelName.value = bedrockLevelName.value;
+  } catch (e: any) {
+    reportErrorMsg(e?.message || String(e));
   }
 };
 
@@ -342,7 +381,7 @@ const openDialog = async ({ item, i }: { item?: QuickStartPackages; i?: number }
     formType.value = "template";
     activeKey.value = TabSettings.Template;
   } else {
-    await Promise.all([loadNetworkModes(), loadMotd()]);
+    await Promise.all([loadNetworkModes(), loadMotd(), loadBedrockProps()]);
   }
   initFormDetail();
   open.value = true;
@@ -379,6 +418,39 @@ const submit = async () => {
             data: { motd: motd.value }
           });
           originalMotd.value = motd.value;
+        } catch (e: any) {
+          reportErrorMsg(e?.message ?? String(e));
+        }
+      }
+      // Bedrock: persist server-name (direct) + level-name (confirm first, since it switches the active world).
+      if (isMinecraftBedrock.value && props.instanceId && props.daemonId) {
+        try {
+          if (bedrockServerName.value !== originalBedrockServerName.value) {
+            await executeSetServerProperty({
+              params: { uuid: props.instanceId, daemonId: props.daemonId },
+              data: { key: "server-name", value: bedrockServerName.value }
+            });
+            originalBedrockServerName.value = bedrockServerName.value;
+          }
+          if (bedrockLevelName.value !== originalBedrockLevelName.value) {
+            const ok = await new Promise<boolean>((resolve) => {
+              Modal.confirm({
+                title: t("TXT_CODE_bedrock_level_name_confirm_title"),
+                content: t("TXT_CODE_bedrock_level_name_confirm"),
+                onOk: () => resolve(true),
+                onCancel: () => resolve(false)
+              });
+            });
+            if (ok) {
+              await executeSetServerProperty({
+                params: { uuid: props.instanceId, daemonId: props.daemonId },
+                data: { key: "level-name", value: bedrockLevelName.value }
+              });
+              originalBedrockLevelName.value = bedrockLevelName.value;
+            } else {
+              bedrockLevelName.value = originalBedrockLevelName.value;
+            }
+          }
         } catch (e: any) {
           reportErrorMsg(e?.message ?? String(e));
         }
@@ -959,9 +1031,9 @@ defineExpose({
 
             </a-row>
           </a-tab-pane>
-          <a-tab-pane v-if="showMotd" :key="TabSettings.Minecraft" :tab="t('TXT_CODE_minecraft_tab')">
+          <a-tab-pane v-if="showMinecraftTab" :key="TabSettings.Minecraft" :tab="t('TXT_CODE_minecraft_tab')">
             <a-row :gutter="20">
-              <a-col v-if="showMotd" :xs="24" :offset="0">
+              <a-col v-if="isMinecraftJava" :xs="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5">
                     {{ t("TXT_CODE_motd_title") }}
@@ -980,7 +1052,27 @@ defineExpose({
                 </a-form-item>
               </a-col>
 
-              <a-col v-if="showMotd" :xs="24" :offset="0">
+              <a-col v-if="isMinecraftBedrock" :xs="24" :offset="0">
+                <a-form-item>
+                  <a-typography-title :level="5">{{ t("TXT_CODE_bedrock_server_name") }}</a-typography-title>
+                  <a-typography-paragraph>
+                    <a-typography-text type="secondary">{{ t("TXT_CODE_bedrock_server_name_desc") }}</a-typography-text>
+                  </a-typography-paragraph>
+                  <a-input v-model:value="bedrockServerName" :placeholder="t('TXT_CODE_bedrock_server_name_placeholder')" />
+                </a-form-item>
+              </a-col>
+              <a-col v-if="isMinecraftBedrock" :xs="24" :offset="0">
+                <a-form-item>
+                  <a-typography-title :level="5">{{ t("TXT_CODE_bedrock_level_name") }}</a-typography-title>
+                  <a-typography-paragraph>
+                    <a-typography-text type="secondary">{{ t("TXT_CODE_bedrock_level_name_desc") }}</a-typography-text>
+                  </a-typography-paragraph>
+                  <a-input v-model:value="bedrockLevelName" />
+                  <a-alert class="mt-8" type="warning" show-icon :message="t('TXT_CODE_bedrock_level_name_warn')" />
+                </a-form-item>
+              </a-col>
+
+              <a-col v-if="isMinecraftJava || isMinecraftBedrock" :xs="24" :offset="0">
                 <a-form-item>
                   <a-typography-title :level="5">
                     {{ t("TXT_CODE_server_icon_title") }}
