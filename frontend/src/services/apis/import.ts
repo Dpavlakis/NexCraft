@@ -16,7 +16,7 @@ export interface IPackGuess {
   source: string; // CurseForge | Modrinth
   projectId: string;
   projectName: string;
-  confidence: number;
+  confidence: "high" | "low";
   versions: any[];
 }
 

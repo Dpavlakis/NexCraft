@@ -3564,7 +3564,6 @@
   "TXT_CODE_import_detected": "Detected settings",
   "TXT_CODE_import_detected_hint": "We scanned the uploaded files. Review and edit these settings, then choose how to finish the import.",
   "TXT_CODE_import_name": "Instance name",
-  "TXT_CODE_import_kind": "Server type",
   "TXT_CODE_import_loader": "Loader",
   "TXT_CODE_import_loader_unknown": "Unknown",
   "TXT_CODE_import_mcVersion": "Minecraft version",

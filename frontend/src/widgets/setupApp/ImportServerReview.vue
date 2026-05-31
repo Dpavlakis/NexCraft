@@ -190,7 +190,7 @@ const buildPackInfo = (): Record<string, any> | undefined => {
     projectId: g.projectId,
     projectName: g.projectName,
     fileId: selectedVersion.value,
-    versionName: v ? versionLabel(v) : "",
+    versionName: v ? v.displayName || v.name || v.version_number || versionId(v) : "",
     mcVersion: form.mcVersion || (v?.mcVersion ?? (v?.game_versions && v.game_versions[0]) ?? ""),
     loader: form.loader || (v?.loader ?? (v?.loaders && v.loaders[0]) ?? ""),
     loaderVersion: "",
