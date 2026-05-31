@@ -708,6 +708,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("resize", recomputeHeight);
 });
+
+// The pager shows/hides as totalItems crosses PAGE_SIZE, which changes the space we
+// reserve below the list — recompute so the bottom padding stays correct.
+watch(totalItems, () => nextTick(recomputeHeight));
 </script>
 
 <template>
