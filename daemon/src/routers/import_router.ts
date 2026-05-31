@@ -31,7 +31,21 @@ routerApp.on("import/finalize", async (ctx, data) => {
     const inst = InstanceSubsystem.getInstance(data.instanceUuid);
     if (!inst) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
     const dir = inst.absoluteCwdPath();
+
+    // Fail fast if the instance is running, BEFORE any file/port/config writes.
+    // parameters() below also rejects a running instance (via isStoppedOrBusy)
+    // when changing type, but only after we've already written eula.txt and
+    // rewritten server.properties — so guard up front with the same key.
+    if (!inst.isStoppedOrBusy())
+      throw new Error($t("TXT_CODE_instanceConf.cantModifyInstanceType"));
+
     const kind: "java" | "bedrock" = data.kind === "bedrock" ? "bedrock" : "java";
+
+    // A Java server cannot be persisted without a start command (Bedrock's is
+    // fixed). Reject before any side effects rather than storing an unstartable
+    // instance.
+    if (kind === "java" && !(typeof data.startCommand === "string" && data.startCommand.trim()))
+      throw new Error($t("TXT_CODE_8c0db3f4"));
 
     if (kind === "java") {
       try {
