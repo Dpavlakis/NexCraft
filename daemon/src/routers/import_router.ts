@@ -55,6 +55,36 @@ routerApp.on("import/finalize", async (ctx, data) => {
       }
     }
 
+    // Make the daemon authoritative for Bedrock so an imported server can NEVER
+    // be unstartable: force the canonical start command (ignoring the frontend)
+    // and ensure the bedrock_server binary is executable before first start.
+    if (kind === "bedrock") {
+      data.startCommand = 'sh -c "LD_LIBRARY_PATH=. exec ./bedrock_server"';
+
+      // Locate bedrock_server at <dir>/bedrock_server, else one level deep in an
+      // immediate subdirectory, and chmod +x it. The daemon runs as root so this
+      // should succeed; surface any failure to the console rather than swallow it.
+      try {
+        let found: string | null = null;
+        const direct = path.join(dir, "bedrock_server");
+        if (fs.existsSync(direct)) {
+          found = direct;
+        } else {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (!entry.isDirectory()) continue;
+            const candidate = path.join(dir, entry.name, "bedrock_server");
+            if (fs.existsSync(candidate)) {
+              found = candidate;
+              break;
+            }
+          }
+        }
+        if (found) fs.chmodSync(found, 0o755);
+      } catch (chmodErr: any) {
+        inst.println("ERROR", `chmod +x bedrock_server failed: ${String(chmodErr?.message ?? chmodErr)}`);
+      }
+    }
+
     // Assign a free port BEFORE persisting the config below. These helpers mutate
     // server.properties + inst.config (rcon/ping) and persist their own changes;
     // the parameters() call below then writes the final, complete config.
