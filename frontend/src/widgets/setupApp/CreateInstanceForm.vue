@@ -18,10 +18,29 @@ import type { FormInstance } from "ant-design-vue";
 import { message, Modal, type UploadProps } from "ant-design-vue";
 import type { Rule } from "ant-design-vue/es/form";
 import { computed, createVNode, onUnmounted, reactive, ref } from "vue";
+import { router } from "@/config/router";
 import DockerImageSelect from "../instance/dialogs/components/DockerImageSelect.vue";
 import SelectUnzipCode from "../instance/dialogs/SelectUnzipCode.vue";
+import ImportServerReview from "./ImportServerReview.vue";
 
 const selectUnzipCodeDialog = ref<InstanceType<typeof SelectUnzipCode>>();
+
+// Review/detect/finalize dialog opened after a compressed-package import succeeds.
+const importReviewOpen = ref(false);
+const importReviewUuid = ref("");
+const importReviewDaemonId = ref("");
+
+const goToTerminal = (instanceId: string, daemonId: string) => {
+  router.push({
+    path: "/instances/terminal",
+    query: { daemonId, instanceId }
+  });
+};
+
+const onImportReviewDone = (instanceUuid: string) => {
+  importReviewOpen.value = false;
+  goToTerminal(instanceUuid, importReviewDaemonId.value);
+};
 const emit = defineEmits(["nextStep"]);
 
 const props = defineProps<{
@@ -179,8 +198,16 @@ const selectedFile = async () => {
     uploadFileInstance.value = task;
     const instanceUuid = cfg.value.instanceUuid;
     uploadEndCallback = () => {
-      emit("nextStep", instanceUuid);
-      return message.success(t("TXT_CODE_d28c05df"));
+      message.success(t("TXT_CODE_d28c05df"));
+      // After a compressed-package import, open the review/detect/finalize dialog.
+      // Fall back to the legacy navigation if we somehow lack the uuid/daemonId.
+      if (isImportMode && instanceUuid && props.daemonId) {
+        importReviewUuid.value = instanceUuid;
+        importReviewDaemonId.value = props.daemonId;
+        importReviewOpen.value = true;
+        return;
+      }
+      return emit("nextStep", instanceUuid);
     };
     task.addCallback("end", uploadEndCallback);
   } catch (err: any) {
@@ -483,6 +510,14 @@ const createInstance = async () => {
   </div>
 
   <SelectUnzipCode ref="selectUnzipCodeDialog" @select-code="setUnzipCode" />
+
+  <ImportServerReview
+    :open="importReviewOpen"
+    :daemon-id="importReviewDaemonId"
+    :instance-uuid="importReviewUuid"
+    @update:open="(v: boolean) => (importReviewOpen = v)"
+    @done="onImportReviewDone"
+  />
 </template>
 
 <style lang="scss" scoped>
