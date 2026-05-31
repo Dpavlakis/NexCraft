@@ -53,7 +53,21 @@ const form = reactive({
   kind: ""
 });
 
-const isBedrock = computed(() => form.kind === "bedrock");
+// The SUBMITTED kind must follow the currently-selected loader, not the
+// detect-time kind (which is kept only for the initial display).
+const effectiveKind = computed<"java" | "bedrock">(() =>
+  form.loader === "bedrock" ? "bedrock" : "java"
+);
+const isBedrock = computed(() => effectiveKind.value === "bedrock");
+
+const BEDROCK_START_COMMAND = 'sh -c "LD_LIBRARY_PATH=. exec ./bedrock_server"';
+
+// Sensible start-command template per loader.
+function startCommandTemplate(loader?: string): string {
+  if (loader === "bedrock") return BEDROCK_START_COMMAND;
+  const mem = form.maxMemory || 4096;
+  return `java -Xmx${mem}M -jar server.jar nogui`; // generic java/paper default; user edits the jar
+}
 
 const detecting = ref(false);
 const detectResult = ref<IServerDetectResult | null>(null);
@@ -96,6 +110,11 @@ const runDetect = async () => {
       form.startCommand = d.startCommand || "";
       form.worldName = d.worldName || "";
       form.kind = d.kind || "";
+      // If detection returned no start command (e.g. bedrock) but we know the
+      // loader, seed the field from the loader template so it's never blank.
+      if (!form.startCommand.trim() && form.loader) {
+        form.startCommand = startCommandTemplate(form.loader);
+      }
     }
     // Identify the pack in parallel (non-fatal).
     runIdentify();
@@ -157,7 +176,7 @@ const finalize = async (packInfo?: Record<string, any>) => {
       params: { daemonId: props.daemonId },
       data: {
         instanceUuid: props.instanceUuid,
-        kind: form.kind,
+        kind: effectiveKind.value,
         startCommand: form.startCommand,
         packInfo
       }
@@ -280,6 +299,25 @@ const reinstallKeep = async () => {
     reportErrorMsg(err.message);
   }
 };
+
+// Loader drives the start command. When the user changes the loader:
+//  - switching to bedrock always sets the fixed bedrock command;
+//  - switching to a java loader sets the java template ONLY if the field is
+//    empty or still holds the bedrock command (i.e. switching away from
+//    bedrock). A good detected/edited java command is left untouched.
+watch(
+  () => form.loader,
+  (loader) => {
+    if (loader === "bedrock") {
+      form.startCommand = startCommandTemplate("bedrock");
+      return;
+    }
+    const cur = form.startCommand.trim();
+    if (!cur || cur === BEDROCK_START_COMMAND) {
+      form.startCommand = startCommandTemplate(loader);
+    }
+  }
+);
 
 // Detect when the dialog is opened.
 watch(
