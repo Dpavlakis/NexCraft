@@ -391,6 +391,52 @@ router.put(
 );
 
 // [Low-level Permission]
+// Get a whitelisted server.properties key (Bedrock server-name / level-name)
+router.get(
+  "/server_property",
+  permission({ level: ROLE.USER, speedLimit: false }),
+  validator({ query: { uuid: String, daemonId: String, key: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      const key = String(ctx.query.key);
+      const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+      ctx.body = await new RemoteRequest(remoteService).request("instance/server_property", {
+        instanceUuid,
+        key
+      });
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// [Low-level Permission]
+// Set a whitelisted server.properties key (Bedrock server-name / level-name)
+router.put(
+  "/server_property",
+  permission({ level: ROLE.USER, speedLimit: false }),
+  validator({ query: { uuid: String, daemonId: String }, body: {} }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      const key = String(ctx.request.body?.key ?? "");
+      const value = String(ctx.request.body?.value ?? "");
+      const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+      ctx.body = await new RemoteRequest(remoteService).request("instance/server_property", {
+        instanceUuid,
+        key,
+        value
+      });
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// [Low-level Permission]
 // Update instance low-privilege configuration data (normal user)
 router.put(
   "/instance_update",

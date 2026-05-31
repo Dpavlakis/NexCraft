@@ -377,6 +377,38 @@ export const setInstanceMotd = useDefineApi<
   url: "/api/protected_instance/motd"
 });
 
+// Get/set a whitelisted server.properties key (Bedrock server-name / level-name).
+export const getServerProperty = useDefineApi<
+  {
+    params: {
+      uuid: string;
+      daemonId: string;
+      key: string;
+    };
+  },
+  string
+>({
+  method: "GET",
+  url: "/api/protected_instance/server_property"
+});
+
+export const setServerProperty = useDefineApi<
+  {
+    params: {
+      uuid: string;
+      daemonId: string;
+    };
+    data: {
+      key: string;
+      value: string;
+    };
+  },
+  boolean
+>({
+  method: "PUT",
+  url: "/api/protected_instance/server_property"
+});
+
 export const batchStart = useDefineApi<
   {
     data: {
