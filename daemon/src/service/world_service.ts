@@ -14,6 +14,10 @@ export const WORLD_UPLOAD_DIR = ".nexcraft_world_up";
 export const WORLD_EXTRACT_DIR = ".nexcraft_world_extract";
 export const WORLD_DOWNLOAD_DIR = ".nexcraft_world_dl";
 
+// Depth cap for findWorldRoot's BFS: handles nested extraction layouts
+// (e.g. <uuid>/saves/<world>/) with headroom while bounding traversal cost.
+const WORLD_ROOT_SEARCH_DEPTH = 6;
+
 export function getWorldKind(instance: Instance): WorldKind {
   return String(instance.config?.type || "").includes("bedrock") ? "bedrock" : "java";
 }
@@ -24,7 +28,7 @@ export function getWorldKind(instance: Instance): WorldKind {
 //  Bedrock: worlds/<level-name>
 export function getActiveWorldPaths(cwd: string, kind: WorldKind, levelName: string): string[] {
   if (kind === "bedrock") {
-    const rel = path.posix.join("worlds", levelName);
+    const rel = `worlds/${levelName}`;
     return fs.existsSync(path.join(cwd, "worlds", levelName)) ? [rel] : [];
   }
   const candidates = [levelName, `${levelName}_nether`, `${levelName}_the_end`];
@@ -44,9 +48,9 @@ export function findWorldRoot(dir: string): string | undefined {
       continue;
     }
     if (entries.some((e) => e.isFile() && e.name === "level.dat")) return d;
-    if (depth >= 6) continue;
+    if (depth >= WORLD_ROOT_SEARCH_DEPTH) continue;
     for (const e of entries) {
-      if (e.isDirectory()) queue.push({ d: path.join(d, e.name), depth: depth + 1 });
+      if (e.isDirectory() && !e.isSymbolicLink()) queue.push({ d: path.join(d, e.name), depth: depth + 1 });
     }
   }
   return undefined;
@@ -76,10 +80,11 @@ async function dirSizeAndMtime(absDir: string): Promise<{ size: number; mtimeMs:
   const walk = async (p: string) => {
     let stat: fs.Stats;
     try {
-      stat = await fs.stat(p);
+      stat = await fs.lstat(p);
     } catch {
       return;
     }
+    if (stat.isSymbolicLink()) return;
     mtimeMs = Math.max(mtimeMs, stat.mtimeMs);
     if (stat.isDirectory()) {
       const names = await fs.readdir(p);
@@ -124,16 +129,20 @@ function zipFolders(
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const output = fs.createWriteStream(destZip);
+    const rejectAndDestroy = (err: unknown) => {
+      output.destroy();
+      reject(err);
+    };
     const archive = archiver("zip", { zlib: { level: 9 } });
     output.on("close", () => resolve());
-    output.on("error", reject);
+    output.on("error", rejectAndDestroy);
     archive.on("warning", (err: any) => {
-      if (err?.code !== "ENOENT") reject(err);
+      if (err?.code !== "ENOENT") rejectAndDestroy(err);
     });
-    archive.on("error", reject);
+    archive.on("error", rejectAndDestroy);
     archive.pipe(output);
     for (const e of entries) archive.directory(e.abs, e.name as any);
-    archive.finalize().catch(reject);
+    archive.finalize().catch(rejectAndDestroy);
   });
 }
 
