@@ -33,7 +33,7 @@ import { AsyncTask, IAsyncTaskJSON } from "./index";
 // Reinstall/reset behaviour selected by the user:
 //  - "backup_wipe":   back up first, then wipe everything and install fresh
 //  - "wipe":          wipe everything and install fresh (no backup)
-//  - "preserve_world": keep world + server config, replace mods/loader/etc.
+//  - "preserve_world": back up first, then keep world + server config, replace mods/loader/etc.
 export type ResetMode = "backup_wipe" | "wipe" | "preserve_world";
 
 export interface IModpackInstallDescriptor {
@@ -348,7 +348,11 @@ export class ModpackInstallTask extends AsyncTask {
       await this.waitForStop();
     }
     inst.status(Instance.STATUS_BUSY);
-    if (this.resetMode === "backup_wipe") {
+    // Back up before any reinstall that keeps data — both "backup_wipe" and
+    // "preserve_world". Only the explicit "wipe" skips the backup. (preserve_world
+    // keeps the world, but a reinstall/version-swap can still upgrade it one-way,
+    // so the safety net matters.)
+    if (this.resetMode === "backup_wipe" || this.resetMode === "preserve_world") {
       inst.println("INFO", $t("TXT_CODE_modpack.resetBackup"));
       await backupManager.startBackupTask(inst.instanceUuid).wait();
     }
