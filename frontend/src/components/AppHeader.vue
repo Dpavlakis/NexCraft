@@ -50,10 +50,10 @@ const openPhoneMenu = (b = false) => {
   <header class="app-header-wrapper" :style="headerStyle">
     <div v-if="!isPhone" class="app-header-content">
       <nav class="btns">
-        <a href="." class="brand-link" style="margin-right: 16px">
+        <div class="brand-link" style="margin-right: 16px" @click="handleToPage('/')">
           <img :src="nexcraftLogo" class="brand-logo" alt="NexCraft" />
           <span class="nexcraft-brand-text">NexCraft</span>
-        </a>
+        </div>
 
         <div
           v-for="item in menus"
