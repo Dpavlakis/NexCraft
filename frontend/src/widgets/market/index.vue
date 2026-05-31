@@ -85,7 +85,10 @@ const manualInstallOptions = [
 
 <template>
   <div style="height: 100%">
-    <div v-if="isAdmin" style="margin-bottom: 30px">
+    <!-- TEMP: "Create Instance" (Import Compressed Package / Create Directly) is hidden on
+         production until the Import-existing-server feature lands on main. The polished
+         flow lives on feat/import-existing-server. Re-enable by restoring v-if="isAdmin". -->
+    <div v-if="false" style="margin-bottom: 30px">
       <a-typography-title :level="4" style="margin-bottom: 8px">
         <AppstoreAddOutlined />
         {{ t("TXT_CODE_5a74975b") }}
