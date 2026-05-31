@@ -127,6 +127,12 @@ export default class Instance extends EventEmitter {
   private javaFixMajor = 0;
   private javaErrTail = "";
   private autoJavaFixAttempted = false;
+  // Quilt-on-bleeding-edge: a Quilt server whose bundled loader is too old for
+  // this Minecraft version (its ASM can't read the server's Java bytecode, or it
+  // can't parse the version scheme). Java is already correct, so the auto-Java fix
+  // won't help — we print a clear hint and skip auto-restart instead.
+  private quiltUnsupported = false;
+  private loaderErrTail = "";
   // Lines a Minecraft server (vanilla/Paper/Spigot/Forge/NeoForge/Fabric/Quilt
   // and Bedrock) prints when it has finished starting up.
   private static readonly MC_READY_PATTERNS: RegExp[] = [
@@ -396,6 +402,7 @@ export default class Instance extends EventEmitter {
       if (this.mcReadinessActive) {
         this.checkMcReadiness(decoded);
         this.checkJavaError(decoded);
+        this.checkLoaderUnsupported(decoded);
       }
     });
     process.on("exit", (code: number) => this.stopped(code));
@@ -427,6 +434,8 @@ export default class Instance extends EventEmitter {
     this.mcReadinessActive = true;
     this.mcReadinessTail = "";
     this.javaErrTail = "";
+    this.loaderErrTail = "";
+    this.quiltUnsupported = false;
     if (this.mcReadinessTimer) clearTimeout(this.mcReadinessTimer);
     this.mcReadinessTimer = setTimeout(() => {
       // Safety net: server never printed a recognizable ready line.
@@ -466,6 +475,31 @@ export default class Instance extends EventEmitter {
     if (friendly) {
       const major = parseInt(friendly[1], 10);
       if (major >= 8 && major <= 99) this.javaFixMajor = major;
+    }
+  }
+
+  // Whether this is a Quilt server (built command or recorded pack metadata).
+  private isQuiltInstance(): boolean {
+    if (String(this.config.startCommand || "").toLowerCase().includes("quilt-server-launch"))
+      return true;
+    return String(this.config.packInfo?.loader || "").toLowerCase() === "quilt";
+  }
+
+  // Watch startup output for a Quilt loader that's too old for this Minecraft
+  // version: its bundled ASM can't read the server's Java bytecode ("Unsupported
+  // class file major version N", thrown by org.objectweb.asm, NOT the JVM's
+  // UnsupportedClassVersionError), or it can't parse the version scheme ("UNABLE
+  // TO NORMALIZE MINECRAFT VERSION"). The Java runtime is already correct, so this
+  // is distinct from the auto-Java path. Consumed in stopped().
+  private checkLoaderUnsupported(chunk: string) {
+    if (this.quiltUnsupported || !this.isQuiltInstance()) return;
+    const text = (this.loaderErrTail + chunk).slice(-2048);
+    this.loaderErrTail = text;
+    if (
+      /Unsupported class file major version \d+/i.test(text) ||
+      /UNABLE TO NORMALIZE MINECRAFT VERSION/i.test(text)
+    ) {
+      this.quiltUnsupported = true;
     }
   }
 
@@ -540,6 +574,15 @@ export default class Instance extends EventEmitter {
     }
 
     this.lifeCycleTaskManager.execLifeCycleTask(0);
+
+    // Quilt loader too old for this Minecraft version (its bundled ASM can't read
+    // the server's Java bytecode, or it can't parse the version scheme). Java is
+    // already correct, so don't loop on auto-restart — print a clear hint and stop.
+    if (this.quiltUnsupported) {
+      this.quiltUnsupported = false;
+      this.println("ERROR", $t("TXT_CODE_quilt.unsupported"));
+      return;
+    }
 
     // Auto-Java-on-launch: the server exited right after an UnsupportedClassVersionError.
     // Provision the required Java and restart once (takes priority over auto-restart).

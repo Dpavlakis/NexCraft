@@ -3570,6 +3570,7 @@
   "TXT_CODE_autojava.detected": "Java version mismatch detected — this server needs Java {{major}}. Provisioning it automatically...",
   "TXT_CODE_autojava.failed": "Couldn't auto-provision Java {{major}}. Install it via the Java Manager, then start the server again.",
   "TXT_CODE_autojava.retry": "Java {{major}} is ready — restarting the server with it...",
+  "TXT_CODE_quilt.unsupported": "Quilt Loader can't start this Minecraft version yet: its bundled libraries are too old to read this version's Java bytecode (the Java runtime itself is correct). This is a Quilt limitation, not a NexCraft one. Try the Fabric loader instead — most Quilt mods also run on Fabric — or pick an older Minecraft version. Auto-restart was skipped to avoid a crash loop.",
   "TXT_CODE_avatar.badType": "Unsupported image format. Use PNG, WebP, or JPEG.",
   "TXT_CODE_avatar.change": "Change avatar",
   "TXT_CODE_avatar.invalid": "Invalid avatar image. Use a PNG, WebP, or JPEG under 256 KB.",
