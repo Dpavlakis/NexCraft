@@ -3,6 +3,7 @@ import { ROLE } from "../entity/user";
 import permission from "../middleware/permission";
 import validator from "../middleware/validator";
 import { modManagerService } from "../service/mod_manager_service";
+import { operationLogger } from "../service/operation_logger";
 import RemoteRequest from "../service/remote_command";
 import RemoteServiceSubsystem from "../service/remote_service";
 
@@ -42,6 +43,12 @@ router.post(
   validator({ query: { daemonId: String }, body: { instanceUuid: String, kind: String } }),
   async (ctx) => {
     const daemonId = String(ctx.query.daemonId);
+    operationLogger.log("instance_import", {
+      operator_ip: ctx.ip,
+      operator_name: ctx.session?.["userName"],
+      daemon_id: daemonId,
+      kind: String(ctx.request.body.kind)
+    });
     ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
       "import/finalize",
       ctx.request.body
