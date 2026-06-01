@@ -9,7 +9,6 @@ import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
 import {
   AppstoreAddOutlined,
   BgColorsOutlined,
-  BuildOutlined,
   CloseCircleOutlined,
   GithubFilled,
   LogoutOutlined,
@@ -223,29 +222,6 @@ export function useHeaderMenus() {
         conditions: containerState.isDesignMode,
         onlyPC: true,
         customClass: ["nav-button-danger"]
-      },
-      {
-        title: t("TXT_CODE_ebd2a6a1"),
-        leftSideTitle: t("TXT_CODE_4eb158da"),
-        icon: BuildOutlined,
-        click: (): void => {
-          Modal.confirm({
-            title: t("TXT_CODE_29e85f34"),
-            content: t("TXT_CODE_f18f65db"),
-            async onOk() {
-              changeDesignMode(true);
-              notification.warning({
-                placement: "bottom",
-                type: "warning",
-                message: t("TXT_CODE_7b1adf35"),
-                description: t("TXT_CODE_6b6f1d3")
-              });
-            }
-          });
-        },
-        // Custom Layout (design mode) hidden for now — machinery left intact.
-        conditions: false,
-        onlyPC: true
       },
       {
         title: t("TXT_CODE_8c3164c9"),

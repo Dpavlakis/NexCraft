@@ -9,7 +9,6 @@ import { SUPPORTED_LANGS, t } from "@/lang/i18n";
 import { setSettingInfo, settingInfo } from "@/services/apis";
 import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import { useLayoutConfigStore } from "@/stores/useLayoutConfig";
-import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
 import { arrayFilter } from "@/tools/array";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard, Settings } from "@/types";
@@ -24,7 +23,7 @@ import {
   ProjectOutlined,
   QuestionCircleOutlined
 } from "@ant-design/icons-vue";
-import { Modal, message, notification } from "ant-design-vue";
+import { Modal, message } from "ant-design-vue";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 
 defineProps<{
@@ -35,7 +34,6 @@ const { execute, isReady } = settingInfo();
 const { execute: submitExecute, isLoading: submitIsLoading } = setSettingInfo();
 const { getSettingsConfig, setSettingsConfig } = useLayoutConfigStore();
 const { setBackgroundImage } = useAppConfigStore();
-const { changeDesignMode, containerState } = useLayoutContainerStore();
 
 interface MySettings extends Settings {
   pageTitle?: string;
@@ -243,16 +241,6 @@ const handleSaveSidebarPosition = async () => {
   cfg.theme.sidebarPosition = sidebarPosition.value;
   await setSettingsConfig(cfg);
   message.success(t("TXT_CODE_a7907771"));
-};
-
-const startDesignUI = async () => {
-  changeDesignMode(true);
-  notification.warning({
-    placement: "bottom",
-    type: "warning",
-    message: t("TXT_CODE_7b1adf35"),
-    description: t("TXT_CODE_6b6f1d3")
-  });
 };
 
 const ssoMode = computed({
@@ -514,28 +502,6 @@ onUnmounted(() => {
                   </div>
 
                   <a-form-item>
-                    <a-typography-title :level="5">{{ t("TXT_CODE_ebd2a6a1") }}</a-typography-title>
-                    <a-typography-paragraph>
-                      <a-typography-text type="secondary">
-                        <div>
-                          {{ t("TXT_CODE_ba717ff3") }}
-                        </div>
-                      </a-typography-text>
-                    </a-typography-paragraph>
-                    <a-button
-                      v-if="!containerState.isDesignMode"
-                      type="default"
-                      :loading="submitIsLoading"
-                      @click="startDesignUI()"
-                    >
-                      {{ t("TXT_CODE_bc46c15b") }}
-                    </a-button>
-                    <p v-if="containerState.isDesignMode">
-                      {{ t("TXT_CODE_3b24a247") }}
-                    </p>
-                  </a-form-item>
-
-                  <a-form-item>
                     <a-typography-title :level="5">{{ t("TXT_CODE_b5b33dd4") }}</a-typography-title>
                     <a-typography-paragraph>
                       <a-typography-text type="secondary">
@@ -545,6 +511,7 @@ onUnmounted(() => {
                     <a-textarea
                       v-model:value="formData.loginInfo"
                       :rows="4"
+                      style="max-width: 320px"
                       :placeholder="t('TXT_CODE_4ea93630')"
                     />
                   </a-form-item>
