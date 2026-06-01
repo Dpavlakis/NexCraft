@@ -336,7 +336,10 @@ const instanceOperations = computed(() =>
 </script>
 
 <template>
-  <CardPanel style="width: 100%; height: 100%; position: relative">
+  <CardPanel
+    style="width: 100%; height: 100%; position: relative"
+    :class="instanceEdition ? 'edition-card edition-card-' + instanceEdition : ''"
+  >
     <template #title>
       {{ instanceInfo?.config.nickname }}
     </template>
@@ -351,7 +354,6 @@ const instanceOperations = computed(() =>
     </template>
     <template #body>
       <div class="instance-card-body">
-        <div v-if="instanceEdition" class="edition-stripe" :class="'edition-stripe-' + instanceEdition"></div>
         <a-typography-paragraph>
           <div class="mb-8 flex" style="flex-wrap: wrap; gap: 8px">
             <a-tag
@@ -537,18 +539,25 @@ const instanceOperations = computed(() =>
   background: rgba(43, 179, 163, 0.18);
   color: #3fc9b9;
 }
-/* Left accent stripe anchored to the relative card content box. */
-.edition-stripe {
+/* Left accent stripe drawn on the card's OUTER edge (flush to the border),
+   outside the card's padding so it never overlaps content. The card root is
+   position:relative; the ::before clips to the card's rounded corners. */
+:deep(.edition-card) {
+  overflow: hidden;
+}
+:deep(.edition-card)::before {
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
   width: 4px;
+  z-index: 1;
 }
-.edition-stripe-java {
+:deep(.edition-card-java)::before {
   background: #6cba3a;
 }
-.edition-stripe-bedrock {
+:deep(.edition-card-bedrock)::before {
   background: #2bb3a3;
 }
 </style>
