@@ -680,9 +680,14 @@ const focusInstalledPack = () => {
     });
     return true;
   }
-  // Custom/vanilla build: focus the Custom tab on the same loader.
-  selectSource("custom");
+  // Custom build: select the installed loader BEFORE switching to the Custom
+  // source. selectSource() immediately calls loadCustom(), which reads
+  // customLoader to decide which version list to fetch — if we set the loader
+  // afterwards, that first load races (with the default "vanilla"/Mojang list)
+  // and the slower Mojang fetch usually lands last and overwrites the correct
+  // list, so e.g. a Bedrock instance ends up showing the vanilla version list.
   if (pk.loader) customLoader.value = pk.loader;
+  selectSource("custom");
   return true;
 };
 
