@@ -542,22 +542,25 @@ const instanceOperations = computed(() =>
 /* Left accent stripe drawn on the card's OUTER edge (flush to the border),
    outside the card's padding so it never overlaps content. The card root is
    position:relative; the ::before clips to the card's rounded corners. */
-:deep(.edition-card) {
+/* A parent's scoped CSS applies to a child component's ROOT node, so these
+   plain selectors target the CardPanel root (which carries .edition-card).
+   ::before draws the stripe flush on the card's left edge, above the padding. */
+.edition-card {
   overflow: hidden;
 }
-:deep(.edition-card)::before {
+.edition-card::before {
   content: "";
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
   width: 4px;
-  z-index: 1;
+  z-index: 2;
 }
-:deep(.edition-card-java)::before {
+.edition-card-java::before {
   background: #6cba3a;
 }
-:deep(.edition-card-bedrock)::before {
+.edition-card-bedrock::before {
   background: #2bb3a3;
 }
 </style>

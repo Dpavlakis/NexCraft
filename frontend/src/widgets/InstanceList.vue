@@ -57,6 +57,10 @@ const operationForm = ref({
   type: ""
 });
 
+// Expand the search row only while the name input is hovered/focused (not when
+// using the status/type selectors in the same group).
+const searchExpanded = ref(false);
+
 const currentRemoteNode = ref<NodeStatus>();
 const isGlobalDaemonMode = computed(() => currentRemoteNode.value?.uuid === ALL_DAEMON_MODE);
 
@@ -596,7 +600,7 @@ onMounted(async () => {
             </a-button>
           </template>
           <template #center>
-            <div class="search-input">
+            <div class="search-input" :class="{ 'search-expanded': searchExpanded }">
               <a-input-group compact>
                 <a-select
                   v-model:value="operationForm.status"
@@ -626,6 +630,10 @@ onMounted(async () => {
                   :style="{ width: isGlobalDaemonMode ? 'calc(100% - 90px)' : 'calc(100% - 200px)' }"
                   @press-enter="handleQueryInstance"
                   @change="handleQueryInstance"
+                  @mouseenter="searchExpanded = true"
+                  @mouseleave="searchExpanded = false"
+                  @focus="searchExpanded = true"
+                  @blur="searchExpanded = false"
                 >
                   <template #suffix>
                     <search-outlined />
@@ -833,7 +841,10 @@ onMounted(async () => {
   }
 }
 
-.search-input:hover {
+/* Expand only when the user actually interacts with the search-by-name input
+   (hover/focus drives `searchExpanded`) — NOT when using the status / type
+   selectors in the same group, which shouldn't shift the bar. */
+.search-input.search-expanded {
   width: 100%;
 }
 
