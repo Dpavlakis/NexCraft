@@ -44,6 +44,14 @@ declare global {
       ignore: boolean;
       autoStartDelay?: number;
     };
+    scheduledRestart: {
+      enabled: boolean;
+      scheduleType: number; // 1 = interval (every N seconds), 2 = cron
+      cron: string;
+      intervalSeconds: number;
+      warningSeconds: number[];
+      warningMessage: string;
+    };
     docker: IGlobalInstanceDockerConfig;
     pingConfig: {
       ip?: string;
