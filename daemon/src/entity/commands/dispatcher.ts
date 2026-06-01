@@ -18,6 +18,7 @@ import RconCommand from "./steam/rcon_command";
 import InstanceDiskCheckTask from "./task/any_stats";
 import DockerStatsTask from "./task/docker_stats";
 import PingMinecraftServerTask from "./task/mc_players";
+import SleepOnEmptyTask from "./task/sleep_on_empty";
 import TimeCheck from "./task/time";
 
 // If you add a new "Preset", Please add the definition here.
@@ -84,6 +85,14 @@ export default class FunctionDispatcher extends InstanceCommand {
     ) {
       instance.setPreset("refreshPlayers", new PingJavaMinecraftServerCommand());
       instance.lifeCycleTaskManager.registerLifeCycleTask(new PingMinecraftServerTask());
+    }
+
+    // Sleep-on-empty: auto-stop when idle (Java + Bedrock)
+    if (
+      instance.config.type.includes("minecraft/java") ||
+      instance.config.type.includes("minecraft/bedrock")
+    ) {
+      instance.lifeCycleTaskManager.registerLifeCycleTask(new SleepOnEmptyTask());
     }
   }
 }
