@@ -1247,6 +1247,63 @@ defineExpose({
                 </div>
               </template>
             </a-form-item>
+
+            <a-divider />
+
+            <template v-if="isMinecraftJava">
+              <a-form-item v-if="formData.instance.config?.sleepOnEmpty">
+                <a-typography-title :level="5">{{ t("TXT_CODE_sleep_title") }}</a-typography-title>
+                <a-typography-paragraph>
+                  <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_desc") }}</a-typography-text>
+                </a-typography-paragraph>
+
+                <a-switch v-model:checked="formData.instance.config.sleepOnEmpty.enabled" class="mb-12" />
+                <span class="ml-8">{{ t("TXT_CODE_sleep_enable") }}</span>
+
+                <template v-if="formData.instance.config.sleepOnEmpty.enabled">
+                  <div class="mt-12">
+                    <a-typography-text>{{ t("TXT_CODE_sleep_idle") }}</a-typography-text>
+                    <a-input-number
+                      v-model:value="formData.instance.config.sleepOnEmpty.idleTimeoutMinutes"
+                      :min="1"
+                      :step="1"
+                      style="max-width: 160px; display: block"
+                    />
+                    <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_idle_hint") }}</a-typography-text>
+                  </div>
+
+                  <div class="mt-12">
+                    <a-switch
+                      v-model:checked="formData.instance.config.sleepOnEmpty.wakeOnJoin"
+                      class="mr-8"
+                    />
+                    <span>{{ t("TXT_CODE_sleep_wake") }}</span>
+                    <div>
+                      <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_wake_hint") }}</a-typography-text>
+                    </div>
+                  </div>
+
+                  <div v-if="formData.instance.config.sleepOnEmpty.wakeOnJoin" class="mt-12">
+                    <a-typography-text>{{ t("TXT_CODE_sleep_motd") }}</a-typography-text>
+                    <a-input
+                      v-model:value="formData.instance.config.sleepOnEmpty.wakeMotd"
+                      style="max-width: 420px"
+                      placeholder="Server is waking up... reconnect in a moment"
+                    />
+                    <div>
+                      <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_motd_hint") }}</a-typography-text>
+                    </div>
+                  </div>
+                </template>
+              </a-form-item>
+            </template>
+
+            <a-alert
+              v-else
+              type="info"
+              show-icon
+              :message="t('TXT_CODE_sleep_java_only')"
+            />
           </a-tab-pane>
           <a-tab-pane
             v-if="!isGlobalTerminal && isDockerMode"
