@@ -16,23 +16,17 @@ const OUT_DIR = path.resolve(process.cwd(), "../docs/images");
 
 // FILL THIS IN — source screenshot filename -> target webp basename (no extension).
 const MAP = {
-  "Screenshot 2026-06-01 094120.png": "instances",
-  "Screenshot 2026-06-01 094224.png": "browser-curseforge",
-  "Screenshot 2026-06-01 094303.png": "browser-ftb",
-  "Screenshot 2026-06-01 094319.png": "import-existing",
-  "Screenshot 2026-06-01 094344.png": "modpack-detail-curseforge",
-  "Screenshot 2026-06-01 094402.png": "modpack-detail-modrinth",
-  "Screenshot 2026-06-01 094420.png": "settings",
-  "Screenshot 2026-06-01 094441.png": "builder-detail-vanilla-2",
-  "Screenshot 2026-06-01 094459.png": "builder-detail-vanilla",
-  "Screenshot 2026-06-01 094517.png": "terminal-overview",
-  "Screenshot 2026-06-01 094527.png": "world-management",
-  "Screenshot 2026-06-01 094539.png": "automation-tab",
-  "Screenshot 2026-06-01 094611.png": "instance-basic-settings",
-  "Screenshot 2026-06-01 094913.png": "overview",
-  "Screenshot 2026-06-01 094942.png": "builder-custom",
-  "Screenshot 2026-06-01 095000.png": "browser-modrinth",
-  "Screenshot 2026-06-01 102653.png": "bedrock-minecraft-settings"
+  // Round 2 (2026-06-01) — the previously-old-theme set, recaptured in the new theme.
+  "backups.png": "backups",
+  "players.png": "players",
+  "metrics.png": "metrics",
+  "reset-java.png": "reset-dialog",
+  "reset-bedrock.png": "reset-bedrock",
+  "file-management.png": "file-management",
+  "mod-plugin-manager.png": "mod-plugin-manager",
+  "scheduled-tasks.png": "scheduled-tasks",
+  "profile-themes.png": "profile-themes",
+  "daemons.png": "daemons"
 };
 
 const MAX_W = 2200; // cap width so webps aren't huge; existing set is full-width

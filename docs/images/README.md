@@ -25,7 +25,8 @@ Screenshots used by the docs pages and README. All are `.webp` (light mode, full
 | `backups.webp` | Backups card | managing-instances |
 | `players.webp` | Players card (RCON, op/kick/ban) | managing-instances |
 | `metrics.webp` | Metrics card (CPU / RAM / players) | managing-instances |
-| `reset-dialog.webp` | Reset / Reinstall dialog (three modes) | modpacks |
+| `reset-dialog.webp` | Reset / Reinstall dialog — Java (three modes) | modpacks |
+| `reset-bedrock.webp` | Reset / Reinstall dialog — Bedrock | — (parked: Bedrock reset defaults to vanilla list) |
 | `file-management.webp` | File Management | — |
 | `mod-plugin-manager.webp` | Mod & Plugin Manager | — |
 | `scheduled-tasks.webp` | Scheduled Tasks | — |
