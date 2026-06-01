@@ -214,6 +214,12 @@ export const defaultInstanceInfo: IGlobalInstanceConfig = {
     intervalSeconds: 21600,
     warningSeconds: [300, 60, 10],
     warningMessage: "Server restarting in {time}..."
+  },
+  sleepOnEmpty: {
+    enabled: false,
+    idleTimeoutMinutes: 10,
+    wakeOnJoin: true,
+    wakeMotd: "Server is waking up... reconnect in a moment"
   }
 };
 

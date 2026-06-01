@@ -52,6 +52,12 @@ declare global {
       warningSeconds: number[];
       warningMessage: string;
     };
+    sleepOnEmpty: {
+      enabled: boolean;
+      idleTimeoutMinutes: number;
+      wakeOnJoin: boolean;
+      wakeMotd: string;
+    };
     docker: IGlobalInstanceDockerConfig;
     pingConfig: {
       ip?: string;

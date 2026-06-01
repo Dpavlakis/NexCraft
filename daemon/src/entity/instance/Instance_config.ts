@@ -69,6 +69,14 @@ export default class InstanceConfig implements IGlobalInstanceConfig {
     warningMessage: "Server restarting in {time}..."
   };
 
+  // Sleep-on-empty + wake-on-join (#16)
+  public sleepOnEmpty = {
+    enabled: false,
+    idleTimeoutMinutes: 10,
+    wakeOnJoin: true,
+    wakeMotd: "Server is waking up... reconnect in a moment"
+  };
+
   // java
   public java: IInstanceJavaConfig = {
     id: ""
