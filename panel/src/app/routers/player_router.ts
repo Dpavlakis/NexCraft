@@ -65,4 +65,46 @@ router.post(
   }
 );
 
+// Bedrock: overview (online + allowlist + operators)
+router.get(
+  "/bedrock_overview",
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, uuid: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "player/bedrock_overview",
+        { instanceUuid }
+      );
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// Bedrock: kick / allowlist add|remove|on|off / op | deop
+router.post(
+  "/bedrock_action",
+  permission({ level: ROLE.USER }),
+  validator({ query: { daemonId: String, uuid: String }, body: { action: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "player/bedrock_action",
+        {
+          instanceUuid,
+          action: ctx.request.body.action,
+          name: ctx.request.body.name
+        }
+      );
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
 export default router;
