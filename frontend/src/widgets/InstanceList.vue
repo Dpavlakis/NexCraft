@@ -53,8 +53,13 @@ const operationForm = ref({
   instanceName: "",
   currentPage: 1,
   pageSize: 20,
-  status: ""
+  status: "",
+  type: ""
 });
+
+// Expand the search row only while the name input is hovered/focused (not when
+// using the status/type selectors in the same group).
+const searchExpanded = ref(false);
 
 const currentRemoteNode = ref<NodeStatus>();
 const isGlobalDaemonMode = computed(() => currentRemoteNode.value?.uuid === ALL_DAEMON_MODE);
@@ -118,7 +123,8 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
           status: operationForm.value.status,
           instance_name: operationForm.value.instanceName.trim(),
           tag: JSON.stringify(selectedTags.value),
-          daemonId: currentRemoteNode.value?.uuid ?? ""
+          daemonId: currentRemoteNode.value?.uuid ?? "",
+          type: operationForm.value.type
         }
       });
       updateTagTips(instances.value?.allTags || []);
@@ -594,7 +600,7 @@ onMounted(async () => {
             </a-button>
           </template>
           <template #center>
-            <div class="search-input">
+            <div class="search-input" :class="{ 'search-expanded': searchExpanded }">
               <a-input-group compact>
                 <a-select
                   v-model:value="operationForm.status"
@@ -608,12 +614,26 @@ onMounted(async () => {
                     {{ p }}
                   </a-select-option>
                 </a-select>
+                <a-select
+                  v-if="!isGlobalDaemonMode"
+                  v-model:value="operationForm.type"
+                  style="width: 110px"
+                  @change="handleQueryInstance"
+                >
+                  <a-select-option value="">{{ t("TXT_CODE_filter_all_types") }}</a-select-option>
+                  <a-select-option value="java">{{ t("TXT_CODE_edition_java") }}</a-select-option>
+                  <a-select-option value="bedrock">{{ t("TXT_CODE_edition_bedrock") }}</a-select-option>
+                </a-select>
                 <a-input
                   v-model:value.trim="operationForm.instanceName"
                   :placeholder="t('TXT_CODE_ce132192')"
-                  style="width: calc(100% - 90px)"
+                  :style="{ width: isGlobalDaemonMode ? 'calc(100% - 90px)' : 'calc(100% - 200px)' }"
                   @press-enter="handleQueryInstance"
                   @change="handleQueryInstance"
+                  @mouseenter="searchExpanded = true"
+                  @mouseleave="searchExpanded = false"
+                  @focus="searchExpanded = true"
+                  @blur="searchExpanded = false"
                 >
                   <template #suffix>
                     <search-outlined />
@@ -821,7 +841,10 @@ onMounted(async () => {
   }
 }
 
-.search-input:hover {
+/* Expand only when the user actually interacts with the search-by-name input
+   (hover/focus drives `searchExpanded`) — NOT when using the status / type
+   selectors in the same group, which shouldn't shift the bar. */
+.search-input.search-expanded {
   width: 100%;
 }
 

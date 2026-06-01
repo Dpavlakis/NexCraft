@@ -75,6 +75,13 @@ routerApp.on("instance/select", (ctx, data) => {
       const res = myTags.filter((v) => searchTags.includes(v));
       if (res.length === 0 || res.length !== searchTags.length) return false;
     }
+    // TYPE FILTER (edition): condition.type is "java" | "bedrock" | undefined
+    if (condition.type) {
+      const ty = String(v.config.type || "");
+      const isBedrock = ty.includes("bedrock");
+      if (condition.type === "bedrock" && !isBedrock) return false;
+      if (condition.type === "java" && (isBedrock || !ty.includes("minecraft"))) return false;
+    }
     return true;
   });
   // sort first by status， then by nickname

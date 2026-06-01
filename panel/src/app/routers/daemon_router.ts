@@ -39,6 +39,7 @@ router.get(
     const pageSize = Math.min(50, Math.max(1, Number(ctx.query.page_size) || 10));
     const instanceName = ctx.query.instance_name;
     const status = ctx.query.status;
+    const type = ctx.query.type ? String(ctx.query.type) : undefined;
     const tag = String(ctx.query.tag);
     const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
     let tagList: string[] = [];
@@ -53,6 +54,7 @@ router.get(
       condition: {
         instanceName,
         status,
+        type,
         tag: tagList.length > 0 ? tagList : null
       }
     });

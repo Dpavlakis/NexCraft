@@ -163,6 +163,15 @@ const serverIconUrl = ref("");
 const displayIcon = computed(
   () => serverIconUrl.value || loaderIconFor(instanceInfo.value?.config?.packInfo)
 );
+
+// Java vs Bedrock edition for the at-a-glance badge + accent stripe.
+const instanceEdition = computed(() => {
+  const ty = String(instanceInfo.value?.config?.type || "");
+  if (ty.includes("bedrock")) return "bedrock";
+  if (ty.includes("minecraft")) return "java";
+  return "";
+});
+
 const loadServerIcon = async () => {
   if (!instanceId || !daemonId) return;
   const type = instanceInfo.value?.config?.type || "";
@@ -327,7 +336,10 @@ const instanceOperations = computed(() =>
 </script>
 
 <template>
-  <CardPanel style="width: 100%; height: 100%; position: relative">
+  <CardPanel
+    style="width: 100%; height: 100%; position: relative"
+    :class="instanceEdition ? 'edition-card edition-card-' + instanceEdition : ''"
+  >
     <template #title>
       {{ instanceInfo?.config.nickname }}
     </template>
@@ -363,6 +375,14 @@ const instanceOperations = computed(() =>
                 <ExclamationCircleOutlined />
                 {{ statusText }}
               </span>
+            </a-tag>
+
+            <a-tag
+              v-if="instanceEdition"
+              class="m-0 edition-tag"
+              :class="instanceEdition === 'bedrock' ? 'edition-bedrock' : 'edition-java'"
+            >
+              {{ instanceEdition === "bedrock" ? t("TXT_CODE_edition_bedrock") : t("TXT_CODE_edition_java") }}
             </a-tag>
 
             <div v-if="instanceInfo?.config.tag && instanceInfo?.config.tag.length > 0">|</div>
@@ -505,5 +525,42 @@ const instanceOperations = computed(() =>
   .value {
     opacity: 0.8;
   }
+}
+
+.edition-tag {
+  border: none;
+  font-weight: 600;
+}
+.edition-java {
+  background: rgba(108, 186, 58, 0.16);
+  color: #76c93f;
+}
+.edition-bedrock {
+  background: rgba(43, 179, 163, 0.18);
+  color: #3fc9b9;
+}
+/* Left accent stripe drawn on the card's OUTER edge (flush to the border),
+   outside the card's padding so it never overlaps content. The card root is
+   position:relative; the ::before clips to the card's rounded corners. */
+/* A parent's scoped CSS applies to a child component's ROOT node, so these
+   plain selectors target the CardPanel root (which carries .edition-card).
+   ::before draws the stripe flush on the card's left edge, above the padding. */
+.edition-card {
+  overflow: hidden;
+}
+.edition-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 2;
+}
+.edition-card-java::before {
+  background: #6cba3a;
+}
+.edition-card-bedrock::before {
+  background: #2bb3a3;
 }
 </style>

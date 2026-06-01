@@ -92,6 +92,7 @@ export const remoteInstances = useDefineApi<
       instance_name?: string;
       status?: string;
       tag?: string;
+      type?: string;
     };
   },
   {
