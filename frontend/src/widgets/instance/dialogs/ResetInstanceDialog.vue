@@ -25,13 +25,14 @@ const reinstallTarget = computed(() => ({
   packInfo: props.packInfo
 }));
 
-// A modpack instance focuses straight on that pack's popup (no browse chrome);
-// a custom/vanilla instance browses versions inside a framed dialog.
-const isModpack = computed(
+// A modpack or Bedrock instance focuses straight on a version-locked reset popup
+// (no browse chrome); a custom/vanilla instance browses versions in a framed dialog.
+const isFocusedReset = computed(
   () =>
     props.packInfo?.source === "curseforge" ||
     props.packInfo?.source === "modrinth" ||
-    props.packInfo?.source === "ftb"
+    props.packInfo?.source === "ftb" ||
+    props.packInfo?.source === "bedrock"
 );
 
 const openDialog = () => {
@@ -47,9 +48,9 @@ defineExpose({ openDialog });
 </script>
 
 <template>
-  <!-- Modpack reset: just the focused install/reset popup -->
+  <!-- Modpack / Bedrock reset: just the focused install/reset popup -->
   <ModpackBrowser
-    v-if="open && isModpack"
+    v-if="open && isFocusedReset"
     :card="browserCard"
     :reinstall-target="reinstallTarget"
     @close="close"
