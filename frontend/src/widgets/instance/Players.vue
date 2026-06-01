@@ -14,7 +14,7 @@ import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types/index";
 import { RollbackOutlined, TeamOutlined } from "@ant-design/icons-vue";
 import { message, Modal } from "ant-design-vue";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 const props = defineProps<{ card: LayoutCard }>();
 
@@ -72,10 +72,19 @@ const toConsole = () => {
 };
 
 let timer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => {
-  load();
-  timer = setInterval(load, 15000); // refresh online list periodically
-});
+watch(
+  isBedrock,
+  (bedrock) => {
+    if (!bedrock && !timer) {
+      load();
+      timer = setInterval(load, 15000);
+    } else if (bedrock && timer) {
+      clearInterval(timer);
+      timer = undefined;
+    }
+  },
+  { immediate: true }
+);
 onBeforeUnmount(() => timer && clearInterval(timer));
 </script>
 
