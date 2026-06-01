@@ -623,7 +623,7 @@ onMounted(async () => {
                 <a-input
                   v-model:value.trim="operationForm.instanceName"
                   :placeholder="t('TXT_CODE_ce132192')"
-                  style="width: calc(100% - 200px)"
+                  :style="{ width: isGlobalDaemonMode ? 'calc(100% - 90px)' : 'calc(100% - 200px)' }"
                   @press-enter="handleQueryInstance"
                   @change="handleQueryInstance"
                 >
