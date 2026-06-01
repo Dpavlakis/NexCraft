@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import path from "path";
 import Instance from "../entity/instance/instance";
 import { getServerProperty } from "./mc_motd";
+import { sleep } from "../utils/sleep";
 
 export type BedrockPlayerAction =
   | "kick"
@@ -34,12 +35,25 @@ const ACTIONS_NO_NAME: BedrockPlayerAction[] = ["allowlist_on", "allowlist_off"]
 
 // Bedrock gamertags may contain spaces; reject control chars / quotes so the
 // quoted console command can't be broken out of (command injection guard).
-export function assertValidName(name: string): string {
-  const n = String(name ?? "").trim();
+export function assertValidName(name?: string): string {
+  const n = (name ?? "").trim();
   if (!n || n.length > 32 || /[\r\n"]/.test(n)) {
     throw new Error("Invalid player name");
   }
   return n;
+}
+
+// Serialize console round-trips per instance so concurrent calls (e.g. the 15s
+// poll overlapping an action) don't capture each other's output.
+const consoleQueues = new WeakMap<Instance, Promise<unknown>>();
+function withConsoleLock<T>(instance: Instance, fn: () => Promise<T>): Promise<T> {
+  const prev = consoleQueues.get(instance) ?? Promise.resolve();
+  const next = prev.catch(() => undefined).then(fn);
+  consoleQueues.set(
+    instance,
+    next.catch(() => undefined)
+  );
+  return next;
 }
 
 // Parse BDS "list" output, e.g.:
@@ -99,25 +113,23 @@ export function isAllowlistEnabled(instance: Instance): boolean {
   return String(v).trim().toLowerCase() === "true";
 }
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 // Send a command to the BDS console and capture ~settleMs of output.
 async function runConsole(instance: Instance, command: string, settleMs = 1000): Promise<string> {
   if (instance.status() !== Instance.STATUS_RUNNING) {
     throw new Error("Server must be running");
   }
-  const chunks: string[] = [];
-  const listener = (text: any) => chunks.push(String(text));
-  instance.on("data", listener);
-  try {
-    await instance.execPreset("command", command);
-    await sleep(settleMs);
-  } finally {
-    instance.removeListener("data", listener);
-  }
-  return chunks.join("");
+  return withConsoleLock(instance, async () => {
+    const chunks: string[] = [];
+    const listener = (text: any) => chunks.push(String(text));
+    instance.on("data", listener);
+    try {
+      await instance.execPreset("command", command);
+      await sleep(settleMs);
+    } finally {
+      instance.removeListener("data", listener);
+    }
+    return chunks.join("");
+  });
 }
 
 export async function getOnlineBedrockPlayers(instance: Instance): Promise<string[]> {
@@ -148,7 +160,7 @@ export async function bedrockPlayerAction(
   if (ACTIONS_NO_NAME.includes(action)) {
     command = action === "allowlist_on" ? "allowlist on" : "allowlist off";
   } else {
-    const n = assertValidName(String(name));
+    const n = assertValidName(name);
     switch (action) {
       case "kick":
         command = `kick "${n}"`;
