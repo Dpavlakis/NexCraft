@@ -5,14 +5,16 @@ import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
 import { useAppRouters } from "@/hooks/useAppRouters";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
+import { useInstanceInfo } from "@/hooks/useInstance";
 import { useScreen } from "@/hooks/useScreen";
+import BedrockPlayers from "./BedrockPlayers.vue";
 import { t } from "@/lang/i18n";
 import { playerAction, playerList, type PlayerOverview } from "@/services/apis/player";
 import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types/index";
 import { RollbackOutlined, TeamOutlined } from "@ant-design/icons-vue";
 import { message, Modal } from "ant-design-vue";
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 const props = defineProps<{ card: LayoutCard }>();
 
@@ -21,6 +23,11 @@ const { toPage } = useAppRouters();
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
 const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+
+const { instanceInfo } = useInstanceInfo({ instanceId, daemonId, autoRefresh: false });
+const isBedrock = computed(() =>
+  String(instanceInfo.value?.config?.type || "").includes("bedrock")
+);
 
 const data = ref<PlayerOverview>({ rconReady: false, running: false, online: [], banned: [], ops: [] });
 const loading = ref(false);
@@ -73,7 +80,8 @@ onBeforeUnmount(() => timer && clearInterval(timer));
 </script>
 
 <template>
-  <div style="height: 100%" class="container">
+  <BedrockPlayers v-if="isBedrock" :card="card" />
+  <div v-else style="height: 100%" class="container">
     <a-row :gutter="[24, 24]" style="height: 100%">
       <a-col :span="24">
         <BetweenMenus>
