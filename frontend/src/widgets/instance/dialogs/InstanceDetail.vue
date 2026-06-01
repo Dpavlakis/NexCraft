@@ -76,6 +76,8 @@ enum TabSettings {
   // eslint-disable-next-line no-unused-vars
   Advanced,
   // eslint-disable-next-line no-unused-vars
+  Automation,
+  // eslint-disable-next-line no-unused-vars
   ResLimit
 }
 const activeKey = ref<TabSettings>(TabSettings.Basic);
@@ -261,6 +263,50 @@ const isMinecraftBedrock = computed(() =>
 const showMinecraftTab = computed(
   () => !isTemplateMode.value && !isGlobalTerminal.value && (isMinecraftJava.value || isMinecraftBedrock.value)
 );
+const warningSecondsText = computed({
+  get: () => {
+    const arr = formData.value.instance?.config?.scheduledRestart?.warningSeconds ?? [];
+    return arr
+      .map((s) =>
+        s % 3600 === 0 && s >= 3600
+          ? `${s / 3600}h`
+          : s % 60 === 0 && s >= 60
+            ? `${s / 60}m`
+            : `${s}s`
+      )
+      .join(", ");
+  },
+  set: (val: string) => {
+    if (!formData.value.instance?.config?.scheduledRestart) return;
+    const parsed = String(val)
+      .split(",")
+      .map((tok) => {
+        const t2 = tok.trim().toLowerCase();
+        const m = t2.match(/^(\d+)\s*([hms]?)$/);
+        if (!m) return NaN;
+        const n = Number(m[1]);
+        return m[2] === "h" ? n * 3600 : m[2] === "m" ? n * 60 : n;
+      })
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .sort((a, b) => b - a);
+    formData.value.instance.config.scheduledRestart.warningSeconds = parsed as number[];
+  }
+});
+
+const restartIntervalHours = computed({
+  get: () => {
+    const s = formData.value.instance?.config?.scheduledRestart?.intervalSeconds ?? 21600;
+    return Math.round((s / 3600) * 100) / 100;
+  },
+  set: (h: number) => {
+    if (!formData.value.instance?.config?.scheduledRestart) return;
+    formData.value.instance.config.scheduledRestart.intervalSeconds = Math.max(
+      1,
+      Math.round(Number(h) * 3600)
+    );
+  }
+});
+
 const { execute: executeGetMotd } = getInstanceMotd();
 const { execute: executeSetMotd } = setInstanceMotd();
 const { execute: executeGetServerProperty } = getServerProperty();
@@ -1131,6 +1177,133 @@ defineExpose({
                 </a-form-item>
               </a-col>
             </a-row>
+          </a-tab-pane>
+          <a-tab-pane
+            v-if="!isGlobalTerminal"
+            :key="TabSettings.Automation"
+            :tab="t('TXT_CODE_automation_tab')"
+          >
+            <a-form-item v-if="formData.instance.config?.scheduledRestart">
+              <a-typography-title :level="5">{{ t("TXT_CODE_sched_restart_title") }}</a-typography-title>
+              <a-typography-paragraph>
+                <a-typography-text type="secondary">{{ t("TXT_CODE_sched_restart_desc") }}</a-typography-text>
+              </a-typography-paragraph>
+
+              <a-switch v-model:checked="formData.instance.config.scheduledRestart.enabled" class="mb-12" />
+              <span class="ml-8">{{ t("TXT_CODE_sched_restart_enable") }}</span>
+
+              <template v-if="formData.instance.config.scheduledRestart.enabled">
+                <div class="mt-12">
+                  <a-typography-text strong>{{ t("TXT_CODE_sched_restart_type") }}</a-typography-text>
+                  <a-radio-group
+                    v-model:value="formData.instance.config.scheduledRestart.scheduleType"
+                    class="ml-8"
+                  >
+                    <a-radio :value="2">{{ t("TXT_CODE_sched_restart_type_cron") }}</a-radio>
+                    <a-radio :value="1">{{ t("TXT_CODE_sched_restart_type_interval") }}</a-radio>
+                  </a-radio-group>
+                </div>
+
+                <div v-if="formData.instance.config.scheduledRestart.scheduleType === 2" class="mt-8">
+                  <a-typography-text>{{ t("TXT_CODE_sched_restart_cron") }}</a-typography-text>
+                  <a-input
+                    v-model:value="formData.instance.config.scheduledRestart.cron"
+                    style="max-width: 320px"
+                    placeholder="0 4 * * *"
+                  />
+                  <div>
+                    <a-typography-text type="secondary">{{ t("TXT_CODE_sched_restart_cron_hint") }}</a-typography-text>
+                  </div>
+                </div>
+
+                <div v-else class="mt-8">
+                  <a-typography-text>{{ t("TXT_CODE_sched_restart_interval_hours") }}</a-typography-text>
+                  <a-input-number
+                    v-model:value="restartIntervalHours"
+                    :min="0.05"
+                    :step="1"
+                    style="max-width: 160px; display: block"
+                  />
+                </div>
+
+                <div class="mt-12">
+                  <a-typography-text>{{ t("TXT_CODE_sched_restart_warnings") }}</a-typography-text>
+                  <a-input v-model:value="warningSecondsText" style="max-width: 320px" placeholder="5m, 1m, 10s" />
+                  <div>
+                    <a-typography-text type="secondary">{{ t("TXT_CODE_sched_restart_warnings_hint") }}</a-typography-text>
+                  </div>
+                </div>
+
+                <div class="mt-12">
+                  <a-typography-text>{{ t("TXT_CODE_sched_restart_message") }}</a-typography-text>
+                  <a-input
+                    v-model:value="formData.instance.config.scheduledRestart.warningMessage"
+                    style="max-width: 420px"
+                    placeholder="Server restarting in {time}..."
+                  />
+                  <div>
+                    <a-typography-text type="secondary">{{ t("TXT_CODE_sched_restart_message_hint") }}</a-typography-text>
+                  </div>
+                </div>
+              </template>
+            </a-form-item>
+
+            <a-divider />
+
+            <template v-if="isMinecraftJava">
+              <a-form-item v-if="formData.instance.config?.sleepOnEmpty">
+                <a-typography-title :level="5">{{ t("TXT_CODE_sleep_title") }}</a-typography-title>
+                <a-typography-paragraph>
+                  <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_desc") }}</a-typography-text>
+                </a-typography-paragraph>
+
+                <a-switch v-model:checked="formData.instance.config.sleepOnEmpty.enabled" class="mb-12" />
+                <span class="ml-8">{{ t("TXT_CODE_sleep_enable") }}</span>
+
+                <template v-if="formData.instance.config.sleepOnEmpty.enabled">
+                  <div class="mt-12">
+                    <a-typography-text>{{ t("TXT_CODE_sleep_idle") }}</a-typography-text>
+                    <a-input-number
+                      v-model:value="formData.instance.config.sleepOnEmpty.idleTimeoutMinutes"
+                      :min="1"
+                      :step="1"
+                      style="max-width: 160px; display: block"
+                    />
+                    <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_idle_hint") }}</a-typography-text>
+                  </div>
+
+                  <div class="mt-12">
+                    <a-switch
+                      v-model:checked="formData.instance.config.sleepOnEmpty.wakeOnJoin"
+                      class="mr-8"
+                    />
+                    <span>{{ t("TXT_CODE_sleep_wake") }}</span>
+                    <div>
+                      <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_wake_hint") }}</a-typography-text>
+                    </div>
+                  </div>
+
+                  <div v-if="formData.instance.config.sleepOnEmpty.wakeOnJoin" class="mt-12">
+                    <a-typography-text>{{ t("TXT_CODE_sleep_motd") }}</a-typography-text>
+                    <a-input
+                      v-model:value="formData.instance.config.sleepOnEmpty.wakeMotd"
+                      style="max-width: 420px"
+                      placeholder="Server is waking up... reconnect in a moment"
+                    />
+                    <div>
+                      <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_motd_hint") }}</a-typography-text>
+                    </div>
+                  </div>
+                </template>
+              </a-form-item>
+            </template>
+
+            <a-alert
+              v-else
+              type="info"
+              show-icon
+              :message="t('TXT_CODE_sleep_java_only')"
+            />
           </a-tab-pane>
           <a-tab-pane
             v-if="!isGlobalTerminal && isDockerMode"

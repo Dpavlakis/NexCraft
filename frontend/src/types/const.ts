@@ -206,6 +206,20 @@ export const defaultInstanceInfo: IGlobalInstanceConfig = {
   extraServiceConfig: {
     openFrpTunnelId: "",
     openFrpToken: ""
+  },
+  scheduledRestart: {
+    enabled: false,
+    scheduleType: 2,
+    cron: "0 4 * * *",
+    intervalSeconds: 21600,
+    warningSeconds: [300, 60, 10],
+    warningMessage: "Server restarting in {time}..."
+  },
+  sleepOnEmpty: {
+    enabled: false,
+    idleTimeoutMinutes: 10,
+    wakeOnJoin: true,
+    wakeMotd: "Server is waking up... reconnect in a moment"
   }
 };
 

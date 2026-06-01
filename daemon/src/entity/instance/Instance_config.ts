@@ -59,6 +59,24 @@ export default class InstanceConfig implements IGlobalInstanceConfig {
     autoStartDelay: 0
   };
 
+  // Scheduled automatic restart with in-game countdown warnings (#14)
+  public scheduledRestart = {
+    enabled: false,
+    scheduleType: 2, // 1 = interval, 2 = cron
+    cron: "0 4 * * *", // default: daily 04:00
+    intervalSeconds: 21600, // default: 6h (used when scheduleType === 1)
+    warningSeconds: [300, 60, 10],
+    warningMessage: "Server restarting in {time}..."
+  };
+
+  // Sleep-on-empty + wake-on-join (#16)
+  public sleepOnEmpty = {
+    enabled: false,
+    idleTimeoutMinutes: 10,
+    wakeOnJoin: true,
+    wakeMotd: "Server is waking up... reconnect in a moment"
+  };
+
   // java
   public java: IInstanceJavaConfig = {
     id: ""

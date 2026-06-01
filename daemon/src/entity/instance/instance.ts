@@ -10,6 +10,8 @@ import { STEAM_CMD_PATH } from "../../const";
 import { $t } from "../../i18n";
 import javaManager from "../../service/java_manager";
 import logger from "../../service/log";
+import scheduledRestartService from "../../service/scheduled_restart_service";
+import wakeListenerService from "../../service/wake_listener_service";
 import InstanceCommand from "../commands/base/command";
 import { commandStringToArray } from "../commands/base/command_parser";
 import FunctionDispatcher, { IPresetCommand } from "../commands/dispatcher";
@@ -307,6 +309,27 @@ export default class Instance extends EventEmitter {
       configureEntityParams(this.config.eventTask, cfg.eventTask, "ignore", Boolean);
       configureEntityParams(this.config.eventTask, cfg.eventTask, "autoStartDelay", Number);
     }
+    if (cfg.scheduledRestart) {
+      const sr = this.config.scheduledRestart;
+      const inSr = cfg.scheduledRestart;
+      if (inSr.enabled != null) sr.enabled = Boolean(inSr.enabled);
+      if (inSr.scheduleType != null) sr.scheduleType = Number(inSr.scheduleType);
+      if (inSr.cron != null) sr.cron = String(inSr.cron);
+      if (inSr.intervalSeconds != null) sr.intervalSeconds = Number(inSr.intervalSeconds);
+      if (Array.isArray(inSr.warningSeconds))
+        sr.warningSeconds = inSr.warningSeconds
+          .map((n: any) => Math.floor(Number(n)))
+          .filter((n: number) => n > 0);
+      if (inSr.warningMessage != null) sr.warningMessage = String(inSr.warningMessage);
+    }
+    if (cfg.sleepOnEmpty) {
+      const so = this.config.sleepOnEmpty;
+      const inSo = cfg.sleepOnEmpty;
+      if (inSo.enabled != null) so.enabled = Boolean(inSo.enabled);
+      if (inSo.idleTimeoutMinutes != null) so.idleTimeoutMinutes = Number(inSo.idleTimeoutMinutes);
+      if (inSo.wakeOnJoin != null) so.wakeOnJoin = Boolean(inSo.wakeOnJoin);
+      if (inSo.wakeMotd != null) so.wakeMotd = String(inSo.wakeMotd);
+    }
     if (cfg.terminalOption) {
       configureEntityParams(this.config.terminalOption, cfg.terminalOption, "haveColor", Boolean);
     }
@@ -321,6 +344,9 @@ export default class Instance extends EventEmitter {
       if (!this.config.basePort) this.allocatePort(this.config);
       StorageSubsystem.store("InstanceConfig", this.instanceUuid, this.config);
     }
+    // Re-arm the scheduled restart whenever config is applied (#14).
+    scheduledRestartService.applyForInstance(this);
+    wakeListenerService.applyForInstance(this);
   }
 
   allocatePort(cfg: InstanceConfig) {

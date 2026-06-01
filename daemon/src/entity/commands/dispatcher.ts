@@ -18,6 +18,7 @@ import RconCommand from "./steam/rcon_command";
 import InstanceDiskCheckTask from "./task/any_stats";
 import DockerStatsTask from "./task/docker_stats";
 import PingMinecraftServerTask from "./task/mc_players";
+import SleepOnEmptyTask from "./task/sleep_on_empty";
 import TimeCheck from "./task/time";
 
 // If you add a new "Preset", Please add the definition here.
@@ -77,13 +78,14 @@ export default class FunctionDispatcher extends InstanceCommand {
       instance.setPreset("command", new RconCommand());
     }
 
-    // Minecraft Ping
+    // Minecraft Ping + Sleep-on-empty (Java/MCDR only — Bedrock has no player polling)
     if (
       instance.config.type.includes(Instance.TYPE_MINECRAFT_JAVA) ||
       instance.config.type === TYPE_MINECRAFT_MCDR
     ) {
       instance.setPreset("refreshPlayers", new PingJavaMinecraftServerCommand());
       instance.lifeCycleTaskManager.registerLifeCycleTask(new PingMinecraftServerTask());
+      instance.lifeCycleTaskManager.registerLifeCycleTask(new SleepOnEmptyTask());
     }
   }
 }
