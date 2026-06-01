@@ -1,23 +1,28 @@
 # Creating Minecraft Servers
 
-NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Minecraft builder**. Open the **Minecraft** menu (URL `/#/minecraft`) to get started. There are four sources to choose from:
+NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Minecraft builder**. Open the **Minecraft** menu (URL `/#/minecraft`) to get started. There are five sources to choose from:
 
 ![Custom server builder](images/builder-custom.webp)
 
-- **Custom** — build a fresh server for any Minecraft version.
+- **Vanilla** — build a fresh server for any Minecraft version, with or without a mod loader.
 - **CurseForge** — search and install CurseForge modpacks.
 - **Modrinth** — search and install Modrinth modpacks.
 - **FTB** — search and install Feed The Beast modpacks.
+- **Import / Existing** — upload a server you already have and run it as-is (see [Importing an existing server](#importing-an-existing-server)).
 
-## Custom (Vanilla / loaders / server software)
+## Vanilla (loaders / server software)
 
-1. Select **Custom**.
+1. Select **Vanilla**.
 2. Pick a **mod loader** from the row of icons:
    - **Vanilla** — the official Mojang server.
    - **Paper**, **Purpur**, **Folia** — high-performance server software (downloaded as a ready-to-run jar from their official APIs).
    - **Fabric**, **Forge**, **NeoForge**, **Quilt** — modloaders (the daemon runs the official installer/bootstrap).
 3. Choose a **Minecraft version** from the list. Versions are pulled live — Mojang's manifest for Vanilla/loaders, and each project's API for Paper/Purpur/Folia. Tick **Show snapshots** to include non-release versions.
 4. Click **Install**, set an **instance name** and **max memory**, and confirm.
+
+The **Details** tab for each software shows its tags (version, release type, category), a curated **Key Features** list, and a note about the **Java version auto-provisioned** for it.
+
+![Custom builder — Details tab with tags, key features, and the Java note](images/builder-detail-vanilla.webp)
 
 The daemon downloads the server, runs any loader bootstrap, assigns a free port, and writes the start command for you.
 
@@ -43,6 +48,15 @@ What happens under the hood:
 - A **server icon** is generated from the pack's logo, and the **EULA** is accepted on your behalf.
 
 After install, NexCraft routes you to the instance's console to watch the bootstrap and start the server.
+
+## Importing an existing server
+
+Already have a server folder? Pick the **Import / Existing** source tab, upload it as a `.zip`, and NexCraft auto-detects what it is (Java vs Bedrock, loader, version) and walks you through a review screen before creating the instance. *(Admin only.)*
+
+![Import / Existing — auto-detected review screen](images/import-existing.webp)
+
+- **Java** — imported **as-is**: NexCraft runs the uploaded server with its existing world, mods, and configs.
+- **Bedrock** — installs the **latest Bedrock Dedicated Server** and keeps your world (version-locked), with an *import-as-is* opt-out. The start command and file permissions are set for you.
 
 ## Starting the server
 

@@ -4,7 +4,7 @@ Each instance has a **Manage Instance** grid (full-page features) and an **Insta
 
 ## Instance Settings
 
-Open **Instance Settings** from the manage grid. The **Basic** tab holds the everyday settings; **Advanced** holds working directory, update command, file encoding, and run-as user.
+Open **Instance Settings** from the manage grid. The **Basic** tab holds the everyday settings; **Advanced** holds working directory, file encoding, and run-as user.
 
 For Minecraft Java instances, the Basic tab also includes:
 
@@ -20,12 +20,37 @@ Seconds to wait after the stop command before NexCraft force-kills the process. 
 ### Startup / Stop Command
 The generated start command is editable here; the stop command defaults to `stop` for Minecraft.
 
+### Bedrock servers
+Bedrock instances get their own **Minecraft settings** on the Basic tab — **Server Name** and **Level Name** (the active world; changing it switches worlds, so NexCraft warns and asks you to confirm) — plus the **Set Server Icon** picker.
+
+![Bedrock Minecraft settings — server name, level name, and icon](images/bedrock-minecraft-settings.webp)
+
 ## Event Tasks (auto start / restart)
 
 In **Event Tasks** you can enable:
 
 - **Auto Restart** — restart the instance immediately if it stops unexpectedly (optionally capped to N times).
 - **Auto Start** — start the instance when the daemon boots, with a configurable **Autostart Delay** (seconds) so multiple servers don't all spin up at once.
+
+## Automation
+
+The **Automation** tab adds two hands-off behaviours:
+
+![Automation tab — scheduled restart and sleep-on-empty](images/automation-tab.webp)
+
+- **Scheduled Restart** — restart the instance on a **cron** schedule or fixed **interval**, with an in-game `say` countdown warning players before it happens.
+- **Sleep on Empty / Wake on Join** *(Java only)* — auto-stop the server after it's been empty for a set idle time, then wake it back up automatically when a player pings it from the server list. Bedrock has no player polling, so it shows a "Java only" notice.
+
+## World Management
+
+![World Management card — info, download, replace, and reset](images/world-management.webp)
+
+The **World Management** card (admin only) lets you inspect and swap the active world for both Java and Bedrock instances:
+
+- **Info** — world name, size, and details.
+- **Download** the current world as a `.zip`.
+- **Replace** — upload a new world `.zip`. NexCraft validates the upload's `level.dat` **before** stopping/backing up, so a bad zip never costs you a restart.
+- **Reset** — generate a fresh world (with an auto-backup first).
 
 ## Backups
 
