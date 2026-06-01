@@ -23,7 +23,11 @@ If the update fails, the server is left stopped (the pre-update backup is your r
 
 ![Reset / Reinstall dialog](images/reset-dialog.webp)
 
-The **Reset** button (on the instance terminal) rebuilds an instance using the same Minecraft builder. For a modpack instance it opens **straight to that pack's reinstall popup**; for a custom/vanilla instance it opens the builder so you can pick a version.
+The **Reset** button (on the instance terminal) rebuilds an instance using the same Minecraft builder. For a **modpack** or **Bedrock** instance it opens **straight to a focused, version-locked reset popup**; for a custom/vanilla Java instance it opens the builder so you can pick a version.
+
+For a **Bedrock** server the reset is locked to the installed Bedrock version — it opens directly on that version's popup (no version browsing), so you just choose what to do with existing files and confirm:
+
+![Bedrock reset — the focused, version-locked popup](images/reset-bedrock.webp)
 
 You choose **what to do with existing files**:
 
