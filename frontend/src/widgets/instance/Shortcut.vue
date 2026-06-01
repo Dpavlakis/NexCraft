@@ -163,6 +163,15 @@ const serverIconUrl = ref("");
 const displayIcon = computed(
   () => serverIconUrl.value || loaderIconFor(instanceInfo.value?.config?.packInfo)
 );
+
+// Java vs Bedrock edition for the at-a-glance badge + accent stripe.
+const instanceEdition = computed(() => {
+  const ty = String(instanceInfo.value?.config?.type || "");
+  if (ty.includes("bedrock")) return "bedrock";
+  if (ty.includes("minecraft")) return "java";
+  return "";
+});
+
 const loadServerIcon = async () => {
   if (!instanceId || !daemonId) return;
   const type = instanceInfo.value?.config?.type || "";
@@ -342,6 +351,7 @@ const instanceOperations = computed(() =>
     </template>
     <template #body>
       <div class="instance-card-body">
+        <div v-if="instanceEdition" class="edition-stripe" :class="'edition-stripe-' + instanceEdition"></div>
         <a-typography-paragraph>
           <div class="mb-8 flex" style="flex-wrap: wrap; gap: 8px">
             <a-tag
@@ -363,6 +373,14 @@ const instanceOperations = computed(() =>
                 <ExclamationCircleOutlined />
                 {{ statusText }}
               </span>
+            </a-tag>
+
+            <a-tag
+              v-if="instanceEdition"
+              class="m-0 edition-tag"
+              :class="instanceEdition === 'bedrock' ? 'edition-bedrock' : 'edition-java'"
+            >
+              {{ instanceEdition === "bedrock" ? t("TXT_CODE_edition_bedrock") : t("TXT_CODE_edition_java") }}
             </a-tag>
 
             <div v-if="instanceInfo?.config.tag && instanceInfo?.config.tag.length > 0">|</div>
@@ -505,5 +523,32 @@ const instanceOperations = computed(() =>
   .value {
     opacity: 0.8;
   }
+}
+
+.edition-tag {
+  border: none;
+  font-weight: 600;
+}
+.edition-java {
+  background: rgba(108, 186, 58, 0.16);
+  color: #76c93f;
+}
+.edition-bedrock {
+  background: rgba(43, 179, 163, 0.18);
+  color: #3fc9b9;
+}
+/* Left accent stripe anchored to the relative card content box. */
+.edition-stripe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+.edition-stripe-java {
+  background: #6cba3a;
+}
+.edition-stripe-bedrock {
+  background: #2bb3a3;
 }
 </style>
