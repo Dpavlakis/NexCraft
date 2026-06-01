@@ -17,6 +17,7 @@ import { $t } from "../i18n";
 import { sleep } from "../utils/sleep";
 import logger from "./log";
 import scheduledRestartService from "./scheduled_restart_service";
+import wakeListenerService from "./wake_listener_service";
 import InstanceControl from "./system_instance_control";
 import takeoverContainer from "./takeover_container";
 
@@ -101,6 +102,7 @@ class InstanceSubsystem extends EventEmitter {
           .catch((v) => {});
         this.addInstance(instance);
         scheduledRestartService.applyForInstance(instance);
+        wakeListenerService.applyForInstance(instance);
       } catch (error: any) {
         logger.error(
           $t("TXT_CODE_system_instance.readInstanceFailed", { uuid: uuid, error: error.message })
