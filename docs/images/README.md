@@ -7,7 +7,7 @@ Screenshots used by the docs pages and README. All are `.webp` (light mode, full
 | File | Screen | Used in |
 | --- | --- | --- |
 | `overview.webp` | Dashboard (daemon / instance / resource overview) | introduction |
-| `instances.webp` | Instances list | (README / general) |
+| `instances.webp` | Instances list (edition badges + Java/Bedrock filter) | managing-instances / README |
 | `terminal-overview.webp` | Instance terminal + Manage grid (hero) | README / general |
 | `browser-curseforge.webp` | Minecraft → CurseForge browser | creating-servers |
 | `browser-modrinth.webp` | Minecraft → Modrinth browser | creating-servers |
@@ -27,9 +27,9 @@ Screenshots used by the docs pages and README. All are `.webp` (light mode, full
 | `metrics.webp` | Metrics card (CPU / RAM / players) | managing-instances |
 | `reset-dialog.webp` | Reset / Reinstall dialog — Java (three modes) | modpacks |
 | `reset-bedrock.webp` | Reset / Reinstall dialog — Bedrock | — (parked: Bedrock reset defaults to vanilla list) |
-| `file-management.webp` | File Management | — |
-| `mod-plugin-manager.webp` | Mod & Plugin Manager | — |
-| `scheduled-tasks.webp` | Scheduled Tasks | — |
+| `file-management.webp` | File Management | managing-instances |
+| `mod-plugin-manager.webp` | Mod & Plugin Manager | managing-instances |
+| `scheduled-tasks.webp` | Scheduled Tasks | managing-instances |
 | `profile-themes.webp` | User profile — avatar + six-theme picker | introduction |
 | `settings.webp` | Settings → Basic | — |
 | `daemons.webp` | Daemons (node status + live CPU/RAM) | installation |

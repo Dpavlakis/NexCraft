@@ -2,6 +2,12 @@
 
 Each instance has a **Manage Instance** grid (full-page features) and an **Instance Settings** dialog (form-style settings). This page covers the NexCraft-specific bits.
 
+## The instances list
+
+![Instances list — edition badges and the Java / Bedrock filter](images/instances.webp)
+
+Each card shows an **edition badge** and a coloured accent stripe — **green for Java**, **teal for Bedrock** — so you can tell editions apart at a glance. When a node has both, the toolbar gains an **All / Java / Bedrock** filter to narrow the list to one edition (single-node view; the global all-daemons tree shows everything).
+
 ## Instance Settings
 
 Open **Instance Settings** from the manage grid. The **Basic** tab holds the everyday settings; **Advanced** holds working directory, file encoding, and run-as user.
@@ -52,6 +58,17 @@ The **World Management** card (admin only) lets you inspect and swap the active 
 - **Replace** — upload a new world `.zip`. NexCraft validates the upload's `level.dat` **before** stopping/backing up, so a bad zip never costs you a restart.
 - **Reset** — generate a fresh world (with an auto-backup first).
 
+## Mod & Plugin Manager
+
+![Mod & Plugin Manager — local list plus the Download tab](images/mod-plugin-manager.webp)
+
+For Java instances (host/general mode), the **Mod & Plugin Manager** handles a server's mods and plugins without touching the file system by hand:
+
+- **Mods / Plugins tabs** list what's installed (whichever of `mods/` or `plugins/` the server has). For each entry you can **enable/disable**, **delete**, **edit its config files**, and open the project page (Modrinth / CurseForge / SpigotMC).
+- **Download tab** — search **Modrinth**, **CurseForge**, and **SpigotMC** with filters for **Minecraft version**, **type** (mod/plugin), **environment** (server/client), and **loader**, then install straight into the instance.
+- **Upload** `.jar`/`.zip` files directly, or drag-and-drop them onto the card.
+- On **Windows**, if the server is running and a file is locked, the action can be **queued** to run automatically the next time the server stops.
+
 ## Backups
 
 ![Backups page](images/backups.webp)
@@ -71,11 +88,25 @@ Backups are stored outside the instance folder, so resets/wipes never touch them
 
 The **Players** card uses RCON to show who's online (with skin heads) and lets you **Op / Deop / Kick / Ban / Unban**. NexCraft auto-enables RCON with a random password and a free port when it sets up a server, so this usually works out of the box.
 
+> **Java only.** Player management runs over RCON, which the Bedrock Dedicated Server doesn't support — so this card applies to Java instances.
+
 ## Metrics
 
 ![Metrics card — per-instance CPU %, RAM and player count over time](images/metrics.webp)
 
 The **Metrics** card charts per-instance **CPU %**, **RAM (GB)**, and **player count** over time, with selectable ranges (1 min → 24 h), shift-wheel zoom and drag-to-zoom. CPU/RAM are measured across the server's **process tree** (not a container), so they're accurate in host/general mode. The player count refreshes about every 10 seconds.
+
+## File Management
+
+![File Management — browse, edit, upload and extract server files](images/file-management.webp)
+
+The **File Management** card is a full file browser for the instance directory: navigate folders, **upload / download**, create / rename / delete, **compress and extract** archives, and edit text files (including `server.properties` and config files) in the built-in editor. Zip extraction uses an overwrite-safe extractor.
+
+## Scheduled Tasks
+
+![Scheduled Tasks — run commands or power actions on a schedule](images/scheduled-tasks.webp)
+
+The **Scheduled Tasks** card runs actions on a timer — a **console command**, or **start / stop / restart** — on an interval or a cron-style schedule. It's handy for things like a nightly broadcast or a periodic save. (For automatic restarts with an in-game countdown, prefer **Instance Settings → Automation**; for backups on a schedule, use the **Backups** card.)
 
 ## Java
 
