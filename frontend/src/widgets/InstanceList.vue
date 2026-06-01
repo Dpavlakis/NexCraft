@@ -53,7 +53,8 @@ const operationForm = ref({
   instanceName: "",
   currentPage: 1,
   pageSize: 20,
-  status: ""
+  status: "",
+  type: ""
 });
 
 const currentRemoteNode = ref<NodeStatus>();
@@ -118,7 +119,8 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
           status: operationForm.value.status,
           instance_name: operationForm.value.instanceName.trim(),
           tag: JSON.stringify(selectedTags.value),
-          daemonId: currentRemoteNode.value?.uuid ?? ""
+          daemonId: currentRemoteNode.value?.uuid ?? "",
+          type: operationForm.value.type
         }
       });
       updateTagTips(instances.value?.allTags || []);
@@ -608,10 +610,20 @@ onMounted(async () => {
                     {{ p }}
                   </a-select-option>
                 </a-select>
+                <a-select
+                  v-if="!isGlobalDaemonMode"
+                  v-model:value="operationForm.type"
+                  style="width: 110px"
+                  @change="handleQueryInstance"
+                >
+                  <a-select-option value="">{{ t("TXT_CODE_filter_all_types") }}</a-select-option>
+                  <a-select-option value="java">{{ t("TXT_CODE_edition_java") }}</a-select-option>
+                  <a-select-option value="bedrock">{{ t("TXT_CODE_edition_bedrock") }}</a-select-option>
+                </a-select>
                 <a-input
                   v-model:value.trim="operationForm.instanceName"
                   :placeholder="t('TXT_CODE_ce132192')"
-                  style="width: calc(100% - 90px)"
+                  style="width: calc(100% - 200px)"
                   @press-enter="handleQueryInstance"
                   @change="handleQueryInstance"
                 >
