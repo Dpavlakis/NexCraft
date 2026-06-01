@@ -12,8 +12,10 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
 
-  // Don't turn helper READMEs into routes.
-  srcExclude: ["images/README.md"],
+  // Don't turn helper READMEs or internal specs/plans into routes.
+  // (superpowers/** are brainstorm specs & plans — raw markdown with angle-bracket
+  // text that the Vue compiler chokes on; they are not site pages.)
+  srcExclude: ["images/README.md", "superpowers/**"],
 
   head: [
     ["link", { rel: "icon", type: "image/svg+xml", href: "/NexCraft/nexcraft_logo.svg" }]
