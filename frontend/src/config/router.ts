@@ -69,25 +69,6 @@ const originRouterConfig: RouterConfig[] = [
     }
   },
   {
-    path: "/quickstart",
-    name: t("TXT_CODE_2799a1dd"),
-    component: LayoutContainer,
-    meta: {
-      permission: ROLE.ADMIN,
-      mainMenu: false
-    },
-    children: [
-      {
-        path: "/quickstart/minecraft",
-        name: t("TXT_CODE_88249aee"),
-        component: LayoutContainer,
-        meta: {
-          permission: ROLE.ADMIN
-        }
-      }
-    ]
-  },
-  {
     path: "/",
     name: "",
     component: LayoutContainer,
@@ -191,6 +172,14 @@ const originRouterConfig: RouterConfig[] = [
           {
             path: `/instances/modpackUpdate`,
             name: t("TXT_CODE_modpack_update_card_title"),
+            component: LayoutContainer,
+            meta: {
+              permission: ROLE.USER
+            }
+          },
+          {
+            path: `/instances/world`,
+            name: t("TXT_CODE_world_card_title"),
             component: LayoutContainer,
             meta: {
               permission: ROLE.USER

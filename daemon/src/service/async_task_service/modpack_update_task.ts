@@ -108,7 +108,7 @@ export class ModpackUpdateTask extends AsyncTask {
       this.phase = "apply";
       inst.println("INFO", $t("TXT_CODE_modpack.updateApplying"));
       await clearReplaceableArtifacts(cwd);
-      const skip = makeShouldPreserve();
+      const skip = makeShouldPreserve(cwd);
       await fs.copy(staging, cwd, {
         overwrite: true,
         filter: (src) => {

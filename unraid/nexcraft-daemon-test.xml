@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>NexCraft-Daemon-Test</Name>
+  <Repository>ghcr.io/dpavlakis/nexcraft-daemon:test</Repository>
+  <Registry>https://github.com/Dpavlakis/NexCraft/pkgs/container/nexcraft-daemon</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Dpavlakis/NexCraft/issues</Support>
+  <Project>https://github.com/Dpavlakis/NexCraft</Project>
+  <Overview>TEST STACK — runs the :test image (a feature branch), with its OWN data dir so it never touches your production NexCraft. Give this container its own IP and pair it with NexCraft-Web-Test.&#xD;&#xA;&#xD;&#xA;The NexCraft daemon — the per-node agent that actually runs your Minecraft servers (downloads modpacks, bootstraps loaders, provisions Java, runs the processes). Ships with Java 21. After it's running, add it as a node in the NexCraft-Web-Test panel (default port 24444) using the access key from its data/Config/global.json. Docs: https://dpavlakis.github.io/NexCraft/</Overview>
+  <Category>Tools: GameServers:</Category>
+  <WebUI/>
+  <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/test/unraid/nexcraft-daemon-test.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/test/unraid/nexcraft_logo_test.webp</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Install the NexCraft-Web-Test container too — it's the dashboard that connects to this daemon. This is a TEST stack; keep its data separate from production.</Requires>
+  <Config Name="Daemon Port" Target="24444" Default="24444" Mode="tcp" Description="Daemon RPC port the panel connects to." Type="Port" Display="always" Required="true" Mask="false">24444</Config>
+  <Config Name="Data" Target="/opt/mcsmanager/daemon/data" Default="/mnt/user/appdata/nexcraft-test/daemon/data" Mode="rw" Description="TEST daemon data: instances, configs, the access key and (with the backup mount below) backups. Kept under nexcraft-test so it never touches production." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/nexcraft-test/daemon/data</Config>
+  <Config Name="Logs" Target="/opt/mcsmanager/daemon/logs" Default="/mnt/user/appdata/nexcraft-test/daemon/logs" Mode="rw" Description="TEST daemon logs." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft-test/daemon/logs</Config>
+  <Config Name="Backups" Target="/opt/mcsmanager/daemon/data/backups" Default="/mnt/user/Backup/Minecraft-test" Mode="rw" Description="Where TEST instance backups are stored. Kept separate from production backups. Clear the field to keep backups inside the Data volume." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/Backup/Minecraft-test</Config>
+  <Config Name="Instance Data Host Path" Target="MCSM_DOCKER_WORKSPACE_PATH" Default="/mnt/user/appdata/nexcraft-test/daemon/data/InstanceData" Mode="" Description="Host path to the InstanceData folder (used only by the legacy Docker-instance mode; harmless otherwise). Keep it pointing at &lt;Data path&gt;/InstanceData." Type="Variable" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft-test/daemon/data/InstanceData</Config>
+  <Config Name="Docker Socket (optional)" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Description="Optional: only needed for legacy Docker-instance mode. Host/general process mode does not need it." Type="Path" Display="advanced" Required="false" Mask="false"/>
+</Container>

@@ -13,6 +13,8 @@ import playerRouter from "./routers/player_router";
 import serviceRouter from "./routers/daemon_router";
 import environmentRouter from "./routers/environment_router";
 import filemanager_router from "./routers/filemananger_router";
+import importRouter from "./routers/import_router";
+import worldRouter from "./routers/world_router";
 import lowUserRouter from "./routers/general_user_router";
 import instanceRouter from "./routers/instance_admin_router";
 import exchangeRouter from "./routers/instance_exchange_router";
@@ -41,6 +43,8 @@ export function mountRouters(app: Koa<Koa.DefaultState, Koa.DefaultContext>) {
   apiRouter.use(scheduleRouter.routes()).use(scheduleRouter.allowedMethods());
   apiRouter.use(backupRouter.routes()).use(backupRouter.allowedMethods());
   apiRouter.use(modpackRouter.routes()).use(modpackRouter.allowedMethods());
+  apiRouter.use(importRouter.routes()).use(importRouter.allowedMethods());
+  apiRouter.use(worldRouter.routes()).use(worldRouter.allowedMethods());
   apiRouter.use(playerRouter.routes()).use(playerRouter.allowedMethods());
   apiRouter.use(metricsRouter.routes()).use(metricsRouter.allowedMethods());
   apiRouter.use(settingsRouter.routes()).use(settingsRouter.allowedMethods());

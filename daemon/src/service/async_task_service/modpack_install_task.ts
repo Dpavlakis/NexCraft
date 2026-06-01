@@ -19,6 +19,7 @@ import {
   extractZipOverwrite,
   fetchFtbVersion,
   ftbTargets,
+  makeShouldPreserve,
   maybeFlatten,
   parseMrpackIndex,
   removeKnownClientMods,
@@ -32,7 +33,7 @@ import { AsyncTask, IAsyncTaskJSON } from "./index";
 // Reinstall/reset behaviour selected by the user:
 //  - "backup_wipe":   back up first, then wipe everything and install fresh
 //  - "wipe":          wipe everything and install fresh (no backup)
-//  - "preserve_world": keep world + server config, replace mods/loader/etc.
+//  - "preserve_world": back up first, then keep world + server config, replace mods/loader/etc.
 export type ResetMode = "backup_wipe" | "wipe" | "preserve_world";
 
 export interface IModpackInstallDescriptor {
@@ -174,7 +175,11 @@ export class ModpackInstallTask extends AsyncTask {
 
     this.phase = "extract";
     this.instance.println("INFO", $t("TXT_CODE_modpack.extracting"));
-    await extractZipOverwrite(tmp, cwd);
+    // On a preserve_world reinstall, skip entries that would clobber the
+    // preserved world/server config (a server pack can ship those). Fresh
+    // installs pass undefined and extract everything (unchanged behaviour).
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await extractZipOverwrite(tmp, cwd, skip);
     await maybeFlatten(cwd, [".mcsm_serverpack.zip"]);
 
     return {
@@ -207,7 +212,10 @@ export class ModpackInstallTask extends AsyncTask {
       }
     });
     this.instance.println("INFO", $t("TXT_CODE_modpack.extracting"));
-    await extractMrpackOverrides(tmp, cwd);
+    // On a preserve_world reinstall, skip overrides that would clobber the
+    // preserved world/server config. Fresh installs extract everything.
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await extractMrpackOverrides(tmp, cwd, skip);
 
     return { mc, loader, loaderVersion };
   }
@@ -222,14 +230,22 @@ export class ModpackInstallTask extends AsyncTask {
     const manifest = await fetchFtbVersion(packId, versionId);
     const { mc, loader, loaderVersion } = ftbTargets(manifest);
 
-    await downloadFtbFiles(manifest, cwd, (done, total) => {
-      this.downloadProgress.percentage = total ? Math.round((done / total) * 100) : 0;
-      const now = Date.now();
-      if (now - this.lastProgressOutput >= 1000) {
-        this.instance.println("INFO", $t("TXT_CODE_modpack.files", { done, total }));
-        this.lastProgressOutput = now;
-      }
-    });
+    // On a preserve_world reinstall, skip manifest files that would clobber the
+    // preserved world/server config. Fresh installs download everything.
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await downloadFtbFiles(
+      manifest,
+      cwd,
+      (done, total) => {
+        this.downloadProgress.percentage = total ? Math.round((done / total) * 100) : 0;
+        const now = Date.now();
+        if (now - this.lastProgressOutput >= 1000) {
+          this.instance.println("INFO", $t("TXT_CODE_modpack.files", { done, total }));
+          this.lastProgressOutput = now;
+        }
+      },
+      skip
+    );
 
     return { mc, loader, loaderVersion };
   }
@@ -278,7 +294,13 @@ export class ModpackInstallTask extends AsyncTask {
 
     this.phase = "extract";
     inst.println("INFO", $t("TXT_CODE_modpack.extracting"));
-    await extractZipOverwrite(tmp, cwd);
+    // On a preserve_world reinstall, clearForReset already kept the user's world
+    // and server config; the BDS zip ships a default worlds/Bedrock level/ plus
+    // server.properties/allowlist/permissions, so skip those entries here or the
+    // extraction would clobber the preserved files. Fresh installs (no resetMode
+    // / "wipe" / "backup_wipe") pass undefined and still extract everything.
+    const skip = this.resetMode === "preserve_world" ? makeShouldPreserve(cwd) : undefined;
+    await extractZipOverwrite(tmp, cwd, skip);
 
     // The Bedrock server binary must be executable; libs load from the cwd.
     const bin = path.join(cwd, "bedrock_server");
@@ -341,7 +363,11 @@ export class ModpackInstallTask extends AsyncTask {
       await this.waitForStop();
     }
     inst.status(Instance.STATUS_BUSY);
-    if (this.resetMode === "backup_wipe") {
+    // Back up before any reinstall that keeps data — both "backup_wipe" and
+    // "preserve_world". Only the explicit "wipe" skips the backup. (preserve_world
+    // keeps the world, but a reinstall/version-swap can still upgrade it one-way,
+    // so the safety net matters.)
+    if (this.resetMode === "backup_wipe" || this.resetMode === "preserve_world") {
       inst.println("INFO", $t("TXT_CODE_modpack.resetBackup"));
       await backupManager.startBackupTask(inst.instanceUuid).wait();
     }

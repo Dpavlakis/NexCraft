@@ -2,6 +2,8 @@
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
 import { useAppRouters } from "@/hooks/useAppRouters";
+import { QUICKSTART_METHOD } from "@/hooks/widgets/quickStartFlow";
+import { useAppStateStore } from "@/stores/useAppStateStore";
 import { t } from "@/lang/i18n";
 import { remoteNodeList } from "@/services/apis";
 import {
@@ -27,10 +29,18 @@ import { modpackBrowseCache } from "./modpackBrowseCache";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import type { LayoutCard, NodeStatus } from "@/types";
-import { AppstoreOutlined, BlockOutlined, SearchOutlined } from "@ant-design/icons-vue";
+import {
+  AppstoreOutlined,
+  BlockOutlined,
+  FileZipOutlined,
+  FolderOpenOutlined,
+  SearchOutlined
+} from "@ant-design/icons-vue";
 import curseforgeIcon from "@/assets/curseforge.svg";
 import modrinthIcon from "@/assets/modrinth.svg";
 import ftbIcon from "@/assets/ftb.svg";
+import grassBlockIcon from "@/assets/grass-block.svg";
+import fileUploadIcon from "@/assets/file-upload.svg";
 import vanillaIcon from "@/assets/loaders/vanilla.svg";
 import bedrockIcon from "@/assets/loaders/bedrock.svg";
 import paperIcon from "@/assets/loaders/paper.png";
@@ -58,11 +68,20 @@ const props = defineProps<{
     packInfo?: IModpackInfo;
   };
 }>();
-const emit = defineEmits<{ (e: "close"): void }>();
+const emit = defineEmits<{
+  (e: "close"): void;
+  (e: "manual-install", method: QUICKSTART_METHOD): void;
+}>();
+
+const { isAdmin } = useAppStateStore();
 
 const isReinstall = computed(() => !!props.reinstallTarget);
+// The Import / Existing tab replaces the old "Create Instance" cards: it only
+// makes sense in browse mode (never when reinstalling into an existing
+// instance) and was admin-gated like those cards.
+const showImportTab = computed(() => !props.reinstallTarget && isAdmin.value);
 // Reset behaviour chosen by the user (only used in reinstall mode).
-const resetMode = ref<ResetMode>("backup_wipe");
+const resetMode = ref<ResetMode>("preserve_world");
 // For a modpack (CurseForge/Modrinth) reset we focus straight on that pack's
 // popup and hide the browse chrome; custom/vanilla resets still browse versions.
 const hideChrome = computed(() => {
@@ -72,14 +91,18 @@ const hideChrome = computed(() => {
 
 const { toPage } = useAppRouters();
 
-type Source = "custom" | "curseforge" | "modrinth" | "ftb";
+type Source = "custom" | "curseforge" | "modrinth" | "ftb" | "import";
 const source = ref<Source>("custom");
-const sources: { key: Source; label: string; img?: string }[] = [
-  { key: "custom", label: t("TXT_CODE_modpack_custom") },
-  { key: "curseforge", label: "CurseForge", img: curseforgeIcon },
-  { key: "modrinth", label: "Modrinth", img: modrinthIcon },
-  { key: "ftb", label: "FTB", img: ftbIcon }
-];
+const sources = computed<{ key: Source; label: string; img?: string }[]>(() => {
+  const list: { key: Source; label: string; img?: string }[] = [
+    { key: "custom", label: t("TXT_CODE_modpack_vanilla"), img: grassBlockIcon },
+    { key: "curseforge", label: "CurseForge", img: curseforgeIcon },
+    { key: "modrinth", label: "Modrinth", img: modrinthIcon },
+    { key: "ftb", label: "FTB", img: ftbIcon }
+  ];
+  if (showImportTab.value) list.push({ key: "import", label: t("TXT_CODE_import_tab"), img: fileUploadIcon });
+  return list;
+});
 
 // ---- nodes ----
 const nodes = ref<NodeStatus[]>([]);
@@ -116,7 +139,7 @@ const results = ref<ResultItem[]>([]);
 // Custom tab = Prism-style server builder: pick a mod loader + a real Minecraft
 // release version (from Mojang), then the daemon bootstraps it.
 const customLoaders = [
-  { value: "vanilla", label: "Vanilla" },
+  { value: "vanilla", label: "Java" },
   { value: "bedrock", label: "Bedrock" },
   { value: "paper", label: "PaperMC" },
   { value: "purpur", label: "Purpur" },
@@ -173,12 +196,16 @@ const sortField = ref("featured");
 // Auto-size the results list to the window, leaving padding at the bottom.
 const resultsScrollEl = ref<HTMLElement>();
 const scrollMaxHeight = ref("520px");
-const BOTTOM_PADDING = 24;
+const BOTTOM_PADDING = 32;
 const recomputeHeight = () => {
   const el = resultsScrollEl.value;
   if (!el) return;
   const top = el.getBoundingClientRect().top;
-  const h = window.innerHeight - top - BOTTOM_PADDING;
+  // The pager row sits BELOW this scroll area (a sibling) and only when paginated.
+  // Reserve room for it + the bottom margin so the list/pager never touch the
+  // screen edge, and so it reflows correctly on window resize.
+  const pagerReserve = totalItems.value > PAGE_SIZE ? 56 : 0;
+  const h = window.innerHeight - top - BOTTOM_PADDING - pagerReserve;
   scrollMaxHeight.value = Math.max(320, Math.round(h)) + "px";
 };
 const sortOptions = [
@@ -319,7 +346,11 @@ const selectSource = (s: Source) => {
   currentPage.value = 1;
   totalItems.value = 0;
   // Custom loads the local catalog; CF/Modrinth load popular packs (empty query).
-  if (s === "custom") {
+  if (s === "import") {
+    // No browsing — the import panel just exposes the existing upload/create flow.
+    results.value = [];
+    customFiltered.value = [];
+  } else if (s === "custom") {
     results.value = [];
     customFiltered.value = [];
     loadCustom();
@@ -382,7 +413,7 @@ const loadVersions = async (item: ResultItem) => {
 };
 
 const currentLoaderLabel = () =>
-  customLoaders.find((l) => l.value === customLoader.value)?.label || "Vanilla";
+  customLoaders.find((l) => l.value === customLoader.value)?.label || "Java";
 const currentLoaderInfo = computed(() => LOADER_INFO[customLoader.value]);
 
 // Modloaders let the user choose the specific build; others auto-pick latest.
@@ -438,6 +469,7 @@ const openInstall = (item: ResultItem) => {
 };
 
 const formatUpdated = (d?: string) => (d ? new Date(d).toLocaleDateString() : "");
+const capitalize = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
 
 const onMemWheel = (e: WheelEvent) => {
   const delta = e.deltaY < 0 ? 1024 : -1024;
@@ -676,6 +708,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("resize", recomputeHeight);
 });
+
+// The pager shows/hides as totalItems crosses PAGE_SIZE, which changes the space we
+// reserve below the list — recompute so the bottom padding stays correct.
+watch(totalItems, () => nextTick(recomputeHeight));
 </script>
 
 <template>
@@ -709,8 +745,24 @@ onBeforeUnmount(() => {
               </a-tab-pane>
             </a-tabs>
 
+            <!-- Import / Existing: reuse the existing upload + create-directly
+                 flows (handled by the parent via the manual-install event). -->
+            <div v-if="source === 'import'" class="import-panel">
+              <FolderOpenOutlined class="import-icon" />
+              <div class="import-title">{{ t("TXT_CODE_a3efb1cc") }}</div>
+              <div class="import-desc">{{ t("TXT_CODE_f09da050") }}</div>
+              <a-button
+                type="primary"
+                size="large"
+                @click="emit('manual-install', QUICKSTART_METHOD.IMPORT)"
+              >
+                <template #icon><FileZipOutlined /></template>
+                {{ t("TXT_CODE_modpack_select_zip") }}
+              </a-button>
+            </div>
+
             <!-- Custom: loader picker + version search -->
-            <div v-if="source === 'custom'" class="mb-12 custom-controls">
+            <div v-else-if="source === 'custom'" class="mb-12 custom-controls">
               <a-segmented
                 v-model:value="customLoader"
                 :options="customLoaderOptions"
@@ -766,7 +818,7 @@ onBeforeUnmount(() => {
               :message="t('TXT_CODE_modpack_ftb_note')"
             />
 
-            <a-spin :spinning="loading">
+            <a-spin v-if="source !== 'import'" :spinning="loading">
               <div ref="resultsScrollEl" class="results-scroll" :style="{ maxHeight: scrollMaxHeight }">
                 <a-list item-layout="horizontal" :data-source="results">
                   <template #renderItem="{ item }">
@@ -780,7 +832,7 @@ onBeforeUnmount(() => {
                             :src="loaderIcon"
                             shape="square"
                             :size="44"
-                            :style="{ background: '#fff', border: '1px solid #eee' }"
+                            :style="{ background: 'transparent' }"
                           />
                           <a-avatar v-else shape="square" :size="44">
                             <template #icon><AppstoreOutlined /></template>
@@ -842,7 +894,24 @@ onBeforeUnmount(() => {
               </a>
             </div>
           </div>
+
+          <div v-if="currentLoaderInfo" class="pack-tags">
+            <a-tag color="blue">{{ dialog.item.id }}</a-tag>
+            <a-tag v-if="dialog.item.mcType">{{ capitalize(dialog.item.mcType) }}</a-tag>
+            <a-tag v-for="ck in currentLoaderInfo.categoryKeys" :key="ck">{{ t(ck) }}</a-tag>
+          </div>
+
           <p v-if="currentLoaderInfo" class="pack-desc">{{ t(currentLoaderInfo.blurbKey) }}</p>
+
+          <template v-if="currentLoaderInfo">
+            <div class="loader-feat-h">{{ t("TXT_CODE_loader_features") }}</div>
+            <ul class="loader-feat">
+              <li v-for="fk in currentLoaderInfo.featureKeys" :key="fk">{{ t(fk) }}</li>
+            </ul>
+            <div v-if="customLoader !== 'bedrock'" class="loader-java-note">
+              {{ t("TXT_CODE_loader_java_autoprovision") }}
+            </div>
+          </template>
         </div>
         <div v-else-if="dialog.item" class="pack-detail">
           <img
@@ -1046,6 +1115,30 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
 }
+.import-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 32px 16px;
+}
+.import-panel .import-icon {
+  font-size: 40px;
+  opacity: 0.5;
+}
+.import-panel .import-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.import-panel .import-desc {
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.7;
+}
 .pager-row {
   display: flex;
   justify-content: flex-end;
@@ -1166,5 +1259,25 @@ onBeforeUnmount(() => {
 .custom-detail .pack-head {
   display: flex;
   align-items: center;
+}
+.custom-detail .loader-feat-h {
+  margin: 14px 0 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.custom-detail .loader-feat {
+  margin: 0;
+  padding-left: 18px;
+  li {
+    margin: 3px 0;
+  }
+}
+.custom-detail .loader-java-note {
+  margin-top: 14px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  border-radius: 6px;
+  border: 1px solid rgba(74, 144, 217, 0.5);
+  background: rgba(74, 144, 217, 0.1);
 }
 </style>

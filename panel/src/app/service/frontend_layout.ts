@@ -429,6 +429,28 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
       ]
     },
     {
+      page: "/instances/world",
+      items: [
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "InstanceWorld",
+          title: t("TXT_CODE_world_card_title"),
+          width: 12,
+          height: LayoutCardHeight.AUTO,
+          disableDelete: true
+        },
+        {
+          id: getRandomId(),
+          meta: {},
+          type: "EmptyCard",
+          title: "",
+          width: 12,
+          height: LayoutCardHeight.MINI
+        }
+      ]
+    },
+    {
       page: "/instances/metrics",
       items: [
         {
@@ -585,40 +607,6 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
           width: 12,
           height: LayoutCardHeight.AUTO,
           disableDelete: true
-        },
-        {
-          id: getRandomId(),
-          meta: {},
-          type: "EmptyCard",
-          title: "",
-          width: 12,
-          height: LayoutCardHeight.MINI
-        }
-      ]
-    },
-    {
-      page: "/quickstart",
-      items: [
-        {
-          id: getRandomId(),
-          meta: {},
-          type: "QuickStartFlow",
-          title: t("TXT_CODE_9b99b72e"),
-          width: 8,
-          height: LayoutCardHeight.AUTO
-        }
-      ]
-    },
-    {
-      page: "/quickstart/minecraft",
-      items: [
-        {
-          id: getRandomId(),
-          meta: {},
-          type: "McPreset",
-          title: "",
-          width: 12,
-          height: LayoutCardHeight.AUTO
         },
         {
           id: getRandomId(),

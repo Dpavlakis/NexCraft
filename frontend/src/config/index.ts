@@ -12,6 +12,7 @@ import InstanceManagerBtns from "@/widgets/instance/ManagerBtns.vue";
 import InstanceMetrics from "@/widgets/instance/Metrics.vue";
 import InstanceModManager from "@/widgets/instance/ModManager.vue";
 import InstanceModpackUpdate from "@/widgets/instance/ModpackUpdate.vue";
+import InstanceWorld from "@/widgets/instance/World.vue";
 import InstancePlayers from "@/widgets/instance/Players.vue";
 import Schedule from "@/widgets/instance/Schedule.vue";
 import InstanceServerConfigFile from "@/widgets/instance/ServerConfigFile.vue";
@@ -38,11 +39,8 @@ import PluginCard from "@/widgets/others/PluginCard.vue";
 import TextCard from "@/widgets/others/TextCard.vue";
 import Page404 from "@/widgets/Page404.vue";
 import DataOverview from "@/widgets/PanelOverview.vue";
-import QuickStart from "@/widgets/QuickStart.vue";
 import RequestChart from "@/widgets/RequestChart.vue";
 import Settings from "@/widgets/Settings.vue";
-import McPreset from "@/widgets/setupApp/McPreset.vue";
-import QuickStartFlow from "@/widgets/setupApp/QuickStartFlow.vue";
 import ShelvesCard from "@/widgets/ShelvesCard.vue";
 import StatusBlock from "@/widgets/StatusBlock.vue";
 import TitleCard from "@/widgets/TitleCard.vue";
@@ -63,7 +61,6 @@ export const LAYOUT_CARD_TYPES: { [key: string]: any } = {
   EmptyCard,
   DataOverview,
   StatusBlock,
-  QuickStart,
   NodeOverview,
   RequestChart,
   InstanceChart,
@@ -83,10 +80,9 @@ export const LAYOUT_CARD_TYPES: { [key: string]: any } = {
   InstanceMetrics,
   InstanceModManager,
   InstanceModpackUpdate,
+  InstanceWorld,
   UserAccessSettings,
   ImageBox,
-  QuickStartFlow,
-  McPreset,
   IframeCard,
   TextCard,
   LinkCard,
@@ -430,6 +426,34 @@ export function getLayoutCardPool() {
     },
     {
       id: getRandomId(),
+      permission: ROLE.ADMIN,
+      meta: {},
+      type: "InstanceWorld",
+      title: t("TXT_CODE_world_card_title"),
+      width: 12,
+      description: t("TXT_CODE_world_card_desc"),
+      height: LayoutCardHeight.MEDIUM,
+      category: NEW_CARD_TYPE.INSTANCE,
+      params: [
+        {
+          field: "instanceId",
+          label: t("TXT_CODE_e6a5c12b"),
+          type: "string"
+        },
+        {
+          field: "daemonId",
+          label: t("TXT_CODE_72cfab69"),
+          type: "string"
+        },
+        {
+          field: "instance",
+          label: t("TXT_CODE_cb043d10"),
+          type: "instance"
+        }
+      ]
+    },
+    {
+      id: getRandomId(),
       permission: ROLE.USER,
       meta: {},
       type: "InstanceBaseInfo",
@@ -510,17 +534,6 @@ export function getLayoutCardPool() {
       description: t("TXT_CODE_55ade942"),
       height: LayoutCardHeight.MEDIUM,
       category: NEW_CARD_TYPE.DATA
-    },
-    {
-      id: getRandomId(),
-      permission: ROLE.ADMIN,
-      type: "QuickStart",
-      title: t("TXT_CODE_e01539f1"),
-      meta: {},
-      width: 4,
-      description: t("TXT_CODE_d628e631"),
-      height: LayoutCardHeight.MEDIUM,
-      category: NEW_CARD_TYPE.INSTANCE
     },
     {
       id: getRandomId(),

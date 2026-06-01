@@ -18,10 +18,29 @@ import type { FormInstance } from "ant-design-vue";
 import { message, Modal, type UploadProps } from "ant-design-vue";
 import type { Rule } from "ant-design-vue/es/form";
 import { computed, createVNode, onUnmounted, reactive, ref } from "vue";
+import { router } from "@/config/router";
 import DockerImageSelect from "../instance/dialogs/components/DockerImageSelect.vue";
 import SelectUnzipCode from "../instance/dialogs/SelectUnzipCode.vue";
+import ImportServerReview from "./ImportServerReview.vue";
 
 const selectUnzipCodeDialog = ref<InstanceType<typeof SelectUnzipCode>>();
+
+// Review/detect/finalize dialog opened after a compressed-package import succeeds.
+const importReviewOpen = ref(false);
+const importReviewUuid = ref("");
+const importReviewDaemonId = ref("");
+
+const goToTerminal = (instanceId: string, daemonId: string) => {
+  router.push({
+    path: "/instances/terminal",
+    query: { daemonId, instanceId }
+  });
+};
+
+const onImportReviewDone = (instanceUuid: string) => {
+  importReviewOpen.value = false;
+  goToTerminal(instanceUuid, importReviewDaemonId.value);
+};
 const emit = defineEmits(["nextStep"]);
 
 const props = defineProps<{
@@ -75,7 +94,9 @@ const beforeUpload: UploadProps["beforeUpload"] = async (file) => {
   if (isImportMode) {
     const extName = file.name.split(".").pop()?.toLowerCase() || "";
     if (!["zip", "jar"].includes(extName)) return reportErrorMsg(t("TXT_CODE_808e5ad9"));
-    selectUnzipCodeDialog.value?.openDialog();
+    // NexCraft is UTF-8 only: skip the decompression-encoding prompt and use the
+    // default (utf-8, already set on `zipCode`). One fewer click on import.
+    finalConfirm();
   } else {
     finalConfirm();
   }
@@ -179,8 +200,16 @@ const selectedFile = async () => {
     uploadFileInstance.value = task;
     const instanceUuid = cfg.value.instanceUuid;
     uploadEndCallback = () => {
-      emit("nextStep", instanceUuid);
-      return message.success(t("TXT_CODE_d28c05df"));
+      message.success(t("TXT_CODE_d28c05df"));
+      // After a compressed-package import, open the review/detect/finalize dialog.
+      // Fall back to the legacy navigation if we somehow lack the uuid/daemonId.
+      if (isImportMode && instanceUuid && props.daemonId) {
+        importReviewUuid.value = instanceUuid;
+        importReviewDaemonId.value = props.daemonId;
+        importReviewOpen.value = true;
+        return;
+      }
+      return emit("nextStep", instanceUuid);
     };
     task.addCallback("end", uploadEndCallback);
   } catch (err: any) {
@@ -234,7 +263,7 @@ const createInstance = async () => {
           </a-form-item>
         </a-col>
 
-        <a-col :xs="24" :md="12">
+        <a-col v-if="!isImportMode" :xs="24" :md="12">
           <a-form-item>
             <a-typography-title :level="5" class="require-field">
               {{ t("TXT_CODE_2f291d8b") }}
@@ -339,7 +368,7 @@ const createInstance = async () => {
         </a-col>
       </a-row>
 
-      <a-form-item name="startCommand">
+      <a-form-item v-if="!isImportMode" name="startCommand">
         <a-typography-title :level="5">
           {{ t("TXT_CODE_d12fa808") }}
         </a-typography-title>
@@ -366,7 +395,7 @@ const createInstance = async () => {
         </a-input-group>
       </a-form-item>
 
-      <a-form-item>
+      <a-form-item v-if="!isImportMode">
         <!-- Update Command -->
         <a-typography-title :level="5">{{ t("TXT_CODE_2e2c6b7b") }}</a-typography-title>
         <a-typography-paragraph>
@@ -397,7 +426,7 @@ const createInstance = async () => {
         </a-form-item>
       </a-form-item>
 
-      <a-row :gutter="20">
+      <a-row v-if="!isImportMode" :gutter="20">
         <a-col :xs="24" :sm="12">
           <a-form-item name="stopCommand">
             <a-typography-title :level="5" class="require-field">
@@ -483,6 +512,14 @@ const createInstance = async () => {
   </div>
 
   <SelectUnzipCode ref="selectUnzipCodeDialog" @select-code="setUnzipCode" />
+
+  <ImportServerReview
+    :open="importReviewOpen"
+    :daemon-id="importReviewDaemonId"
+    :instance-uuid="importReviewUuid"
+    @update:open="(v: boolean) => (importReviewOpen = v)"
+    @done="onImportReviewDone"
+  />
 </template>
 
 <style lang="scss" scoped>

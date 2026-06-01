@@ -12,7 +12,16 @@ import downloadManager from "./download_manager";
 import javaManager from "./java_manager";
 import logger from "./log";
 
-export type ModLoader = "vanilla" | "forge" | "neoforge" | "fabric" | "quilt";
+export type ModLoader =
+  | "vanilla"
+  | "forge"
+  | "neoforge"
+  | "fabric"
+  | "quilt"
+  | "paper"
+  | "purpur"
+  | "folia"
+  | "bedrock";
 
 export interface IBootstrapInput {
   instance: Instance;
@@ -101,6 +110,90 @@ function findTopFile(dir: string, re: RegExp): string | undefined {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.isFile() && re.test(e.name)) return path.join(dir, e.name);
   }
+  return undefined;
+}
+
+// Build a start command from already-present server artifacts. Pure/static so
+// both ModloaderBootstrap and server_detect.ts use one source of truth.
+export function detectStartArtifact(opts: {
+  cwd: string;
+  javaExe: string;
+  memArgs: string;
+  allowScripts?: boolean;
+}): { startCommand: string; loader?: ModLoader } | undefined {
+  const { cwd, javaExe, memArgs } = opts;
+  const allowScripts = opts.allowScripts !== false;
+
+  // Forge/NeoForge 1.17+ args files
+  const argsName = os.platform() === "win32" ? "win_args.txt" : "unix_args.txt";
+  const argsFile = findFile(path.join(cwd, "libraries"), argsName, 10);
+  if (argsFile && fs.existsSync(path.join(cwd, "user_jvm_args.txt"))) {
+    const rel = path.relative(cwd, argsFile).split(path.sep).join("/");
+    const loader: ModLoader = /neoforge/i.test(rel) ? "neoforge" : "forge";
+    return { startCommand: `${javaExe} ${memArgs} @user_jvm_args.txt @${rel} nogui`, loader };
+  }
+
+  // Start scripts shipped by the pack
+  if (allowScripts) {
+    const scripts =
+      os.platform() === "win32"
+        ? ["run.bat", "start.bat", "startserver.bat", "serverstart.bat"]
+        : ["run.sh", "start.sh", "startserver.sh", "serverstart.sh"];
+    for (const s of scripts) {
+      const sp = path.join(cwd, s);
+      if (fs.existsSync(sp)) {
+        if (os.platform() !== "win32") {
+          try {
+            const content = fs.readFileSync(sp, "utf-8");
+            if (content.includes("\r")) fs.writeFileSync(sp, content.replace(/\r\n/g, "\n"));
+            fs.chmodSync(sp, 0o755);
+          } catch {
+            // ignore
+          }
+          return { startCommand: `bash ${s}` };
+        }
+        return { startCommand: s };
+      }
+    }
+  }
+
+  // Forge/NeoForge legacy universal/server jar
+  const universal = findTopFile(cwd, /^(forge|neoforge)-.*\.jar$/i);
+  if (universal && !/installer/i.test(path.basename(universal))) {
+    const loader: ModLoader = /^neoforge/i.test(path.basename(universal)) ? "neoforge" : "forge";
+    return { startCommand: `${javaExe} ${memArgs} -jar ${path.basename(universal)} nogui`, loader };
+  }
+
+  // Fabric / Quilt launch jars
+  if (fs.existsSync(path.join(cwd, "fabric-server-launch.jar")))
+    return { startCommand: `${javaExe} ${memArgs} -jar fabric-server-launch.jar nogui`, loader: "fabric" };
+  if (fs.existsSync(path.join(cwd, "quilt-server-launch.jar")))
+    return { startCommand: `${javaExe} ${memArgs} -jar quilt-server-launch.jar nogui`, loader: "quilt" };
+
+  // NEW: vanilla / Paper / Purpur / Folia — a single runnable top-level jar.
+  // Prefer the jar named in fabric-server-launcher.properties if present.
+  const launcherProps = path.join(cwd, "fabric-server-launcher.properties");
+  if (fs.existsSync(launcherProps)) {
+    const m = /serverJar=(.+)/.exec(fs.readFileSync(launcherProps, "utf-8"));
+    const jar = m?.[1]?.trim();
+    if (jar && fs.existsSync(path.join(cwd, jar)))
+      return { startCommand: `${javaExe} ${memArgs} -jar ${jar} nogui`, loader: "fabric" };
+  }
+  const serverJar =
+    findTopFile(cwd, /^server\.jar$/i) ||
+    findTopFile(cwd, /^paper-.*\.jar$/i) ||
+    findTopFile(cwd, /^purpur-.*\.jar$/i) ||
+    findTopFile(cwd, /^folia-.*\.jar$/i) ||
+    findTopFile(cwd, /^(spigot|craftbukkit)-.*\.jar$/i);
+  if (serverJar) {
+    const base = path.basename(serverJar);
+    let loader: ModLoader = "vanilla";
+    if (/^paper/i.test(base)) loader = "paper";
+    else if (/^purpur/i.test(base)) loader = "purpur";
+    else if (/^folia/i.test(base)) loader = "folia";
+    return { startCommand: `${javaExe} ${memArgs} -jar ${base} nogui`, loader };
+  }
+
   return undefined;
 }
 
@@ -305,52 +398,12 @@ export class ModloaderBootstrap {
   // the system `java` and often self-restart, which hides crashes from the
   // auto-Java-on-launch recovery.
   private detectStartFromExisting(allowScripts = true): string | undefined {
-    const javaExe = this.startJava;
-    const cwd = this.cwd();
-    // Forge/NeoForge 1.17+ args files
-    const argsName = os.platform() === "win32" ? "win_args.txt" : "unix_args.txt";
-    const argsFile = findFile(path.join(cwd, "libraries"), argsName, 10);
-    if (argsFile && fs.existsSync(path.join(cwd, "user_jvm_args.txt"))) {
-      const rel = path.relative(cwd, argsFile).split(path.sep).join("/");
-      return `${javaExe} ${this.memArgs()} @user_jvm_args.txt @${rel} nogui`;
-    }
-    // Start scripts shipped by the pack (most CF Forge/NeoForge server packs)
-    if (allowScripts) {
-      const scripts =
-        os.platform() === "win32"
-          ? ["run.bat", "start.bat", "startserver.bat", "serverstart.bat"]
-          : ["run.sh", "start.sh", "startserver.sh", "serverstart.sh"];
-      for (const s of scripts) {
-        const sp = path.join(cwd, s);
-        if (fs.existsSync(sp)) {
-          if (os.platform() !== "win32") {
-            try {
-              // CF packs ship CRLF .sh scripts (they have a .bat sibling); bash
-              // chokes on \r, so normalize line endings, then make it executable.
-              const content = fs.readFileSync(sp, "utf-8");
-              if (content.includes("\r")) fs.writeFileSync(sp, content.replace(/\r\n/g, "\n"));
-              fs.chmodSync(sp, 0o755);
-            } catch {
-              // ignore
-            }
-            return `bash ${s}`;
-          }
-          return s;
-        }
-      }
-    }
-    // Forge/NeoForge legacy universal/server jar
-    const universal = findTopFile(cwd, /^(forge|neoforge)-.*\.jar$/i);
-    if (universal && !/installer/i.test(path.basename(universal))) {
-      return `${javaExe} ${this.memArgs()} -jar ${path.basename(universal)} nogui`;
-    }
-    // Fabric / Quilt launch jars
-    for (const j of ["fabric-server-launch.jar", "quilt-server-launch.jar"]) {
-      if (fs.existsSync(path.join(cwd, j))) {
-        return `${javaExe} ${this.memArgs()} -jar ${j} nogui`;
-      }
-    }
-    return undefined;
+    return detectStartArtifact({
+      cwd: this.cwd(),
+      javaExe: this.startJava,
+      memArgs: this.memArgs(),
+      allowScripts
+    })?.startCommand;
   }
 
   // The script-based start commands (CF run.sh/startserver.sh) invoke the system

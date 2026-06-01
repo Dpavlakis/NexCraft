@@ -370,19 +370,19 @@ const handleSelectInstance = (item: InstanceMoreDetail) => {
 };
 
 const selectAllInstances = () => {
-  let allInstancesCount = 0;
-  for (const node of tableTreeData.value) {
-    if (!node.children) continue;
-    allInstancesCount += node.children.length;
-  }
-
+  // The card grid renders from `instancesMoreInfo` (single-node view); the global
+  // daemon view renders a tree from `tableTreeData`. The old code only walked
+  // `tableTreeData`, so Select All did nothing in the normal card view (that tree
+  // is empty there). Select from both sources, deduped via findInstance().
   selectedInstance.value = [];
-  if (allInstancesCount === selectedInstance.value?.length) return;
-
+  for (const item of instancesMoreInfo.value) {
+    if (findInstance(item)) continue;
+    selectedInstance.value.push(item);
+  }
   for (const node of tableTreeData.value) {
     if (!node.children) continue;
     for (const child of node.children) {
-      if (findInstance(child.inst)) continue;
+      if (!child.inst || findInstance(child.inst)) continue;
       selectedInstance.value.push(child.inst);
     }
   }

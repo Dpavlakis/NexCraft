@@ -17,7 +17,7 @@ import {
 } from "../service/async_task_service/quick_install";
 import downloadManager from "../service/download_manager";
 import { IInstanceDetail, IJson } from "../service/interfaces";
-import { getMotd, setMotd } from "../service/mc_motd";
+import { getMotd, setMotd, getServerProperty, setServerProperty } from "../service/mc_motd";
 import { modService } from "../service/mod_service";
 import { ROLE } from "../service/protocol";
 import FileManager from "../service/system_file";
@@ -584,6 +584,25 @@ routerApp.on("instance/motd", (ctx, data) => {
     return protocol.response(ctx, true);
   } catch (err: any) {
     protocol.responseError(ctx, err);
+  }
+});
+
+// Get/set a single whitelisted server.properties key (Bedrock server-name /
+// level-name). data.value undefined => read; otherwise write. UTF-8, no colour codes.
+const ALLOWED_SERVER_PROPS = ["server-name", "level-name"];
+routerApp.on("instance/server_property", (ctx, data) => {
+  try {
+    const instance = InstanceSubsystem.getInstance(data.instanceUuid);
+    if (!instance) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
+    const key = String(data.key || "");
+    if (!ALLOWED_SERVER_PROPS.includes(key)) throw new Error("Access denied: property not allowed");
+    if (data.value == null) {
+      return protocol.response(ctx, getServerProperty(instance, key));
+    }
+    setServerProperty(instance, key, String(data.value));
+    protocol.response(ctx, true);
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
   }
 });
 

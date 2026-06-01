@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>NexCraft-Web-Test</Name>
+  <Repository>ghcr.io/dpavlakis/nexcraft-web:test</Repository>
+  <Registry>https://github.com/Dpavlakis/NexCraft/pkgs/container/nexcraft-web</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Dpavlakis/NexCraft/issues</Support>
+  <Project>https://github.com/Dpavlakis/NexCraft</Project>
+  <Overview>TEST STACK — runs the :test image (a feature branch), with its OWN data dir so it never touches your production NexCraft. Give this container its own IP and pair it with NexCraft-Daemon-Test.&#xD;&#xA;&#xD;&#xA;This is the WEB (panel) container. After both Test containers are running, open the web UI, complete first-time setup, and add the Test daemon node (default 24444) using the access key from the Test daemon's data/Config/global.json. Docs: https://dpavlakis.github.io/NexCraft/</Overview>
+  <Category>Tools: GameServers: Network:Web</Category>
+  <WebUI>http://[IP]:[PORT:23333]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Dpavlakis/NexCraft/test/unraid/nexcraft-web-test.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Dpavlakis/NexCraft/test/unraid/nexcraft_logo_test.webp</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Also install the NexCraft-Daemon-Test container — the panel needs a daemon node to run servers. This is a TEST stack; keep its data separate from production.</Requires>
+  <Config Name="WebUI Port" Target="23333" Default="23333" Mode="tcp" Description="NexCraft panel web UI port." Type="Port" Display="always" Required="true" Mask="false">23333</Config>
+  <Config Name="Data" Target="/opt/mcsmanager/web/data" Default="/mnt/user/appdata/nexcraft-test/web/data" Mode="rw" Description="TEST panel data (users, settings, registered daemons). Kept under nexcraft-test so it never touches production." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/nexcraft-test/web/data</Config>
+  <Config Name="Logs" Target="/opt/mcsmanager/web/logs" Default="/mnt/user/appdata/nexcraft-test/web/logs" Mode="rw" Description="TEST panel logs." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/nexcraft-test/web/logs</Config>
+</Container>

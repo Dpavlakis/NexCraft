@@ -17,6 +17,17 @@ export interface ModrinthVersion {
   version_number: string;
 }
 
+// Normalized guess returned by identifyPack — `versions` holds the same
+// version-list shape getCurseForgeModpackVersions / getProjectVersions return,
+// so the modpack browser can consume it directly.
+export interface IPackGuess {
+  source: "curseforge" | "modrinth";
+  projectId: string;
+  projectName: string;
+  confidence: "high" | "low";
+  versions: any[];
+}
+
 class ModManagerService {
   private readonly baseUrl = "https://api.modrinth.com/v2";
   private readonly curseforgeUrl = "https://api.curse.tools";
@@ -1126,6 +1137,70 @@ class ModManagerService {
         fileDate: f.fileDate
       };
     });
+  }
+
+  // Identify which marketplace modpack an imported server came from.
+  // - Modrinth (exact): the .mrpack index embeds file download URLs of the form
+  //   /data/<projectId>/versions/<versionId>/... — pull the projectId and fetch
+  //   its versions. High confidence.
+  // - Fallback: search modpacks by name (the manifest's own source first, then
+  //   the other) and take the top hit. Low confidence.
+  public async identifyPack(detect: {
+    manifest?: { source: "curseforge" | "modrinth"; raw: any };
+    packName?: string;
+  }): Promise<IPackGuess | null> {
+    // 1) Modrinth index (exact)
+    if (detect.manifest?.source === "modrinth") {
+      const files: any[] = detect.manifest.raw?.files || [];
+      let projectId: string | undefined;
+      const re = /\/data\/([^/]+)\/versions\//;
+      for (const f of files) {
+        const url: string | undefined = (f?.downloads || [])[0];
+        const m = url ? re.exec(url) : null;
+        if (m) {
+          projectId = m[1];
+          break;
+        }
+      }
+      if (projectId) {
+        const versions = (await this.getProjectVersions(projectId, "modrinth")) || [];
+        return {
+          source: "modrinth",
+          projectId,
+          projectName: detect.manifest.raw?.name || projectId,
+          confidence: "high",
+          versions
+        };
+      }
+    }
+
+    // 2) Name-search fallback (best-effort)
+    const name = (detect.packName || "").trim();
+    if (name) {
+      const order: Array<"curseforge" | "modrinth"> =
+        detect.manifest?.source === "modrinth"
+          ? ["modrinth", "curseforge"]
+          : ["curseforge", "modrinth"];
+      for (const source of order) {
+        const res = await this.searchProjects(name, 0, 5, { source, type: "modpack" });
+        const top = res?.hits?.[0];
+        const projectId = top ? String(top.id ?? "") : "";
+        if (!projectId) continue;
+        const versions =
+          (source === "curseforge"
+            ? await this.getCurseForgeModpackVersions(projectId)
+            : await this.getProjectVersions(projectId, "modrinth")) || [];
+        return {
+          source,
+          projectId,
+          projectName: top.title ?? name,
+          confidence: "low",
+          versions
+        };
+      }
+    }
+
+    return null;
   }
 
   // Resolve the downloadable server-pack for a chosen CurseForge modpack file.

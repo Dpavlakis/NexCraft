@@ -78,6 +78,11 @@ export default class FileWriter {
 
   async init() {
     if (this.fd != null) return;
+    // fs.open(path,"w+") below creates the file but NOT missing parent dirs. The
+    // legacy /upload route used fs.move (which auto-creates parents); restore that
+    // parity so a chunked upload into a not-yet-existing subdir (e.g. the World
+    // card's .nexcraft_world_up staging dir) doesn't fail with ENOENT.
+    await fs.ensureDir(path.dirname(this.path));
     let locked = false;
     try {
       if (lockfile.checkSync(this.path)) locked = true;

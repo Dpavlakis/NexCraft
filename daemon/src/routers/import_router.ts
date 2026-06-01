@@ -1,0 +1,113 @@
+import fs from "fs-extra";
+import path from "path";
+import { $t } from "../i18n";
+import { routerApp } from "../service/router";
+import * as protocol from "../service/protocol";
+import InstanceSubsystem from "../service/system_instance";
+import { detectServer } from "../service/server_detect";
+import { maybeFlatten } from "../service/modpack_files";
+import { assignFreeBedrockPort, assignFreeMcPort } from "../service/mc_port";
+
+// Inspect an existing instance's files and guess how the server should run
+// (Java vs Bedrock, loader, start command, world name). maybeFlatten first
+// collapses a single nested top-level dir (e.g. a Crafty wrapper) so detection
+// runs against the real server root.
+routerApp.on("import/detect", async (ctx, data) => {
+  try {
+    const inst = InstanceSubsystem.getInstance(data.instanceUuid);
+    if (!inst) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
+    const dir = inst.absoluteCwdPath();
+    await maybeFlatten(dir);
+    protocol.response(ctx, detectServer(dir));
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
+// Commit an import: stamp the instance type + commands (and optional packInfo),
+// accept the EULA for Java, assign a free non-colliding port, and persist.
+routerApp.on("import/finalize", async (ctx, data) => {
+  try {
+    const inst = InstanceSubsystem.getInstance(data.instanceUuid);
+    if (!inst) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
+    const dir = inst.absoluteCwdPath();
+
+    // Fail fast if the instance is running, BEFORE any file/port/config writes.
+    // parameters() below also rejects a running instance (via isStoppedOrBusy)
+    // when changing type, but only after we've already written eula.txt and
+    // rewritten server.properties — so guard up front with the same key.
+    if (!inst.isStoppedOrBusy())
+      throw new Error($t("TXT_CODE_instanceConf.cantModifyInstanceType"));
+
+    const kind: "java" | "bedrock" = data.kind === "bedrock" ? "bedrock" : "java";
+
+    // A Java server cannot be persisted without a start command (Bedrock's is
+    // fixed). Reject before any side effects rather than storing an unstartable
+    // instance.
+    if (kind === "java" && !(typeof data.startCommand === "string" && data.startCommand.trim()))
+      throw new Error($t("TXT_CODE_8c0db3f4"));
+
+    if (kind === "java") {
+      try {
+        fs.writeFileSync(path.join(dir, "eula.txt"), "eula=true\n");
+      } catch {
+        // non-fatal — user can accept the EULA manually
+      }
+    }
+
+    // Make the daemon authoritative for Bedrock so an imported server can NEVER
+    // be unstartable: force the canonical start command (ignoring the frontend)
+    // and ensure the bedrock_server binary is executable before first start.
+    if (kind === "bedrock") {
+      data.startCommand = 'sh -c "LD_LIBRARY_PATH=. exec ./bedrock_server"';
+
+      // Locate bedrock_server at <dir>/bedrock_server, else one level deep in an
+      // immediate subdirectory, and chmod +x it. The daemon runs as root so this
+      // should succeed; surface any failure to the console rather than swallow it.
+      try {
+        let found: string | null = null;
+        const direct = path.join(dir, "bedrock_server");
+        if (fs.existsSync(direct)) {
+          found = direct;
+        } else {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (!entry.isDirectory()) continue;
+            const candidate = path.join(dir, entry.name, "bedrock_server");
+            if (fs.existsSync(candidate)) {
+              found = candidate;
+              break;
+            }
+          }
+        }
+        if (found) fs.chmodSync(found, 0o755);
+      } catch (chmodErr: any) {
+        inst.println("ERROR", `chmod +x bedrock_server failed: ${String(chmodErr?.message ?? chmodErr)}`);
+      }
+    }
+
+    // Assign a free port BEFORE persisting the config below. These helpers mutate
+    // server.properties + inst.config (rcon/ping) and persist their own changes;
+    // the parameters() call below then writes the final, complete config.
+    try {
+      if (kind === "bedrock") await assignFreeBedrockPort(inst);
+      else await assignFreeMcPort(inst);
+    } catch {
+      // non-fatal — user can set the port manually
+    }
+
+    // Persist via the same mechanism the modpack install task uses: parameters()
+    // applies the trusted config and StorageSubsystem.store()s it at the end.
+    const cfg: any = {
+      type: kind === "bedrock" ? "minecraft/bedrock" : "minecraft/java",
+      stopCommand: "stop"
+    };
+    if (typeof data.startCommand === "string" && data.startCommand.trim())
+      cfg.startCommand = data.startCommand.trim();
+    if (data.packInfo) cfg.packInfo = data.packInfo;
+    inst.parameters(cfg, true);
+
+    protocol.response(ctx, { instanceUuid: inst.instanceUuid });
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});

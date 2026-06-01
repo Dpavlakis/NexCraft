@@ -268,7 +268,6 @@ export function fingerprintMods(instanceDir: string): number[] {
 import fs from "fs-extra";
 import path from "path";
 import { detectStartArtifact } from "./modloader_bootstrap";
-import { fingerprintMods } from "./fingerprint";
 import type { ModLoader } from "./modloader_bootstrap";
 
 export interface IServerDetectResult {
@@ -279,7 +278,6 @@ export interface IServerDetectResult {
   worldName: string;
   manifest?: { source: "curseforge" | "modrinth"; raw: any };
   packName?: string;
-  fingerprints?: number[];
 }
 
 function readProp(file: string, key: string): string | undefined {
@@ -350,7 +348,6 @@ export function detectServer(dir: string): IServerDetectResult {
     }
   }
 
-  result.fingerprints = fingerprintMods(dir);
   return result;
 }
 
@@ -472,89 +469,82 @@ routerApp.on("import/finalize", async (ctx, data) => {
 
 ---
 
-## Task 6: Panel — `matchCurseForgeFingerprints` + `identifyPack`
+## Task 6: Panel — `identifyPack` (Modrinth index + CF manifest name-search)
 
 **Files:**
 - Modify: `panel/src/app/service/mod_manager_service.ts`
 
-Read first: the existing CurseForge call helper in this file (base URL, headers, how `getCurseForgeModpackVersions(modId)` is shaped) so the new methods reuse the same axios/proxy setup.
+Read first: the existing helpers in this file — `searchProjects(query, {source, type})`, `getCurseForgeModpackVersions(modId)`, and Modrinth `getProjectVersions(projectId, "modrinth")`. NOTE: CurseForge fingerprinting was investigated and **dropped** (it identifies individual mods, not the pack); CF identification is by manifest **name-search**.
 
-- [ ] **Step 1: Add fingerprint match** (only if Task 1 confirmed the endpoint; otherwise leave it returning `null` and rely on name-search). Use the file's existing CF base URL constant.
-
-```ts
-// Returns the matched modpack { modId, fileId } or null. Uses the same CF proxy
-// base + headers as the other CurseForge calls in this file.
-export async function matchCurseForgeFingerprints(
-  hashes: number[]
-): Promise<{ modId: number; fileId: number } | null> {
-  if (!hashes.length) return null;
-  try {
-    const { data } = await axios.post(
-      `${CF_BASE}/fingerprints`, // adjust to the file's actual CF base path
-      { fingerprints: hashes },
-      { timeout: 20000, headers: cfHeaders() }
-    );
-    const exact = data?.data?.exactMatches?.[0];
-    if (exact?.file?.modId && exact?.file?.id)
-      return { modId: exact.file.modId, fileId: exact.file.id };
-  } catch {
-    // endpoint unavailable / no match
-  }
-  return null;
-}
-```
-
-- [ ] **Step 2: Add `identifyPack`** — strongest signal first; returns a normalized guess + version list. Reuse existing `getCurseForgeModpackVersions` and the Modrinth `getProjectVersions` helpers already in this file.
+- [ ] **Step 1: Add `identifyPack`** — Modrinth index (exact) first, then CF/Modrinth name-search from the manifest name (best-effort). Returns a normalized guess + version list, or `null`.
 
 ```ts
 export interface IPackGuess {
   source: "curseforge" | "modrinth";
   projectId: string;
   projectName: string;
-  versionLabel?: string;
   confidence: "high" | "low";
-  versions: any[]; // same shape modpack browser already consumes
+  versions: any[]; // same shape the modpack browser already consumes
 }
 
 export async function identifyPack(detect: {
-  fingerprints?: number[];
   manifest?: { source: "curseforge" | "modrinth"; raw: any };
   packName?: string;
 }): Promise<IPackGuess | null> {
-  // 1) CurseForge fingerprint (exact)
-  const fp = await matchCurseForgeFingerprints(detect.fingerprints || []);
-  if (fp) {
-    const versions = await getCurseForgeModpackVersions(fp.modId);
-    const name = versions?.[0]?.projectName || detect.packName || String(fp.modId);
-    return { source: "curseforge", projectId: String(fp.modId), projectName: name, confidence: "high", versions };
-  }
-  // 2) Modrinth index: file URLs embed /data/<projectId>/versions/<versionId>/
+  // 1) Modrinth index (exact): file download URLs embed /data/<projectId>/versions/<versionId>/
   if (detect.manifest?.source === "modrinth") {
     const files: any[] = detect.manifest.raw?.files || [];
-    const url: string | undefined = files.map((f) => (f?.downloads || [])[0]).find(Boolean);
-    const m = url && /\/data\/([^/]+)\/versions\//.exec(url);
-    if (m) {
-      const versions = await getProjectVersions(m[1], "modrinth");
+    let projectId: string | undefined;
+    for (const f of files) {
+      const url: string | undefined = (f?.downloads || [])[0];
+      const m = url ? /\/data\/([^/]+)\/versions\//.exec(url) : null;
+      if (m) { projectId = m[1]; break; }
+    }
+    if (projectId) {
+      const versions = await getProjectVersions(projectId, "modrinth");
       return {
         source: "modrinth",
-        projectId: m[1],
-        projectName: detect.manifest.raw?.name || m[1],
+        projectId,
+        projectName: detect.manifest.raw?.name || projectId,
         confidence: "high",
         versions
       };
     }
   }
-  // 3) Name-search fallback (low confidence) — left for the implementer to wire
-  //    using the existing searchProjects(query, {source, type:"modpack"}) helper
-  //    if detect.packName is present; return the first match with confidence "low".
+
+  // 2) Name-search fallback (best-effort): use the manifest/pack name to find the
+  //    modpack project. Try the manifest's own source first, then the other.
+  const name = (detect.packName || "").trim();
+  if (name) {
+    const order: Array<"curseforge" | "modrinth"> =
+      detect.manifest?.source === "modrinth" ? ["modrinth", "curseforge"] : ["curseforge", "modrinth"];
+    for (const source of order) {
+      const hits = await searchProjects(name, { source, type: "modpack" });
+      const top = Array.isArray(hits) ? hits[0] : hits?.data?.[0] ?? hits?.[0];
+      const projectId = top ? String(top.id ?? top.projectId ?? top.project_id ?? "") : "";
+      if (!projectId) continue;
+      const versions =
+        source === "curseforge"
+          ? await getCurseForgeModpackVersions(Number(projectId))
+          : await getProjectVersions(projectId, "modrinth");
+      return {
+        source,
+        projectId,
+        projectName: top.name ?? top.title ?? name,
+        confidence: "low",
+        versions
+      };
+    }
+  }
+
   return null;
 }
 ```
 
-> Note: the name-search fallback (step 3 in code) MUST be implemented using the existing `searchProjects(...)` in this file — search both CF and Modrinth for `detect.packName`, return the top modpack hit as `confidence: "low"`, else `null`. Do not leave it as a comment.
+> Implementer: match the EXACT shapes of `searchProjects` (its args + return) and `getCurseForgeModpackVersions` / `getProjectVersions` as they exist in this file — the property accesses above (`top.id`, `hits.data`, etc.) are guesses; read the real shapes and adjust so it compiles and returns a real `IPackGuess` for a found pack, else `null`.
 
-- [ ] **Step 3: Build.** `npm run build --prefix panel` — Expected: `compiled successfully`. (Watch ES2018: use `RegExp.exec`, not `matchAll`.)
-- [ ] **Step 4: Commit.** `panel: CF fingerprint match + identifyPack`.
+- [ ] **Step 2: Build.** `npm run build --prefix panel` — Expected: `compiled successfully`. (ES2018: use `RegExp.exec`, not `matchAll`.)
+- [ ] **Step 3: Commit.** `panel: identifyPack (Modrinth index + CF manifest name-search)`.
 
 ---
 
@@ -727,5 +717,5 @@ Deploy (publish workflow → update both Unraid containers → hard-refresh), th
 
 ## Notes carried from the spec
 - Reinstall preserves only world + player/server settings (fresh pack mods+config). The `level-name` handling is **Task 5b**.
-- Fingerprint endpoint availability is decided in Task 1; name-search is the guaranteed fallback.
+- CurseForge fingerprinting was investigated (Task 1) and **dropped** — `/v1/fingerprints` identifies individual mods, not the modpack. CF pack-ID is **manifest name-search**; Modrinth is **index-exact**. The Task 3 fingerprint util was reverted.
 - Big multi-GB zips: accepted slow-upload tradeoff (zip-only source).

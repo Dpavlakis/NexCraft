@@ -71,12 +71,36 @@ export const MODPACK_PRESERVE_DIRS = ["logs", "crash-reports"];
 // Replaceable artifacts removed before re-applying a pack during update.
 export const MODPACK_REPLACE_DIRS = ["mods", "config", "libraries", "defaultconfigs", "kubejs"];
 
-export function makeShouldPreserve() {
+// Read the configured world directory name from <instanceDir>/server.properties
+// (`level-name`). Defaults to "world" when absent/unreadable. The save lives at
+// <cwd>/<level-name> (Java) or <cwd>/worlds/<level-name> (Bedrock), so this name
+// must be preserved across a preserve_world reinstall or the save is wiped.
+export function readLevelName(cwd: string): string {
+  try {
+    const raw = fs.readFileSync(path.join(cwd, "server.properties"), "utf-8");
+    const m = raw.match(/^[ \t]*level-name[ \t]*=[ \t]*(.*?)[ \t]*$/im);
+    const name = m?.[1]?.trim();
+    if (name) return name;
+  } catch {
+    // ignore — fall through to default
+  }
+  return "world";
+}
+
+// Build the preserve predicate. When `cwd` is given, the real configured world
+// name (server.properties `level-name`, default "world") is preserved in
+// addition to the standard world*/world_nether/world_the_end/DIM* coverage.
+export function makeShouldPreserve(cwd?: string) {
+  const levelName = cwd ? readLevelName(cwd) : "world";
   return (relPath: string) => {
     const p = relPath.replace(/\\/g, "/").replace(/^\/+/, "");
     if (!p) return true;
     const top = p.split("/")[0];
     if (top.startsWith("world")) return true;
+    if (top.startsWith("DIM")) return true;
+    if (top === levelName) return true;
+    // Bedrock stores its world under worlds/<level-name>/ — preserve that tree.
+    if (top === "worlds") return true;
     if (MODPACK_PRESERVE_DIRS.includes(top)) return true;
     if (MODPACK_PRESERVE_FILES.includes(p)) return true;
     return false;
@@ -278,18 +302,17 @@ export async function extractZipOverwrite(
 ) {
   const zip = new StreamZip.async({ file: zipPath });
   try {
-    if (!skip) {
-      await fs.ensureDir(cwd);
-      await zip.extract(null, cwd);
-      return;
-    }
+    await fs.ensureDir(cwd);
     const entries = await zip.entries();
+    // Always extract entry-by-entry via safeJoin so a malicious archive can't
+    // escape cwd (zip-slip: entries with ".." or absolute paths). zip.extract
+    // with a null entry would write the whole archive without this guard.
     for (const name of Object.keys(entries)) {
       const entry = entries[name];
       if (entry.isDirectory) continue;
-      if (skip(name)) continue;
+      if (skip && skip(name)) continue;
       const dest = safeJoin(cwd, name);
-      if (!dest) continue;
+      if (!dest) throw new Error(`Refusing to extract entry outside target dir: ${name}`);
       await fs.ensureDir(path.dirname(dest));
       await zip.extract(name, dest);
     }
@@ -349,7 +372,7 @@ export async function clearForReset(cwd: string, preserveWorld: boolean) {
     await fs.ensureDir(cwd);
     return;
   }
-  const skip = preserveWorld ? makeShouldPreserve() : null;
+  const skip = preserveWorld ? makeShouldPreserve(cwd) : null;
   for (const name of fs.readdirSync(cwd)) {
     if (skip && skip(name)) continue;
     try {

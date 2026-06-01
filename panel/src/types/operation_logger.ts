@@ -20,6 +20,9 @@ export enum OperationLoggerAction {
   InstanceBackupDownload = "instance_backup_download",
   InstanceModpackInstall = "instance_modpack_install",
   InstanceModpackUpdate = "instance_modpack_update",
+  InstanceImport = "instance_import",
+  InstanceWorldReplace = "instance_world_replace",
+  InstanceWorldReset = "instance_world_reset",
   DaemonCreate = "daemon_create",
   DaemonRemove = "daemon_remove",
   DaemonConfigChange = "daemon_config_change",
@@ -143,6 +146,20 @@ export type InstanceModpackUpdateOptions = {
   pack_name: string;
 } & InstanceGeneralOptions;
 
+export type InstanceImportOptions = {
+  type: "instance_import";
+  daemon_id: string;
+  kind?: string;
+} & GlobalGeneralOptions;
+
+export type InstanceWorldReplaceOptions = {
+  type: "instance_world_replace";
+} & InstanceGeneralOptions;
+
+export type InstanceWorldResetOptions = {
+  type: "instance_world_reset";
+} & InstanceGeneralOptions;
+
 export type DaemonCreateOptions = {
   type: "daemon_create";
   daemon_id: string;
@@ -209,6 +226,9 @@ export type OperationLoggerItem =
   | InstanceBackupDownloadOptions
   | InstanceModpackInstallOptions
   | InstanceModpackUpdateOptions
+  | InstanceImportOptions
+  | InstanceWorldReplaceOptions
+  | InstanceWorldResetOptions
   | DaemonCreateOptions
   | DaemonRemoveOptions
   | DaemonConfigChangeOptions
