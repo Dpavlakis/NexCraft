@@ -78,20 +78,13 @@ export default class FunctionDispatcher extends InstanceCommand {
       instance.setPreset("command", new RconCommand());
     }
 
-    // Minecraft Ping
+    // Minecraft Ping + Sleep-on-empty (Java/MCDR only — Bedrock has no player polling)
     if (
       instance.config.type.includes(Instance.TYPE_MINECRAFT_JAVA) ||
       instance.config.type === TYPE_MINECRAFT_MCDR
     ) {
       instance.setPreset("refreshPlayers", new PingJavaMinecraftServerCommand());
       instance.lifeCycleTaskManager.registerLifeCycleTask(new PingMinecraftServerTask());
-    }
-
-    // Sleep-on-empty: auto-stop when idle (Java + Bedrock)
-    if (
-      instance.config.type.includes("minecraft/java") ||
-      instance.config.type.includes("minecraft/bedrock")
-    ) {
       instance.lifeCycleTaskManager.registerLifeCycleTask(new SleepOnEmptyTask());
     }
   }
