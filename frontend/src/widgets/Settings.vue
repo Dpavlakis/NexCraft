@@ -510,8 +510,7 @@ onUnmounted(() => {
                     </a-typography-paragraph>
                     <a-textarea
                       v-model:value="formData.loginInfo"
-                      :rows="4"
-                      style="max-width: 320px"
+                      :rows="2"
                       :placeholder="t('TXT_CODE_4ea93630')"
                     />
                   </a-form-item>
