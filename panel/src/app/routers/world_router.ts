@@ -129,6 +129,25 @@ router.post(
   }
 );
 
+// Back up the active world (admin) — non-destructive, no operation log.
+router.post(
+  "/backup",
+  permission({ level: ROLE.ADMIN }),
+  validator({ query: { daemonId: String, uuid: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "world/backup",
+        { instanceUuid }
+      );
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
 // Poll a world task (admin)
 router.get(
   "/task_status",

@@ -47,6 +47,14 @@ export const worldReset = useDefineApi<
   method: "POST"
 });
 
+export const worldBackup = useDefineApi<
+  { params: { uuid: string; daemonId: string } },
+  { taskId: string }
+>({
+  url: "/api/protected_world/backup",
+  method: "POST"
+});
+
 export const worldTaskStatus = useDefineApi<
   { params: { uuid: string; daemonId: string; task_id: string } },
   {

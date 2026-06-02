@@ -8,6 +8,7 @@ import InstanceSubsystem from "../service/system_instance";
 import { TaskCenter } from "../service/async_task_service";
 import { WorldReplaceTask } from "../service/async_task_service/world_replace_task";
 import { WorldResetTask } from "../service/async_task_service/world_reset_task";
+import { WorldBackupTask } from "../service/async_task_service/world_backup_task";
 import { readLevelName } from "../service/modpack_files";
 import {
   WORLD_DOWNLOAD_DIR,
@@ -74,6 +75,19 @@ routerApp.on("world/reset", (ctx, data) => {
     const inst = InstanceSubsystem.getInstance(data.instanceUuid);
     if (!inst) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
     const task = new WorldResetTask(inst);
+    TaskCenter.addTask(task);
+    protocol.response(ctx, { taskId: task.taskId });
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
+// Back up the active world (hot; world-only restorable backup into Backups).
+routerApp.on("world/backup", (ctx, data) => {
+  try {
+    const inst = InstanceSubsystem.getInstance(data.instanceUuid);
+    if (!inst) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
+    const task = new WorldBackupTask(inst);
     TaskCenter.addTask(task);
     protocol.response(ctx, { taskId: task.taskId });
   } catch (error: any) {
