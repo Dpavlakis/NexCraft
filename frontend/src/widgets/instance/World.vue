@@ -7,7 +7,8 @@ import {
   DeleteOutlined,
   RollbackOutlined,
   ReloadOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  SaveOutlined
 } from "@ant-design/icons-vue";
 import CardPanel from "@/components/CardPanel.vue";
 import BetweenMenus from "@/components/BetweenMenus.vue";
@@ -25,6 +26,7 @@ import {
   worldDownloadAddress,
   worldReplace,
   worldReset,
+  worldBackup,
   worldTaskStatus,
   type WorldInfo
 } from "@/services/apis/world";
@@ -254,6 +256,18 @@ const onReset = () => {
   });
 };
 
+const onBackup = async () => {
+  try {
+    const { execute } = worldBackup();
+    const res = await execute({ params: { uuid: instanceId, daemonId } });
+    if (res.value?.taskId) {
+      pollTask(res.value.taskId, t("TXT_CODE_world_task_backup_done"));
+    }
+  } catch (e: any) {
+    reportErrorMsg(e?.message || String(e));
+  }
+};
+
 const toConsole = () => {
   toPage({ path: "/instances/terminal", query: { daemonId, instanceId } });
 };
@@ -330,6 +344,13 @@ onBeforeUnmount(() => {
                 <template #icon><CloudDownloadOutlined /></template>
                 {{ t("TXT_CODE_world_download") }}
               </a-button>
+              <a-button
+                :disabled="taskRunning || uploading || !info?.exists"
+                @click="onBackup"
+              >
+                <template #icon><SaveOutlined /></template>
+                {{ t("TXT_CODE_world_backup_btn") }}
+              </a-button>
               <a-button :disabled="taskRunning || uploading" @click="onPickFile">
                 <template #icon><UploadOutlined /></template>
                 {{ t("TXT_CODE_world_replace") }}
@@ -353,6 +374,7 @@ onBeforeUnmount(() => {
 
             <a-typography-paragraph type="secondary" style="margin-top: 12px">
               {{ downloadHint }}<br />
+              {{ t("TXT_CODE_world_backup_hint") }}<br />
               {{ t("TXT_CODE_world_replace_hint") }}<br />
               {{ t("TXT_CODE_world_reset_hint") }}
             </a-typography-paragraph>
