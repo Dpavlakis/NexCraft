@@ -120,8 +120,8 @@ jobs:
           trap 'docker logs validation-web; docker logs validation-daemon; docker rm -f validation-web validation-daemon' EXIT
           docker run -d --name validation-web -p 127.0.0.1:23333:23333 nexcraft-web:validation
           docker run -d --name validation-daemon -p 127.0.0.1:24444:24444 nexcraft-daemon:validation
-          curl --fail --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:23333/ -o /dev/null
-          curl --fail --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:24444/ -o /dev/null
+          curl --fail --retry 30 --retry-connrefused --retry-all-errors --retry-max-time 60 --max-time 5 --retry-delay 1 http://127.0.0.1:23333/ -o /dev/null
+          curl --fail --retry 30 --retry-connrefused --retry-all-errors --retry-max-time 60 --max-time 5 --retry-delay 1 http://127.0.0.1:24444/ -o /dev/null
           docker stop --time 15 validation-web validation-daemon
           test "$(docker inspect -f '{{.State.ExitCode}}' validation-web)" = 0
           test "$(docker inspect -f '{{.State.ExitCode}}' validation-daemon)" = 0
