@@ -1,7 +1,7 @@
-# Reliability hardening — implementation results and pending gates (audit #4)
+# Reliability hardening — implementation results and publication status (audit #4)
 
 Date: 2026-10-29. Checkout: `D:/Projects/NexCraft`, branch `test`.
-Status: implementation and final R3 correction delivered and independently reviewed; **local verification complete**; #4 commit/push, remote CI and GHCR pending. Main is unchanged.
+Status: implementation/review, local verification and #4 CI complete. Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 Contract: [specification](../specs/2026-10-29-reliability-hardening.md). Execution record: [plan](2026-10-29-reliability-hardening.md).
 
 ## Delivered behavior
@@ -33,9 +33,9 @@ These results are supplied by the parent; this sidecar ran no suites or builds.
 | Final Linux frontend type-check and production build | `npm run build --prefix frontend` passed: type-check plus Vite production build, built in 16.11 seconds |
 | Final production browser check | PASS with isolated Edge against actual final dist: 1440 light and 390 dark, Vue/login true, zero page errors, all 14 assets HTTP 200 per case |
 | Final review of R3 correction | Complete and parent-reviewed; focused post-fix checks pass |
-| #4 hosted CI, including applicable image/runtime/browser gates | Pending |
+| #4 hosted CI, including actual image/runtime/browser gates | FULL SUCCESS, run 40942055728: 390 tests (272 backend + 26 account/iframe + 92 reliability), builds, hosted Chrome, both actual Docker images, runtime/common/npm/Java/shared libraries, fresh HTTP startup and SIGTERM exit 0 |
 
-Do not substitute #3's successful run for #4 validation. The historical 79/79 count predates the correction; do not label it as the final full-suite result. The final post-fix Linux suite and production build results above are parent-supplied. No further application changes are planned; compiled browser verification also passes. Local verification is complete; #4 commit/push, remote CI and GHCR have not occurred. Main is unchanged.
+Do not substitute #3's successful run for #4 validation. The historical 79/79 count predates the correction; do not label it as the final full-suite result. The final post-fix Linux suite and production build results above are parent-supplied. No further application changes are planned; compiled browser verification also passes. Local verification and #4 CI are complete. Code `7d66bb8b` is pushed; combined #3/#4 GHCR publication is requested, with completion unverified. Main is unchanged.
 
 ## Compiled browser evidence
 
@@ -44,14 +44,16 @@ Parent-reported helper outcome: PASS against the actual final compiled dist, usi
 - Report: `C:\Users\dimit\AppData\Local\Temp\nexcraft-production-smoke-VoRB1I\report.json`.
 - Actual final dist: `D:\Projects\NexCraft\frontend\node_modules\.cache\nexcraft-preview\reliability-production-1793302676896`.
 
-This completes #4 local verification. #4 actual shipping-image and hosted-Chrome checks await remote CI; the successful #3 CI run does not establish those #4 outcomes.
+This completes #4 local verification. Separate #4 CI run 40942055728 also passed actual shipping-image and hosted-Chrome checks; these outcomes are established by #4 evidence.
 
 ## Publication and follow-up
 
-#4 commit, push, remote CI and GHCR have not yet occurred. Main is unchanged.
+Code commit `7d66bb8b` was pushed to `test`. [#4 CI run 40942055728](https://github.com/Dpavlakis/NexCraft/actions/runs/40942055728) passed in full: **390 tests (272 backend, 26 account/iframe, 92 reliability)**, daemon/panel/frontend type-check/build, hosted Chrome, both actual Docker image builds, final runtime/common/npm/Java/shared-library checks, fresh HTTP startup and SIGTERM exit 0.
 
-Standing user authorization is Sol6.1 subagent execution. Worker no-recursion/no-commit boundaries are not human restrictions on the parent. The parent integrates/reviews/tests and commits/pushes `test`, then dispatches GHCR after #4 CI passes. #3 and #4 publish together; no #3 GHCR dispatch has occurred and `main` is unchanged. Promotion to `main` requires manual acceptance. Finish fixes and tests before further #5 design.
+Combined #3/#4 GHCR publication was requested successfully with `gh workflow run docker.yml --ref test --repo Dpavlakis/NexCraft`: [publish run 40942868091](https://github.com/Dpavlakis/NexCraft/actions/runs/40942868091). Dispatch success does not establish build completion; completion was not watched or claimed. Main is unchanged. After the workflow turns green, update both existing Web and Daemon containers and sign in again because browser sessions are process-local. #5 waits for the user's live test; promotion to `main` requires manual acceptance.
 
 #3 source `673783fd` plus bounded-readiness follow-up `4fd56431` passed [run 40940013639](https://github.com/Dpavlakis/NexCraft/actions/runs/40940013639): security 256/256, account/iframe 26/26, backend/frontend builds, hosted Chrome cold boot, both actual Docker image builds, runtime/npm/common links, Java/shared libraries, fresh HTTP startup and SIGTERM exit 0. [Initial run 40939107627](https://github.com/Dpavlakis/NexCraft/actions/runs/40939107627) failed its startup probe roughly 0.3 seconds after launch; it did not pass. See the [#3 results](2026-10-29-runtime-dependency-hardening-results.md) for historical audit counts, upstream residual families and arm64 not run.
 
 Action-metadata Node 20 annotations under forced Node 24 are nonblocking. #27 queues a verified action refresh; no action major bumps are part of this batch.
+
+The parent will commit/push this documentation-only checkpoint after the publish run started. The publish head is code-validated `7d66bb8b`; these documentation files are not copied into the images.

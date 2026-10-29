@@ -1,7 +1,7 @@
 # Authentication hardening — implementation and verification record (audit #3)
 
 Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
-Status: #3 source `673783fd` and readiness follow-up `4fd56431` passed hosted CI, including Chrome cold boot and both actual Docker final-image gates. No #3 GHCR dispatch has occurred; main is unchanged. The parent will publish #3 and #4 together after #4 CI passes.
+Status: Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 Contract: [authentication specification](../specs/2026-10-29-authentication-hardening.md).
 
 ## Delivered behavior
@@ -52,7 +52,7 @@ node --unhandled-rejections=strict --test scripts/security-tests/authentication-
 
 ## Release gates and follow-up
 
-The [runtime results](2026-10-29-runtime-dependency-hardening-results.md) record the compiled production login, Instances/account/chart checks and negative controls. Docker final-image and hosted Chrome CI gates passed in run 40940013639; see the hosted CI outcome below. No #3 GHCR dispatch has occurred; main is unchanged.
+The [runtime results](2026-10-29-runtime-dependency-hardening-results.md) record the compiled production login, Instances/account/chart checks and negative controls. Docker final-image and hosted Chrome CI gates passed in run 40940013639; see the hosted CI outcome below. Combined #3/#4 GHCR publication is now requested; completion is unverified and main is unchanged.
 
 Malformed/oversized JSON parser log-and-continue HTTP 200 behavior predates #3. #4 implements fail-closed rejection; see its [verification status](2026-10-29-reliability-hardening-results.md) for outstanding gates. Broader design/UserList work and Modpack/Custom sections remain queued for #5. Multi-process sessions and retroactive daemon-capability revocation are outside this implementation.
 
@@ -60,4 +60,8 @@ Malformed/oversized JSON parser log-and-continue HTTP 200 behavior predates #3. 
 
 [Successful #3 CI run 40940013639](https://github.com/Dpavlakis/NexCraft/actions/runs/40940013639) passed on Node 24.22.2: security 256/256, account/iframe 26/26, daemon/panel/frontend builds, hosted Chrome cold boot, both actual Docker image builds, runtime/npm/common links, Java/shared libraries, fresh HTTP startup and SIGTERM exit 0. Source was `673783fd`; follow-up `4fd56431` added bounded HTTP readiness retries. [Initial run 40939107627](https://github.com/Dpavlakis/NexCraft/actions/runs/40939107627) failed only because its startup probe reset roughly 0.3 seconds after launch; that initial run did not pass. These outcomes are parent-supplied evidence.
 
-No #3 GHCR dispatch has occurred; main is unchanged. The parent integrates, reviews and tests, then commits/pushes `test` and dispatches GHCR after successful #4 CI so #3 and #4 publish together. Promotion to `main` requires manual acceptance. Nonblocking action-metadata annotations report Node 20 actions under forced Node 24; #27 now queues a refresh to verified action versions, with no action major bumps in this batch.
+Code commit `7d66bb8b` was pushed to `test`. [#4 CI run 40942055728](https://github.com/Dpavlakis/NexCraft/actions/runs/40942055728) passed in full: **390 tests (272 backend, 26 account/iframe, 92 reliability)**, daemon/panel/frontend type-check/build, hosted Chrome, both actual Docker image builds, final runtime/common/npm/Java/shared-library checks, fresh HTTP startup and SIGTERM exit 0.
+
+Combined #3/#4 GHCR publication was requested successfully with `gh workflow run docker.yml --ref test --repo Dpavlakis/NexCraft`: [publish run 40942868091](https://github.com/Dpavlakis/NexCraft/actions/runs/40942868091). Dispatch success does not establish build completion; completion was not watched or claimed. Main is unchanged. After the workflow turns green, update both existing Web and Daemon containers and sign in again because browser sessions are process-local. #5 waits for the user's live test; promotion to `main` requires manual acceptance. Nonblocking action-metadata annotations report Node 20 actions under forced Node 24; #27 now queues a refresh to verified action versions, with no action major bumps in this batch.
+
+The parent will commit/push this documentation-only checkpoint after the publish run started. The publish head is code-validated `7d66bb8b`; these documentation files are not copied into the images.

@@ -1,6 +1,6 @@
 # Reliability hardening — implemented contracts and verification status (audit #4)
 
-Date: 2026-10-29. Status: source and final R3 correction implemented and independently reviewed; local verification complete; #4 commit/push, remote CI and GHCR pending. Main is unchanged.
+Date: 2026-10-29. Status: implementation/review, local verification and #4 CI complete. Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 Checkout: `D:/Projects/NexCraft`, branch `test`, baseline HEAD `673783fd23aed0bd42dc0214e98b999a70472049`.
 Source: local audit reference `audit-reports/2026-10-29-code-validation.md` (untracked; not a published documentation link).
 Execution: [reliability plan](../plans/2026-10-29-reliability-hardening.md).
@@ -9,7 +9,7 @@ Execution: [reliability plan](../plans/2026-10-29-reliability-hardening.md).
 
 Finish the agreed reliability fixes and their regression checks before #5 design work. Preserve working public APIs, request formats, confirmations, pagination, upload options and timing. Use small changes at existing ownership boundaries; no broad composable, scheduler, authentication or UI rewrite.
 
-Standing user authorization is Sol6.1 subagent execution. No-recursion/no-commit limits are worker assignment boundaries, not human restrictions on the parent. The parent integrates, reviews and tests, commits/pushes `test`, and dispatches GHCR after #4 CI passes, publishing #3 and #4 together. Promotion to `main` requires manual acceptance. Finish fixes/tests before further design. The relocated shared checkout is authoritative; do not create a replacement checkout.
+Approved workflow: Sol6.1 subagent implementation and review, integration on `test`, CI, then combined #3/#4 GHCR dispatch. Code is pushed and CI passed; publication completion and the user's live test remain outstanding. Main is unchanged and promotion requires manual acceptance.
 
 ## Baseline findings and delivered contracts
 
@@ -84,4 +84,12 @@ Out of scope: #5 layout/accessibility work, package/runtime upgrades, #3 session
 
 ## Current verification checkpoint
 
-Parent-reported strict Linux Node 24.22.2 backend security: **272/272, zero skips**; daemon/panel builds remain final stable passes. The R3 author reproduced **8 failures** before correction; focused checks now pass **51/51 (39 file-manager + 12 upload)**, including failure, switchback, Windows-path and default-tab cases. The other **41 R2/R4/R5** tests remain passing. The full frontend reliability suite passes **92/92** on Linux after the final R3 correction. Full `npm run build --prefix frontend` passes, including type-check and Vite production build (16.11 seconds). No further application changes are planned. A test-fixture type failure was fixed without casts or compiler changes; Windows frontend type-check passes. The actual compiled cold-browser helper passes with isolated Edge at 1440 light and 390 dark: Vue/login true, zero page errors, and all 14 assets HTTP 200 in each case. #4 local verification is complete. Commit/push, #4 remote CI and GHCR publication have not occurred; main is unchanged. #4 actual shipping-image and hosted-Chrome gates remain unverified until CI. See the [results](../plans/2026-10-29-reliability-hardening-results.md) before claiming acceptance.
+Parent-reported strict Linux Node 24.22.2 backend security: **272/272, zero skips**; daemon/panel builds remain final stable passes. The R3 author reproduced **8 failures** before correction; focused checks now pass **51/51 (39 file-manager + 12 upload)**, including failure, switchback, Windows-path and default-tab cases. The other **41 R2/R4/R5** tests remain passing. The full frontend reliability suite passes **92/92** on Linux after the final R3 correction. Full `npm run build --prefix frontend` passes, including type-check and Vite production build (16.11 seconds). No further application changes are planned. A test-fixture type failure was fixed without casts or compiler changes; Windows frontend type-check passes. The actual compiled cold-browser helper passes with isolated Edge at 1440 light and 390 dark: Vue/login true, zero page errors, and all 14 assets HTTP 200 in each case. #4 local verification is complete. Code `7d66bb8b` is pushed to `test`; #4 remote CI passed, including actual shipping-image and hosted-Chrome gates. Combined #3/#4 GHCR publication is requested; completion remains unverified and main is unchanged. See the [results](../plans/2026-10-29-reliability-hardening-results.md) before claiming acceptance.
+
+## Final CI and publication status
+
+Code commit `7d66bb8b` was pushed to `test`. [#4 CI run 40942055728](https://github.com/Dpavlakis/NexCraft/actions/runs/40942055728) passed in full: **390 tests (272 backend, 26 account/iframe, 92 reliability)**, daemon/panel/frontend type-check/build, hosted Chrome, both actual Docker image builds, final runtime/common/npm/Java/shared-library checks, fresh HTTP startup and SIGTERM exit 0.
+
+Combined #3/#4 GHCR publication was requested successfully with `gh workflow run docker.yml --ref test --repo Dpavlakis/NexCraft`: [publish run 40942868091](https://github.com/Dpavlakis/NexCraft/actions/runs/40942868091). Dispatch success does not establish build completion; completion was not watched or claimed. Main is unchanged. After the workflow turns green, update both existing Web and Daemon containers and sign in again because browser sessions are process-local. #5 waits for the user's live test; promotion to `main` requires manual acceptance.
+
+The parent will commit/push this documentation-only checkpoint after the publish run started. The publish head is code-validated `7d66bb8b`; these documentation files are not copied into the images.
