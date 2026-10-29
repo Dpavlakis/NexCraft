@@ -1,5 +1,5 @@
+import { assertSafePath, validateWorldName } from "../utils/safe_path";
 import fs from "fs-extra";
-import path from "path";
 import type Instance from "../entity/instance/instance";
 
 // Reads/writes only the `motd` line of a Minecraft server's server.properties,
@@ -58,7 +58,7 @@ function unescapePropValue(value: string): string {
 }
 
 function propsPath(instance: Instance): string {
-  return path.join(instance.absoluteCwdPath(), "server.properties");
+  return assertSafePath(instance.absoluteCwdPath(), "server.properties");
 }
 
 export function getMotd(instance: Instance): string {
@@ -124,6 +124,8 @@ export function getServerProperty(instance: Instance, key: string): string {
 export function setServerProperty(instance: Instance, key: string, value: string): void {
   const file = propsPath(instance);
   const v = String(value ?? "");
+  if (key === "level-name") validateWorldName(v);
+  if (/[\r\n\0]/.test(v)) throw new Error("Invalid property value");
   const re = propRegex(key);
   if (!fs.existsSync(file)) {
     if (v === "") return;

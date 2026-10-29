@@ -76,11 +76,16 @@ For Java instances (host/general mode), the **Mod & Plugin Manager** handles a s
 The **Backups** card supports:
 
 - **Manual** backups and **scheduled** backups (cron-style).
-- **Restore** any backup (uses an overwrite-safe extractor so it fully replaces the live files).
+- **Restore** full or world-only backups (see restore behaviour below).
 - **Compression** toggle, **max backups** retention, **stop-during-backup**, **pre/post commands**, and **file-tree exclusions**.
 - **Download** / **delete** individual backups.
 
 Backups are stored outside the instance folder, so resets/wipes never touch them.
+
+Restore validates the archive before stopping the server, so a corrupt archive is rejected without stopping it. Symbolic links and junctions in restore destinations, and unsupported archive entry types, are rejected. Once applying a restore begins, a failure leaves the server stopped and NexCraft attempts to roll back the changes; check the error before restarting.
+
+- **Full restore** replaces the top-level files and directories included in the archive. Top-level paths absent from the archive are retained. Excluded files inside a replaced directory are **not retained**; exclusions do not protect them during restore.
+- **World-only restore** replaces the backed-up world while preserving other worlds and server files.
 
 ## Players (RCON)
 

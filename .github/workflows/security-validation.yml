@@ -1,0 +1,52 @@
+name: Security validation
+
+on:
+  push:
+    branches: [test, main]
+    paths:
+      - 'daemon/src/**'
+      - 'panel/src/**'
+      - 'common/src/**'
+      - 'common/global.d.ts'
+      - 'scripts/security-tests/**'
+      - 'scripts/run-security-tests.cjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'common/package.json'
+      - 'common/package-lock.json'
+      - 'daemon/package.json'
+      - 'daemon/package-lock.json'
+      - 'panel/package.json'
+      - 'panel/package-lock.json'
+      - '.github/workflows/security-validation.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  security-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install validation dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --prefix common --ignore-scripts --no-audit --no-fund
+          npm ci --prefix daemon --ignore-scripts --no-audit --no-fund
+          npm ci --prefix panel --ignore-scripts --no-audit --no-fund
+      - name: Run security tests
+        run: npm run test:security
+      - name: Build daemon
+        run: npm run build --prefix daemon
+      - name: Build panel
+        run: npm run build --prefix panel

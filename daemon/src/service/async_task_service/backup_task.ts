@@ -1,3 +1,4 @@
+import { acquireInstanceOperation } from "../instance_operation_lock";
 import archiver from "archiver";
 import fs from "fs-extra";
 import path from "path";
@@ -33,6 +34,7 @@ export class BackupTask extends AsyncTask {
   private archive?: ReturnType<typeof archiver>;
   private output?: fs.WriteStream;
   private lastProgressOutput = 0;
+  private shutdownArchive?: () => Promise<void>;
 
   constructor(public instance: Instance) {
     super();
@@ -54,17 +56,53 @@ export class BackupTask extends AsyncTask {
       this.output = fs.createWriteStream(this.targetPath);
       this.archive = archiver("zip", cfg.compress ? { zlib: { level: 9 } } : { store: true });
 
-      this.output.on("close", () => resolve());
-      this.output.on("error", (err) => reject(err));
-
-      this.archive.on("warning", (err: any) => {
-        if (err?.code === "ENOENT") {
-          logger.warn(`BackupTask warning: ${err?.message}`);
-        } else {
-          reject(err);
-        }
+      const archive = this.archive;
+      const output = this.output;
+      let archiveEnded = false;
+      let archiveClosed = false;
+      let outputClosed = false;
+      let failure: unknown;
+      let failed = false;
+      let shutdown: Promise<void> | undefined;
+      archive.on("end", () => { archiveEnded = true; });
+      archive.on("close", () => { archiveClosed = true; });
+      output.on("close", () => {
+        outputClosed = true;
+        if (!failed) resolve();
       });
-      this.archive.on("error", (err) => reject(err));
+      this.shutdownArchive = () => shutdown ||= (async () => {
+        // Abort drains Archiver's active queue item; destroying the transform
+        // alone would leave its source file reader running. Drain before close.
+        // A destroyed archive may close without ever emitting end.
+        const ended = archiveEnded || archiveClosed || archive.readableEnded || archive.closed
+          ? Promise.resolve()
+          : new Promise<void>(r => {
+              if (!archive.destroyed) archive.once("end", r);
+              archive.once("close", r);
+            });
+        const closed = outputClosed || output.closed ? Promise.resolve() : new Promise<void>(r => output.once("close", r));
+        archive.unpipe(output);
+        if (!archive.destroyed) { archive.abort(); archive.resume(); }
+        output.destroy();
+        await Promise.all([ended, closed]);
+        if (!archiveClosed && !archive.closed) {
+          const closedArchive = new Promise<void>(r => archive.once("close", r));
+          archive.destroy();
+          await closedArchive;
+        }
+      })();
+      const fail = (err: unknown) => {
+        if (failed) return;
+        failed = true;
+        failure = err;
+        void this.shutdownArchive!().then(() => reject(failure), () => reject(failure));
+      };
+      output.on("error", fail);
+      archive.on("warning", (err: any) => {
+        if (err?.code === "ENOENT") logger.warn(`BackupTask warning: ${err?.message}`);
+        else fail(err);
+      });
+      archive.on("error", fail);
       this.archive.on("progress", (p) => {
         this.progress.entries = p.entries.processed;
         this.progress.processedBytes = p.fs.processedBytes;
@@ -85,85 +123,86 @@ export class BackupTask extends AsyncTask {
         }
       });
 
-      this.archive.pipe(this.output);
-      // Recursively archive the whole working directory, honoring exclusion globs.
-      this.archive.glob("**/*", {
-        cwd: this.instance.absoluteCwdPath(),
-        dot: true,
-        ignore: cfg.exclusions || []
-      });
-      this.archive.finalize().catch(reject);
+      try {
+        this.archive.pipe(this.output);
+        // Recursively archive the whole working directory, honoring exclusion globs.
+        this.archive.glob("**/*", {
+          cwd: this.instance.absoluteCwdPath(),
+          dot: true,
+          ignore: cfg.exclusions || []
+        });
+        this.archive.finalize().catch(fail);
+      } catch (error) { fail(error); }
     });
   }
 
   async onStart() {
-    const uuid = this.instance.instanceUuid;
-    const cfg = backupManager.getConfig(uuid);
-    const wasRunning = this.instance.status() === Instance.STATUS_RUNNING;
-    let stopped = false;
-
+    const release = acquireInstanceOperation(this.instance.instanceUuid);
     try {
-      this.instance.println("INFO", $t("TXT_CODE_backup.start"));
+      const uuid = this.instance.instanceUuid;
+      const cfg = backupManager.getConfig(uuid);
+      const wasRunning = this.instance.status() === Instance.STATUS_RUNNING;
+      let stopped = false;
 
-      if (cfg.preCommand && this.instance.status() === Instance.STATUS_RUNNING) {
-        await this.instance.execPreset("command", cfg.preCommand);
-      }
+      try {
+        this.instance.println("INFO", $t("TXT_CODE_backup.start"));
 
-      if (cfg.shutdown && wasRunning) {
-        this.instance.println("INFO", $t("TXT_CODE_backup.stopping"));
-        await this.instance.execPreset("stop");
-        await this.waitForStop();
-        stopped = true;
-      }
+        if (cfg.preCommand && this.instance.status() === Instance.STATUS_RUNNING) {
+          await this.instance.execPreset("command", cfg.preCommand);
+        }
 
-      const dir = backupDir(uuid);
-      fs.ensureDirSync(dir);
-      this.targetPath = path.join(dir, `backup-${backupTimestamp()}.zip`);
+        if (cfg.shutdown && wasRunning) {
+          this.instance.println("INFO", $t("TXT_CODE_backup.stopping"));
+          await this.instance.execPreset("stop");
+          await this.waitForStop();
+          stopped = true;
+        }
 
-      await this.createArchive(cfg);
-      backupManager.applyRetention(uuid, cfg.maxBackups);
+        const dir = backupDir(uuid);
+        fs.ensureDirSync(dir);
+        this.targetPath = path.join(dir, `backup-${backupTimestamp()}-${v4()}.zip`);
 
-      this.instance.println("INFO", $t("TXT_CODE_backup.success"));
-    } catch (error: any) {
-      // Clean up a partial archive on failure
-      if (this.targetPath && fs.existsSync(this.targetPath)) {
-        try {
-          fs.removeSync(this.targetPath);
-        } catch (e) {
-          // ignore
+        await this.createArchive(cfg);
+        backupManager.applyRetention(uuid, cfg.maxBackups);
+
+        this.instance.println("INFO", $t("TXT_CODE_backup.success"));
+      } catch (error: any) {
+        await this.shutdownArchive?.();
+        // Clean up a partial archive only after every stream has shut down.
+        if (this.targetPath && fs.existsSync(this.targetPath)) {
+          try {
+            fs.removeSync(this.targetPath);
+          } catch (e) {
+            // ignore
+          }
+        }
+        await this.error(error);
+        return;
+      } finally {
+        if (stopped) {
+          try {
+            await this.instance.execPreset("start");
+          } catch (e) {
+            // ignore restart failure
+          }
+        }
+        if (cfg.postCommand && this.instance.status() === Instance.STATUS_RUNNING) {
+          try {
+            await this.instance.execPreset("command", cfg.postCommand);
+          } catch (e) {
+            // ignore
+          }
         }
       }
-      this.error(error);
-      return;
-    } finally {
-      if (stopped) {
-        try {
-          await this.instance.execPreset("start");
-        } catch (e) {
-          // ignore restart failure
-        }
-      }
-      if (cfg.postCommand && this.instance.status() === Instance.STATUS_RUNNING) {
-        try {
-          await this.instance.execPreset("command", cfg.postCommand);
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
 
-    this.stop();
+      await this.stop();
+    } finally { release(); }
   }
 
   async onStop() {
-    try {
-      this.archive?.abort();
-      this.output?.destroy();
-      this.archive = undefined;
-      this.output = undefined;
-    } catch (error: any) {
-      logger.error("BackupTask -> onStop(): destroy stream error: ", error);
-    }
+    await this.shutdownArchive?.();
+    this.archive = undefined;
+    this.output = undefined;
   }
 
   async onError(err: Error) {

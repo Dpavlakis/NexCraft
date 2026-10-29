@@ -1,3 +1,4 @@
+import { acquireInstanceOperation } from "../instance_operation_lock";
 import { v4 } from "uuid";
 import Instance from "../../entity/instance/instance";
 import { $t } from "../../i18n";
@@ -26,61 +27,64 @@ export class WorldResetTask extends AsyncTask {
   }
 
   async onStart() {
-    const inst = this.instance;
-    const cwd = inst.absoluteCwdPath();
-    const kind = getWorldKind(inst);
-    const levelName = readLevelName(cwd);
-    const status = inst.status();
-    if (status === Instance.STATUS_BUSY || status === Instance.STATUS_STARTING) {
-      this.error(new Error($t("TXT_CODE_backup.busy")));
-      return;
-    }
-    const wasRunning = status === Instance.STATUS_RUNNING;
-    let succeeded = false;
-
+    const release = acquireInstanceOperation(this.instance.instanceUuid);
     try {
-      inst.println("INFO", $t("TXT_CODE_world.resetStart"));
-
-      // 1) Stop.
-      if (wasRunning) {
-        this.phase = "stop";
-        inst.println("INFO", $t("TXT_CODE_world.stopping"));
-        await inst.execPreset("stop");
-        await this.waitForStop();
+      const inst = this.instance;
+      const cwd = inst.absoluteCwdPath();
+      const kind = getWorldKind(inst);
+      const levelName = readLevelName(cwd);
+      const status = inst.status();
+      if (status === Instance.STATUS_BUSY || status === Instance.STATUS_STARTING) {
+        await this.error(new Error($t("TXT_CODE_backup.busy")));
+        return;
       }
-      inst.status(Instance.STATUS_BUSY);
+      const wasRunning = status === Instance.STATUS_RUNNING;
+      let succeeded = false;
 
-      // 2) World-only safety backup (skip if no world yet).
-      this.phase = "backup";
-      if (getActiveWorldPaths(cwd, kind, levelName).length > 0) {
-        inst.println("INFO", $t("TXT_CODE_world.backup"));
-        await backupActiveWorld(inst);
-      }
+      try {
+        inst.println("INFO", $t("TXT_CODE_world.resetStart"));
 
-      // 3) Remove the active world; the server regenerates it on next start.
-      this.phase = "wipe";
-      await wipeActiveWorld(cwd, kind, levelName);
-
-      succeeded = true;
-      this.phase = "done";
-      inst.println("INFO", $t("TXT_CODE_world.done"));
-    } catch (error: any) {
-      inst.status(Instance.STATUS_STOP);
-      this.error(error);
-      return;
-    } finally {
-      if (inst.status() === Instance.STATUS_BUSY) inst.status(Instance.STATUS_STOP);
-      if (wasRunning && succeeded) {
-        try {
-          await inst.execPreset("start");
-        } catch {
-          // ignore restart failure
+        // 1) Stop.
+        if (wasRunning) {
+          this.phase = "stop";
+          inst.println("INFO", $t("TXT_CODE_world.stopping"));
+          await inst.execPreset("stop");
+          await this.waitForStop();
         }
-      } else if (wasRunning && !succeeded) {
-        inst.println("WARN", $t("TXT_CODE_world.failedStopped"));
+        inst.status(Instance.STATUS_BUSY);
+
+        // 2) World-only safety backup (skip if no world yet).
+        this.phase = "backup";
+        if (getActiveWorldPaths(cwd, kind, levelName).length > 0) {
+          inst.println("INFO", $t("TXT_CODE_world.backup"));
+          await backupActiveWorld(inst);
+        }
+
+        // 3) Remove the active world; the server regenerates it on next start.
+        this.phase = "wipe";
+        await wipeActiveWorld(cwd, kind, levelName);
+
+        succeeded = true;
+        this.phase = "done";
+        inst.println("INFO", $t("TXT_CODE_world.done"));
+      } catch (error: any) {
+        inst.status(Instance.STATUS_STOP);
+        await this.error(error);
+        return;
+      } finally {
+        if (inst.status() === Instance.STATUS_BUSY) inst.status(Instance.STATUS_STOP);
+        if (wasRunning && succeeded) {
+          try {
+            await inst.execPreset("start");
+          } catch {
+            // ignore restart failure
+          }
+        } else if (wasRunning && !succeeded) {
+          inst.println("WARN", $t("TXT_CODE_world.failedStopped"));
+        }
       }
-    }
-    this.stop();
+      await this.stop();
+    } finally { release(); }
   }
 
   async onStop() {}

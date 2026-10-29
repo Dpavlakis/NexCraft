@@ -10,6 +10,7 @@ import { isHaveInstanceByUuid } from "../service/permission_service";
 import RemoteRequest from "../service/remote_command";
 import RemoteServiceSubsystem from "../service/remote_service";
 import { systemConfig } from "../setting";
+import { resolveModTarget, ModTarget } from "../utils/mod_target";
 import { checkSafeUrl } from "../utils/url";
 
 const router = new Router({ prefix: "/mod" });
@@ -19,14 +20,22 @@ router.use(async (ctx, next) => {
   if (
     ctx.path === "/mod/mc_versions" ||
     ctx.path === "/mod/search" ||
+    ctx.path === "/mod/versions" ||
     ctx.path === "/mod/info" ||
     ctx.path === "/mod/batch_info"
   ) {
     return await next();
   }
 
-  const instanceUuid = String(ctx.query.uuid || ctx.request.body?.uuid);
-  const daemonId = String(ctx.query.daemonId || ctx.request.body?.daemonId);
+  let target: ModTarget;
+  try {
+    target = resolveModTarget(ctx.method, ctx.query, ctx.request.body);
+  } catch (err: any) {
+    ctx.status = 400;
+    ctx.body = err.message;
+    return;
+  }
+  const { daemonId, instanceUuid } = target;
   const userUuid = getUserUuid(ctx);
 
   // Check global file manager setting
@@ -36,17 +45,19 @@ router.use(async (ctx, next) => {
     return;
   }
 
-  // Check instance access
-  if (instanceUuid && daemonId) {
-    if (isHaveInstanceByUuid(userUuid, daemonId, instanceUuid)) {
-      await next();
-    } else {
-      ctx.status = 403;
-      ctx.body = $t("TXT_CODE_permission.forbiddenInstance");
-    }
-  } else {
-    await next();
+  // Handlers use the exact target whose ownership was checked here.
+  if (!isHaveInstanceByUuid(userUuid, daemonId, instanceUuid)) {
+    ctx.status = 403;
+    ctx.body = $t("TXT_CODE_permission.forbiddenInstance");
+    return;
   }
+  Object.defineProperty(ctx.state, "modTarget", {
+    value: target,
+    writable: false,
+    configurable: false,
+    enumerable: true
+  });
+  await next();
 });
 
 router.get("/mc_versions", speedLimit(0.5), permission({ level: ROLE.USER }), async (ctx) => {
@@ -67,8 +78,7 @@ router.get(
   }),
   async (ctx) => {
     try {
-      const daemonId = String(ctx.query.daemonId);
-      const instanceUuid = String(ctx.query.uuid);
+      const { daemonId, instanceUuid } = ctx.state.modTarget as ModTarget;
       const page = Math.max(1, Number(ctx.query.page) || 1);
       const pageSize = Math.min(50, Math.max(1, Number(ctx.query.pageSize) || 50));
       const folder = ctx.query.folder ? String(ctx.query.folder) : undefined;
@@ -178,8 +188,8 @@ router.post(
   }),
   async (ctx) => {
     try {
-      const { daemonId, uuid, url, fileName, projectType, fallbackUrl, extraInfo } =
-        ctx.request.body;
+      const { daemonId, instanceUuid } = ctx.state.modTarget as ModTarget;
+      const { url, fileName, projectType, fallbackUrl, extraInfo } = ctx.request.body;
 
       // Validate URL to prevent SSRF attacks
       if (!checkSafeUrl(url)) {
@@ -197,7 +207,7 @@ router.post(
 
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       const result = await new RemoteRequest(remoteService).request("instance/mods/install", {
-        instanceUuid: uuid,
+        instanceUuid,
         url,
         fileName,
         type: projectType,
@@ -220,13 +230,14 @@ router.post(
   }),
   async (ctx) => {
     try {
-      const { daemonId, uuid, fileName, type, uploadId } = ctx.request.body;
+      const { daemonId, instanceUuid } = ctx.state.modTarget as ModTarget;
+      const { fileName, type } = ctx.request.body;
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       if (type === "download") {
         const result = await new RemoteRequest(remoteService).request(
           "file/download_from_url_stop",
           {
-            instanceUuid: uuid,
+            instanceUuid,
             fileName
           }
         );
@@ -234,7 +245,7 @@ router.post(
       } else {
         // Upload stop is handled by deleting the file or specific upload task
         const result = await new RemoteRequest(remoteService).request("file/delete", {
-          instanceUuid: uuid,
+          instanceUuid,
           targets: [fileName]
         });
         ctx.body = result;
@@ -254,10 +265,11 @@ router.get(
   }),
   async (ctx) => {
     try {
-      const { daemonId, uuid, modId, type, fileName } = ctx.query;
-      const remoteService = RemoteServiceSubsystem.getInstance(String(daemonId));
+      const { daemonId, instanceUuid } = ctx.state.modTarget as ModTarget;
+      const { modId, type, fileName } = ctx.query;
+      const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       const result = await new RemoteRequest(remoteService).request("instance/mods/config_files", {
-        instanceUuid: uuid,
+        instanceUuid,
         modId,
         type,
         fileName
@@ -278,10 +290,11 @@ router.post(
   }),
   async (ctx) => {
     try {
-      const { daemonId, uuid, fileName } = ctx.request.body;
+      const { daemonId, instanceUuid } = ctx.state.modTarget as ModTarget;
+      const { fileName } = ctx.request.body;
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       const result = await new RemoteRequest(remoteService).request("instance/mods/toggle", {
-        instanceUuid: uuid,
+        instanceUuid,
         fileName
       });
       ctx.body = result;
@@ -300,10 +313,11 @@ router.post(
   }),
   async (ctx) => {
     try {
-      const { daemonId, uuid, fileName } = ctx.request.body;
+      const { daemonId, instanceUuid } = ctx.state.modTarget as ModTarget;
+      const { fileName } = ctx.request.body;
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       const result = await new RemoteRequest(remoteService).request("instance/mods/delete", {
-        instanceUuid: uuid,
+        instanceUuid,
         fileName
       });
       ctx.body = result;

@@ -31,13 +31,20 @@ export abstract class AsyncTask extends EventEmitter implements IAsyncTask, IExe
     super();
   }
 
-  public async start() {
+  private completion?: Promise<void>;
+
+  public start() {
+    this.completion = this.run();
+    return this.completion;
+  }
+
+  private async run() {
     this._status = AsyncTask.STATUS_RUNNING;
     try {
       await this.onStart();
       this.emit("started");
     } catch (error: any) {
-      this.error(error);
+      await this.error(error);
       throw error;
     }
   }
@@ -62,10 +69,13 @@ export abstract class AsyncTask extends EventEmitter implements IAsyncTask, IExe
     logger.error(`AsyncTask - ID: ${this.taskId} TYPE: ${this.type} Error:`, err);
     await this.onError(err);
     this.emit("error", err);
-    this.stop();
+    await this.stop();
   }
 
   public wait() {
+    if (this.completion) return this.completion.then(() => {
+      if (this._status === AsyncTask.STATUS_ERROR) throw this.errorInfo;
+    });
     return new Promise<void>((resolve, reject) => {
       if (this._status === AsyncTask.STATUS_STOP) {
         return resolve();
@@ -97,9 +107,9 @@ export class TaskCenter {
 
   public static addTask(t: IAsyncTask) {
     TaskCenter.tasks.push(t);
-    t.start();
     t.on("stopped", () => TaskCenter.onTaskStopped(t));
     t.on("error", () => TaskCenter.onTaskError(t));
+    void t.start().catch((error) => logger.error("Task start failed:", error));
   }
 
   public static onTaskStopped(t: IAsyncTask) {

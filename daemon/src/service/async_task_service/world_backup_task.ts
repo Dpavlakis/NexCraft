@@ -1,3 +1,4 @@
+import { acquireInstanceOperation } from "../instance_operation_lock";
 import { v4 } from "uuid";
 import Instance from "../../entity/instance/instance";
 import { $t } from "../../i18n";
@@ -20,30 +21,33 @@ export class WorldBackupTask extends AsyncTask {
   }
 
   async onStart() {
-    const inst = this.instance;
-    const status = inst.status();
-    if (status === Instance.STATUS_BUSY || status === Instance.STATUS_STARTING) {
-      this.error(new Error($t("TXT_CODE_backup.busy")));
-      return;
-    }
-    const cwd = inst.absoluteCwdPath();
-    const kind = getWorldKind(inst);
-    const levelName = readLevelName(cwd);
-    if (getActiveWorldPaths(cwd, kind, levelName).length === 0) {
-      this.error(new Error($t("TXT_CODE_world.noWorld")));
-      return;
-    }
+    const release = acquireInstanceOperation(this.instance.instanceUuid);
     try {
-      this.phase = "backup";
-      inst.println("INFO", $t("TXT_CODE_world.backup"));
-      await backupActiveWorld(inst);
-      this.phase = "done";
-      inst.println("INFO", $t("TXT_CODE_world.done"));
-    } catch (error: any) {
-      this.error(error);
-      return;
-    }
-    this.stop();
+      const inst = this.instance;
+      const status = inst.status();
+      if (status === Instance.STATUS_BUSY || status === Instance.STATUS_STARTING) {
+        await this.error(new Error($t("TXT_CODE_backup.busy")));
+        return;
+      }
+      const cwd = inst.absoluteCwdPath();
+      const kind = getWorldKind(inst);
+      const levelName = readLevelName(cwd);
+      if (getActiveWorldPaths(cwd, kind, levelName).length === 0) {
+        await this.error(new Error($t("TXT_CODE_world.noWorld")));
+        return;
+      }
+      try {
+        this.phase = "backup";
+        inst.println("INFO", $t("TXT_CODE_world.backup"));
+        await backupActiveWorld(inst);
+        this.phase = "done";
+        inst.println("INFO", $t("TXT_CODE_world.done"));
+      } catch (error: any) {
+        await this.error(error);
+        return;
+      }
+      await this.stop();
+    } finally { release(); }
   }
 
   async onStop() {}

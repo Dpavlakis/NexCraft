@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import iconv from "iconv-lite";
 import { ProcessWrapper } from "mcsmanager-common";
-import os from "os";
+import { assertSafePath } from "../utils/safe_path";
 import path from "path";
 import { compress, decompress } from "../common/compress";
 import { globalConfiguration } from "../entity/config";
@@ -21,11 +21,13 @@ interface IFile {
 
 export default class FileManager {
   public cwd: string = ".";
+  private unrestrictedRoot: boolean;
 
   constructor(
     public topPath: string = "",
     public fileCode?: string
   ) {
+    this.unrestrictedRoot = topPath === "/" || topPath === "\\";
     if (!path.isAbsolute(topPath)) {
       this.topPath = path.normalize(path.join(process.cwd(), topPath));
     } else {
@@ -38,56 +40,54 @@ export default class FileManager {
   }
 
   isRootTopRath() {
-    return this.topPath === "/" || this.topPath === "\\";
+    return this.unrestrictedRoot;
   }
 
   toAbsolutePath(fileName: string = "") {
-    const topAbsolutePath = this.topPath;
-
-    let finalPath = "";
-    if (path.normalize(fileName).indexOf(topAbsolutePath) === 0) {
-      finalPath = fileName;
-    } else if (os.platform() === "win32") {
-      const reg = new RegExp("^[A-Za-z]{1}:[\\\\/]{1}");
-      if (reg.test(this.cwd)) {
-        finalPath = path.normalize(path.join(this.cwd, fileName));
-      } else if (reg.test(fileName)) {
-        finalPath = path.normalize(fileName);
-      }
-    }
-
-    if (!finalPath) {
-      finalPath = path.normalize(path.join(this.topPath, this.cwd, fileName));
-    }
-
-    // fix the /app/ vs /app mismatch bug and keep it secure
-    const relative = path.relative(topAbsolutePath, finalPath);
-    const isOutside =
-      relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative);
-    if (isOutside && topAbsolutePath !== "/" && topAbsolutePath !== "\\")
+    const portable = fileName.replace(/\\/g, "/");
+    const current =
+      process.platform === "win32" && /^[a-z]:[\\/]/i.test(this.cwd)
+        ? this.cwd
+        : path.join(this.topPath, this.cwd);
+    const normalized = path.normalize(portable);
+    const relative = path.relative(this.topPath, normalized);
+    const insideAbsolute =
+      path.isAbsolute(normalized) &&
+      relative !== ".." &&
+      !relative.startsWith(".." + path.sep) &&
+      !path.isAbsolute(relative);
+    // Slash-prefixed API paths are virtual and join cwd, as in the original
+    // implementation. Native absolute paths within topPath remain supported.
+    const target =
+      insideAbsolute || (process.platform === "win32" && /^[a-z]:/i.test(portable))
+        ? normalized
+        : path.join(current, portable);
+    if (this.isRootTopRath()) return path.resolve(target);
+    if (
+      /^[a-z]:(?![\\/])/i.test(fileName) ||
+      (process.platform !== "win32" &&
+        (/^[a-z]:/i.test(fileName) || fileName.startsWith("\\") || fileName.startsWith("//")))
+    )
       throw new Error(ERROR_MSG_01);
-    return finalPath;
+    return assertSafePath(this.topPath, target);
   }
 
   checkPath(fileNameOrPath: string) {
-    if (this.isRootTopRath()) return true;
-    const destAbsolutePath = path.normalize(this.toAbsolutePath(fileNameOrPath));
-    const topAbsolutePath = path.normalize(this.topPath);
-
-    const destPath = destAbsolutePath.endsWith(path.sep)
-      ? destAbsolutePath.slice(0, -1)
-      : destAbsolutePath;
-    const topPath = topAbsolutePath.endsWith(path.sep)
-      ? topAbsolutePath.slice(0, -1)
-      : topAbsolutePath;
-
-    if (destPath.startsWith(topPath)) {
-      const parts = destPath.split(path.sep);
-      return topPath.split(path.sep).every((part, index) => {
-        return part === parts[index];
-      });
+    try {
+      this.toAbsolutePath(fileNameOrPath);
+      return true;
+    } catch {
+      return false;
     }
-    return false;
+  }
+
+  private checkTree(target: string): string {
+    const absolute = this.toAbsolutePath(target);
+    if (this.isRootTopRath() || !fs.existsSync(absolute)) return absolute;
+    if (fs.lstatSync(absolute).isDirectory()) {
+      for (const name of fs.readdirSync(absolute)) this.checkTree(path.join(absolute, name));
+    }
+    return absolute;
   }
 
   check(destPath: string) {
@@ -165,7 +165,7 @@ export default class FileManager {
 
   async chmod(fileName: string, chmodValue: number, deep: boolean) {
     if (!this.check(fileName) || isNaN(parseInt(chmodValue as any))) throw new Error(ERROR_MSG_01);
-    const absPath = this.toAbsolutePath(fileName);
+    const absPath = deep ? this.checkTree(fileName) : this.toAbsolutePath(fileName);
     const defaultPath = "/bin/chmod";
     let file = "chmod";
     if (fs.existsSync(defaultPath)) file = defaultPath;
@@ -195,13 +195,13 @@ export default class FileManager {
     // if (!FileManager.checkFileName(fileName)) throw new Error(ERROR_MSG_01);
     if (!this.checkPath(fileName)) throw new Error(ERROR_MSG_01);
     const target = this.toAbsolutePath(fileName);
-    fs.createFile(target);
+    await fs.createFile(target);
   }
 
   async copy(target1: string, target2: string) {
     if (!this.checkPath(target2) || !this.check(target1)) throw new Error(ERROR_MSG_01);
-    const targetPath = this.toAbsolutePath(target1);
-    target2 = this.toAbsolutePath(target2);
+    const targetPath = this.checkTree(target1);
+    target2 = this.checkTree(target2);
     return await fs.copy(targetPath, target2);
   }
 
@@ -225,8 +225,8 @@ export default class FileManager {
   async move(target: string, destPath: string) {
     if (!this.check(target)) throw new Error(ERROR_MSG_01);
     if (!this.checkPath(destPath)) throw new Error(ERROR_MSG_01);
-    const targetPath = this.toAbsolutePath(target);
-    destPath = this.toAbsolutePath(destPath);
+    const targetPath = this.checkTree(target);
+    destPath = this.checkTree(destPath);
     await fs.move(targetPath, destPath);
   }
 
@@ -254,7 +254,7 @@ export default class FileManager {
     let totalSize = 0;
     for (const iterator of files) {
       if (this.check(iterator)) {
-        filesPath.push(this.toAbsolutePath(iterator));
+        filesPath.push(this.checkTree(iterator));
         try {
           totalSize += fs.statSync(this.toAbsolutePath(iterator))?.size;
         } catch (error: any) {}

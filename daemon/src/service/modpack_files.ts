@@ -1,3 +1,4 @@
+import { assertSafePath, validateWorldName } from "../utils/safe_path";
 import axios from "axios";
 import fs from "fs-extra";
 import StreamZip from "node-stream-zip";
@@ -31,7 +32,7 @@ export const CLIENT_ONLY_CRASH_MODS: RegExp[] = [
 // Remove known client-only mods from <cwd>/mods so a client modpack installed
 // as a server can still boot. Returns the removed filenames.
 export async function removeKnownClientMods(cwd: string): Promise<string[]> {
-  const modsDir = path.join(cwd, "mods");
+  const modsDir = assertSafePath(cwd, "mods");
   if (!fs.existsSync(modsDir)) return [];
   const removed: string[] = [];
   let entries: string[] = [];
@@ -44,7 +45,7 @@ export async function removeKnownClientMods(cwd: string): Promise<string[]> {
     if (!/\.jar$/i.test(name)) continue;
     if (CLIENT_ONLY_CRASH_MODS.some((re) => re.test(name))) {
       try {
-        await fs.remove(path.join(modsDir, name));
+        await fs.remove(assertSafePath(cwd, path.join(modsDir, name)));
         removed.push(name);
       } catch {
         // ignore — best effort
@@ -76,15 +77,16 @@ export const MODPACK_REPLACE_DIRS = ["mods", "config", "libraries", "defaultconf
 // <cwd>/<level-name> (Java) or <cwd>/worlds/<level-name> (Bedrock), so this name
 // must be preserved across a preserve_world reinstall or the save is wiped.
 export function readLevelName(cwd: string): string {
+  const file = assertSafePath(cwd, "server.properties");
+  let raw: string;
   try {
-    const raw = fs.readFileSync(path.join(cwd, "server.properties"), "utf-8");
-    const m = raw.match(/^[ \t]*level-name[ \t]*=[ \t]*(.*?)[ \t]*$/im);
-    const name = m?.[1]?.trim();
-    if (name) return name;
-  } catch {
-    // ignore — fall through to default
+    raw = fs.readFileSync(file, "utf-8");
+  } catch (error: any) {
+    if (error.code === "ENOENT") return "world";
+    throw error;
   }
-  return "world";
+  const m = raw.match(/^[ \t]*level-name[ \t]*=[ \t]*(.*?)[ \t]*$/im);
+  return m ? validateWorldName(m[1]) : "world";
 }
 
 // Build the preserve predicate. When `cwd` is given, the real configured world
@@ -119,10 +121,8 @@ export function resolveLoader(deps: Record<string, string>): {
 }
 
 // Resolve a zip-relative path under base, rejecting path traversal.
-function safeJoin(base: string, rel: string): string | null {
-  const dest = path.normalize(path.join(base, rel));
-  if (dest !== base && !dest.startsWith(base + path.sep)) return null;
-  return dest;
+function safeJoin(base: string, rel: string): string {
+  return assertSafePath(base, rel);
 }
 
 export async function parseMrpackIndex(mrpackPath: string): Promise<MrpackIndex> {
@@ -286,7 +286,7 @@ export async function extractMrpackOverrides(
         const dest = safeJoin(cwd, rel);
         if (!dest) continue;
         await fs.ensureDir(path.dirname(dest));
-        await zip.extract(name, dest);
+        await zip.extract(name, assertSafePath(cwd, dest));
       }
     }
   } finally {
@@ -314,7 +314,7 @@ export async function extractZipOverwrite(
       const dest = safeJoin(cwd, name);
       if (!dest) throw new Error(`Refusing to extract entry outside target dir: ${name}`);
       await fs.ensureDir(path.dirname(dest));
-      await zip.extract(name, dest);
+      await zip.extract(name, assertSafePath(cwd, dest));
     }
   } finally {
     await zip.close();
@@ -350,10 +350,10 @@ export async function maybeFlatten(cwd: string, ignore: string[] = []) {
     .readdirSync(cwd, { withFileTypes: true })
     .filter((e) => e.isDirectory() && !ignore.includes(e.name));
   for (const d of dirs) {
-    const inner = path.join(cwd, d.name);
+    const inner = assertSafePath(cwd, d.name);
     if (hasServerMarkers(inner)) {
       for (const n of fs.readdirSync(inner)) {
-        await fs.move(path.join(inner, n), path.join(cwd, n), { overwrite: true });
+        await fs.move(assertSafePath(cwd, path.join(inner, n)), assertSafePath(cwd, n), { overwrite: true });
       }
       await fs.remove(inner);
       return;
@@ -376,7 +376,7 @@ export async function clearForReset(cwd: string, preserveWorld: boolean) {
   for (const name of fs.readdirSync(cwd)) {
     if (skip && skip(name)) continue;
     try {
-      await fs.remove(path.join(cwd, name));
+      await fs.remove(assertSafePath(cwd, name));
     } catch {
       // ignore
     }
@@ -386,7 +386,7 @@ export async function clearForReset(cwd: string, preserveWorld: boolean) {
 export async function clearReplaceableArtifacts(cwd: string) {
   for (const d of MODPACK_REPLACE_DIRS) {
     try {
-      await fs.remove(path.join(cwd, d));
+      await fs.remove(assertSafePath(cwd, d));
     } catch {
       // ignore
     }
@@ -404,7 +404,7 @@ export async function clearReplaceableArtifacts(cwd: string) {
       /installer.*\.jar$/i.test(e.name)
     ) {
       try {
-        await fs.remove(path.join(cwd, e.name));
+        await fs.remove(assertSafePath(cwd, e.name));
       } catch {
         // ignore
       }
