@@ -43,12 +43,33 @@ import { computeNodeName } from "../tools/nodes";
 import type { NodeStatus } from "../types/index";
 import InstanceLine from "./instance/InstanceLine.vue";
 import Shortcut from "./instance/Shortcut.vue";
+import ServerGroup from "./instance/ServerGroup.vue";
+import { groupServers } from "@/tools/serverGroups";
+import ServerLayoutSwitch, { type ServerLayout } from "@/components/ServerLayoutSwitch.vue";
 
 defineProps<{
   card: LayoutCard;
 }>();
 
 const { isPhone } = useScreen();
+const layoutStorageKey = "nexcraft.server-list.layout";
+const initialLayout = (): ServerLayout => {
+  try {
+    const saved = localStorage.getItem(layoutStorageKey);
+    if (saved === "compact" || saved === "list" || saved === "overview") return saved;
+  } catch {
+    /* Keep a usable in-memory choice when storage is unavailable. */
+  }
+  return "compact";
+};
+const serverLayout = ref<ServerLayout>(initialLayout());
+watch(serverLayout, (layout) => {
+  try {
+    localStorage.setItem(layoutStorageKey, layout);
+  } catch {
+    /* Presentation still switches. */
+  }
+});
 const operationForm = ref({
   instanceName: "",
   currentPage: 1,
@@ -98,8 +119,15 @@ const initNodes = async () => {
   if (nodes.value?.length === 0) {
     return reportErrorMsg(t("TXT_CODE_e3d96a26"));
   }
-  if (localStorage.getItem("pageSelectedRemote")) {
-    currentRemoteNode.value = JSON.parse(localStorage.pageSelectedRemote);
+  let storedNode: NodeStatus | undefined;
+  try {
+    const stored = localStorage.getItem("pageSelectedRemote");
+    if (stored) storedNode = JSON.parse(stored);
+  } catch {
+    /* A corrupt or unavailable browser preference must not prevent loading servers. */
+  }
+  if (storedNode) {
+    currentRemoteNode.value = storedNode;
     currentRemoteNode.value =
       nodes.value?.find((node) => node.uuid === currentRemoteNode.value?.uuid) ||
       currentRemoteNode.value;
@@ -113,6 +141,44 @@ const initNodes = async () => {
 };
 
 const tableTreeData = ref<any[]>([]);
+const serverGroups = computed(() =>
+  groupServers(instancesMoreInfo.value, (item) => item.config?.packInfo?.source)
+);
+// Presentation-only groups: loaders, refresh and batch ownership keep the raw tree.
+const groupedTableTreeData = computed(() =>
+  tableTreeData.value.map((node) => ({
+    ...node,
+    children: [
+      ...groupServers<any>(
+        node.children.filter((row: any) => row.inst),
+        (row) => row.inst.config?.packInfo?.source
+      ).map((group) => ({
+        key: node.key + ":group:" + group.kind,
+        isServerGroup: true,
+        name: t("TXT_CODE_server_groups_" + group.kind),
+        count: group.items.length,
+        // Ant Table indexes the entire tree by key, including other daemons.
+        children: group.items.map((row) => ({
+          ...row,
+          key: JSON.stringify(["instance", node.key, row.key])
+        }))
+      })),
+      ...node.children.filter((row: any) => row.isLoadMore)
+    ]
+  }))
+);
+const collapsedTableRows = ref(new Set<string>());
+const expandedTableKeys = computed(() =>
+  groupedTableTreeData.value.flatMap((node) =>
+    [node, ...node.children]
+      .filter((row) => row.children?.length && !collapsedTableRows.value.has(row.key))
+      .map((row) => row.key)
+  )
+);
+const setTableExpanded = (expanded: boolean, record: { key: string }) => {
+  if (expanded) collapsedTableRows.value.delete(record.key);
+  else collapsedTableRows.value.add(record.key);
+};
 let endpointGeneration = 0;
 const pageContext = () =>
   JSON.stringify([currentRemoteNode.value?.uuid, operationForm.value, selectedTags.value]);
@@ -131,7 +197,8 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
   if (resetPage) operationForm.value.currentPage = 1;
   let generation = ++endpointGeneration;
   let query = pageContext();
-  const stillCurrent = () => mounted && generation === endpointGeneration && query === pageContext();
+  const stillCurrent = () =>
+    mounted && generation === endpointGeneration && query === pageContext();
   try {
     if (!currentRemoteNode.value) await initNodes();
     if (!mounted) return;
@@ -430,7 +497,8 @@ const selectInstance = (item: InstanceMoreDetail) => {
   if (
     !isPageCurrent() ||
     !instancesMoreInfo.value.some((row) => row.instanceUuid === item.instanceUuid)
-  ) return;
+  )
+    return;
   const index = selectedInstance.value.findIndex((row) => row.instanceUuid === item.instanceUuid);
   if (index !== -1) {
     selectedInstance.value.splice(index, 1);
@@ -691,23 +759,29 @@ const refreshVisibleInstances = async () => {
             if (seen.has(inst.instanceUuid)) return [];
             seen.add(inst.instanceUuid);
             const info = useInstanceMoreDetail(inst);
-            return [{
-              daemonId: item.row.key,
-              key: info.instanceUuid,
-              name: info.config.nickname || info.instanceUuid,
-              inst: info
-            }];
+            return [
+              {
+                daemonId: item.row.key,
+                key: info.instanceUuid,
+                name: info.config.nickname || info.instanceUuid,
+                inst: info
+              }
+            ];
           })
         );
         item.row.maxPage = maxPage;
         item.row.nodeCurrentPage = currentPage;
         item.row.children = [
           ...children,
-          ...(currentPage < maxPage ? [{
-            isLoadMore: true,
-            daemonId: item.row.key,
-            key: `${item.row.key}-load-more`
-          }] : [])
+          ...(currentPage < maxPage
+            ? [
+                {
+                  isLoadMore: true,
+                  daemonId: item.row.key,
+                  key: `${item.row.key}-load-more`
+                }
+              ]
+            : [])
         ];
       }
     }
@@ -840,7 +914,7 @@ onUnmounted(() => {
         </BetweenMenus>
       </a-col>
       <a-col :span="24">
-        <BetweenMenus>
+        <BetweenMenus class="server-list-toolbar">
           <template v-if="instances || isGlobalDaemonMode" #left>
             <div v-if="multipleMode && !isGlobalDaemonMode">
               <a-button class="mr-10" @click="exitMultipleMode">
@@ -854,7 +928,12 @@ onUnmounted(() => {
               >
                 {{ t("TXT_CODE_df87c46d") }}
               </a-button>
-              <a-button v-else class="mr-10" :disabled="!isPageCurrent()" @click="selectAllInstances">
+              <a-button
+                v-else
+                class="mr-10"
+                :disabled="!isPageCurrent()"
+                @click="selectAllInstances"
+              >
                 {{ t("TXT_CODE_f466d7a") }}
               </a-button>
               <a-dropdown>
@@ -885,11 +964,12 @@ onUnmounted(() => {
               </a-button>
             </div>
           </template>
-          <template v-if="multipleMode && !isGlobalDaemonMode" #center>
-            <a-typography-text>
+          <template v-if="!isGlobalDaemonMode" #center>
+            <a-typography-text v-if="multipleMode">
               {{ t("TXT_CODE_432cbc38") }}{{ selectedInstance?.length || 0 }}
               {{ t("TXT_CODE_5cd3b4bd") }}
             </a-typography-text>
+            <ServerLayoutSwitch v-model="serverLayout" />
           </template>
           <template v-if="instances && !isGlobalDaemonMode" #right>
             <a-pagination
@@ -928,43 +1008,56 @@ onUnmounted(() => {
       </a-col>
 
       <a-col v-else-if="!isGlobalDaemonMode && instancesMoreInfo?.length > 0" :span="24">
-        <a-row :gutter="[16, 16]">
-          <fade-up-animation>
-            <a-col
-              v-for="item in instancesMoreInfo"
-              :key="item.instanceUuid"
-              :span="24"
-              :xl="6"
-              :lg="8"
-              :sm="12"
-            >
-              <Shortcut
-                class="instance-card"
-                :class="{ selected: multipleMode && findInstance(item) }"
-                style="height: auto; min-height: 340px"
-                :card="card"
-                :target-instance-info="item"
-                :target-daemon-id="currentRemoteNode?.uuid"
-                :target-node="currentRemoteNode"
-                @click="handleSelectInstance(item)"
-                @refresh-list="initInstancesData()"
-              />
-            </a-col>
-          </fade-up-animation>
-        </a-row>
+        <ServerGroup
+          v-for="group in serverGroups"
+          :key="group.kind"
+          :kind="group.kind"
+          :count="group.items.length"
+          :force-open="multipleMode"
+        >
+          <div class="server-layout-grid" :class="'servers-' + serverLayout">
+            <Shortcut
+              v-for="item in group.items"
+              :key="JSON.stringify([currentRemoteNode?.uuid, item.instanceUuid])"
+              class="instance-card"
+              :class="{ selected: multipleMode && findInstance(item) }"
+              :layout="serverLayout"
+              :disabled="multipleMode"
+              :card="card"
+              :target-instance-info="item"
+              :target-daemon-id="currentRemoteNode?.uuid"
+              :target-node="currentRemoteNode"
+              @click="handleSelectInstance(item)"
+              @refresh-list="initInstancesData()"
+            />
+          </div>
+        </ServerGroup>
       </a-col>
 
       <a-col v-else-if="isGlobalDaemonMode" :span="24">
         <fade-up-animation>
           <a-table
-            :data-source="tableTreeData"
+            :data-source="groupedTableTreeData"
             :columns="instanceTableColumns"
             :pagination="false"
             size="small"
             row-key="key"
-            :default-expand-all-rows="true"
+            :expanded-row-keys="expandedTableKeys"
+            @expand="setTableExpanded"
             :scroll="{ x: 'max-content' }"
           >
+            <template #expandIcon="{ expanded, record, onExpand }">
+              <button
+                v-if="record.children?.length"
+                type="button"
+                class="server-tree-toggle"
+                :aria-expanded="expanded"
+                :aria-label="record.name"
+                @click="onExpand(record, $event)"
+              >
+                <span aria-hidden="true">{{ expanded ? "⌄" : "›" }}</span>
+              </button>
+            </template>
             <template #headerCell="{ column }">
               <div v-if="column.key === 'name'" style="margin-left: 25px">
                 {{ column.title }}
@@ -979,16 +1072,32 @@ onUnmounted(() => {
 
             <template #bodyCell="{ column, record }">
               <template v-if="record.isLoadMore">
-                <div
+                <button
                   v-if="column.key === 'name'"
-                  style="text-align: center; cursor: pointer; color: var(--color-blue-6)"
+                  type="button"
+                  class="server-load-more"
                   @click="loadMoreInstances(record.daemonId)"
                 >
                   {{ t("TXT_CODE_101ef36f") }}
-                </div>
+                </button>
+              </template>
+              <template v-else-if="record.isServerGroup">
+                <span v-if="column.key === 'name'" class="server-table-group">
+                  {{ record.name }}
+                  <span class="server-table-count"
+                    >{{ record.count }} {{ t("TXT_CODE_server_groups_on_page") }}</span
+                  >
+                </span>
+              </template>
+              <template v-else-if="record.node">
+                <span v-if="column.key === 'name'">
+                  <DatabaseOutlined v-if="record.node.available" class="mr-8" />
+                  <FrownOutlined v-else class="mr-8" />
+                  <strong>{{ record.name }}</strong>
+                </span>
               </template>
               <InstanceLine
-                v-else
+                v-else-if="record.inst"
                 :column="column"
                 :record="record"
                 :target-instance-info="record.inst"
@@ -1024,6 +1133,92 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" scoped>
+.server-list-toolbar :deep(.menus-item-center) {
+  flex: 0 0 auto;
+  width: auto;
+}
+.server-list-toolbar :deep(.menus-item-left) {
+  flex: 0 1 auto;
+}
+.server-list-toolbar :deep(.menus-item-left > div) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.server-list-toolbar :deep(.menus-item-right) {
+  margin-left: auto;
+}
+.server-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.server-layout-grid.servers-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+.server-layout-grid .instance-card {
+  cursor: pointer;
+}
+@media (max-width: 1100px) {
+  .server-layout-grid:not(.servers-list) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 680px) {
+  .server-list-toolbar :deep(.menus-item-left) {
+    flex-basis: 100%;
+  }
+  .server-list-toolbar :deep(.menus-item-center) {
+    width: auto !important;
+  }
+  .server-list-toolbar :deep(.menus-item-right) {
+    justify-content: flex-end !important;
+    min-width: 0;
+  }
+  .server-list-toolbar :deep(.ant-pagination) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .server-layout-grid:not(.servers-list) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.server-tree-toggle,
+.server-load-more {
+  border: 0;
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+  cursor: pointer;
+}
+.server-tree-toggle {
+  width: 24px;
+  height: 28px;
+  margin-right: 4px;
+}
+.server-load-more {
+  color: var(--color-blue-6);
+  padding: 4px 8px;
+}
+.server-tree-toggle:focus-visible,
+.server-load-more:focus-visible {
+  outline: 2px solid var(--color-blue-6);
+  outline-offset: 2px;
+}
+.server-table-group {
+  font-weight: 600;
+}
+.server-table-count {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 .search-input {
   transition: all 0.6s;
   text-align: center;

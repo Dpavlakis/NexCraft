@@ -7,6 +7,7 @@ import ImageManager from "@/widgets/imageManager/index.vue";
 import NewImage from "@/widgets/imageManager/NewImage.vue";
 import InstanceBackups from "@/widgets/instance/Backups.vue";
 import InstanceBaseInfo from "@/widgets/instance/BaseInfo.vue";
+import InstanceQuickSettings from "@/widgets/instance/QuickSettings.vue";
 import InstanceFileManager from "@/widgets/instance/FileManager.vue";
 import InstanceManagerBtns from "@/widgets/instance/ManagerBtns.vue";
 import InstanceMetrics from "@/widgets/instance/Metrics.vue";
@@ -72,6 +73,7 @@ export const LAYOUT_CARD_TYPES: { [key: string]: any } = {
   Terminal,
   InstanceManagerBtns,
   InstanceBaseInfo,
+  InstanceQuickSettings,
   InstanceServerConfigOverview,
   InstanceServerConfigFile,
   InstanceFileManager,
@@ -111,6 +113,21 @@ export interface NewCardItem extends LayoutCard {
 
 export function getLayoutCardPool() {
   const LAYOUT_CARD_POOL: NewCardItem[] = [
+    {
+      id: getRandomId(),
+      permission: ROLE.USER,
+      meta: {},
+      type: "InstanceQuickSettings",
+      title: t("TXT_CODE_quick_title"),
+      width: 8,
+      description: t("TXT_CODE_quick_description"),
+      height: LayoutCardHeight.AUTO,
+      category: NEW_CARD_TYPE.INSTANCE,
+      params: [
+        { field: "instanceId", label: t("TXT_CODE_e6a5c12b"), type: "string" },
+        { field: "daemonId", label: t("TXT_CODE_72cfab69"), type: "string" }
+      ]
+    },
     {
       id: getRandomId(),
       permission: ROLE.GUEST,

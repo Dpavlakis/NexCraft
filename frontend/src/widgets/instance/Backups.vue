@@ -8,6 +8,7 @@ import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { getFileConfigAddr } from "@/hooks/useFileManager";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
+import BackupList from "./BackupList.vue";
 import BackupExclusions from "@/widgets/instance/dialogs/BackupExclusions.vue";
 import {
   backupDownloadAddress,
@@ -25,16 +26,12 @@ import { reportErrorMsg } from "@/tools/validator";
 import type { LayoutCard } from "@/types/index";
 import {
   CloudUploadOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
   FolderOpenOutlined,
-  RedoOutlined,
   RollbackOutlined,
   SaveOutlined
 } from "@ant-design/icons-vue";
 import { message } from "ant-design-vue";
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import type { AntColumnsType } from "../../types/ant";
 
 const props = defineProps<{
   card: LayoutCard;
@@ -142,20 +139,6 @@ const loadBackups = async () => {
     listLoading.value = false;
   }
 };
-
-const formatSize = (bytes: number) => {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0;
-  let n = bytes;
-  while (n >= 1024 && i < units.length - 1) {
-    n /= 1024;
-    i++;
-  }
-  return `${n.toFixed(2)} ${units[i]}`;
-};
-
-const formatTime = (ms: number) => (ms ? new Date(ms).toLocaleString() : "-");
 
 // ---- Task polling (shared by backup & restore) ----
 let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -267,38 +250,6 @@ const download = async (record: BackupItem) => {
   }
 };
 
-const columns: AntColumnsType[] = [
-  {
-    align: "center",
-    title: t("TXT_CODE_backup_col_name"),
-    dataIndex: "name",
-    key: "name",
-    minWidth: 220
-  },
-  {
-    align: "center",
-    title: t("TXT_CODE_backup_col_size"),
-    dataIndex: "size",
-    key: "size",
-    minWidth: 100,
-    customRender: (e: { text: number }) => formatSize(e.text)
-  },
-  {
-    align: "center",
-    title: t("TXT_CODE_backup_col_time"),
-    dataIndex: "time",
-    key: "time",
-    minWidth: 160,
-    customRender: (e: { text: number }) => formatTime(e.text)
-  },
-  {
-    align: "center",
-    title: t("TXT_CODE_82fbc5ad"),
-    key: "actions",
-    minWidth: 240
-  }
-];
-
 onMounted(() => {
   loadConfig();
   loadBackups();
@@ -402,40 +353,13 @@ onBeforeUnmount(() => {
           <template #title>{{ t("TXT_CODE_backup_list") }}</template>
           <template #body>
             <a-spin :spinning="listLoading">
-              <a-table
-                :data-source="backups"
-                :columns="columns"
-                row-key="name"
-                :scroll="{ x: 'max-content' }"
-                :pagination="{ pageSize: 10 }"
-              >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'actions'">
-                    <a-button class="mr-8" size="small" @click="download(record as BackupItem)">
-                      <DownloadOutlined />
-                      {{ t("TXT_CODE_backup_download") }}
-                    </a-button>
-                    <a-popconfirm
-                      :title="t('TXT_CODE_backup_restore_confirm')"
-                      @confirm="restore(record as BackupItem)"
-                    >
-                      <a-button class="mr-8" size="small" :disabled="taskRunning">
-                        <RedoOutlined />
-                        {{ t("TXT_CODE_backup_restore") }}
-                      </a-button>
-                    </a-popconfirm>
-                    <a-popconfirm
-                      :title="t('TXT_CODE_backup_delete_confirm')"
-                      @confirm="remove(record as BackupItem)"
-                    >
-                      <a-button danger size="small">
-                        <DeleteOutlined />
-                        {{ t("TXT_CODE_ecbd7449") }}
-                      </a-button>
-                    </a-popconfirm>
-                  </template>
-                </template>
-              </a-table>
+              <BackupList
+                :backups="backups"
+                :task-running="taskRunning"
+                @download="download"
+                @restore="restore"
+                @remove="remove"
+              />
             </a-spin>
           </template>
         </CardPanel>

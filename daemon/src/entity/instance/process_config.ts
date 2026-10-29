@@ -37,7 +37,9 @@ export class ProcessConfig {
     }
     if (
       this.iProcessConfig.type === "properties" ||
-      this.iProcessConfig.type === "properties_not_unicode"
+      this.iProcessConfig.type === "properties_not_unicode" ||
+      this.iProcessConfig.type === "properties_lossless" ||
+      this.iProcessConfig.type === "properties_not_unicode_lossless"
     ) {
       const regex = /^[ \t]*([^=:\n]+?)[ \t]*=[ \t]*(-?\d+)[ \t]*$/gm;
       let preprocessedText = text.replace(regex, (match, p1, p2) => {
@@ -86,6 +88,19 @@ export class ProcessConfig {
       });
       text = text.replace(/ = /gim, "=");
       text = text.replace(/\\\\u/gim, "\\u");
+    }
+    if (
+      this.iProcessConfig.type === "properties_lossless" ||
+      this.iProcessConfig.type === "properties_not_unicode_lossless"
+    ) {
+      const newObject = JSON.parse(JSON.stringify(object));
+      const converted = convertPropertiesWriteValues(newObject);
+      text = properties.stringify(converted, {
+        unicode: this.iProcessConfig.type === "properties_lossless"
+      });
+      // Compact only the key/value delimiter on each line. Escapes and value
+      // text belong to the serializer, including literal \\u and " = ".
+      text = text.replace(/^([^\r\n]*?) = /gm, "$1=");
     }
     if (this.iProcessConfig.type === "json") {
       text = JSON.stringify(object, null, 4);

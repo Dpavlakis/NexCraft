@@ -295,7 +295,15 @@ async function mountedPage(h) {
     }
   });
   const src = path.join(root, "frontend/src");
-  const mock = (name, value) => mocks.set(path.join(src, name), value);
+  function resolve(filename) {
+    if (!path.extname(filename))
+      return fs.existsSync(filename) && fs.statSync(filename).isDirectory()
+        ? path.join(filename, "index.ts")
+        : filename + ".ts";
+    return filename;
+  }
+  // Directory, explicit index and extensionless imports share one mock/cache key.
+  const mock = (name, value) => mocks.set(resolve(path.join(src, name)), value);
   mock("lang/i18n", { t: (key) => key });
   mock("stores/useAppStateStore", {
     useAppStateStore: () => ({ state: { userInfo: { token: h.token() } }, isAdmin: vue.ref(true) })
@@ -321,19 +329,22 @@ async function mountedPage(h) {
   ])
     mock(name, { __esModule: true, default: ui });
   function load(filename) {
+    filename = resolve(filename);
     if (mocks.has(filename)) return mocks.get(filename);
-    if (!path.extname(filename))
-      filename =
-        fs.existsSync(filename) && fs.statSync(filename).isDirectory()
-          ? path.join(filename, "index.ts")
-          : filename + ".ts";
     if (cache.has(filename)) return cache.get(filename).exports;
     const module = { exports: {} };
     cache.set(filename, module);
     let code = fs.readFileSync(filename, "utf8");
     if (filename.endsWith(".vue")) {
       const { descriptor } = compiler.parse(code, { filename });
-      code = compiler.compileScript(descriptor, { id: filename, inlineTemplate: true }).content;
+      code = compiler.compileScript(descriptor, {
+        id: filename,
+        inlineTemplate: true,
+        fs: {
+          fileExists: fs.existsSync,
+          readFile: (file) => fs.readFileSync(file, "utf8")
+        }
+      }).content;
     }
     const js = ts.transpileModule(code, {
       compilerOptions: {

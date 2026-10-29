@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ServerSourceBadge from "./ServerSourceBadge.vue";
 import InstanceVersionInfo from "@/components/InstanceVersionInfo.vue";
 import { useGameEndpoint } from "@/hooks/useGameEndpoint";
 import { useDeleteInstanceDialog } from "@/components/fc/index";
@@ -148,7 +149,10 @@ const toInstanceTerminal = async () => {
     </template>
 
     <template v-else-if="column.key === 'type' && !node">
-      {{ record.inst.moreInfo?.instanceTypeText }}
+      <div class="instance-line-type">
+        <span>{{ record.inst.moreInfo?.instanceTypeText }}</span>
+        <ServerSourceBadge :source="targetInstanceInfo?.config?.packInfo?.source" />
+      </div>
     </template>
 
     <template v-else-if="column.key === 'gameAddress' && !node">
@@ -248,3 +252,13 @@ const toInstanceTerminal = async () => {
     </template>
   </div>
 </template>
+
+<style scoped>
+.instance-line-type {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+</style>

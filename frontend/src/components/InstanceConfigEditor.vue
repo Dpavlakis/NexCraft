@@ -4,6 +4,7 @@ import LineOption from "@/components/LineOption.vue";
 import { getDescriptionByTitle } from "@/tools/common";
 import { jsonToMap } from "@/tools/common";
 import isEmpty from "lodash/isEmpty";
+import { computed } from "vue";
 import { configData } from "@/config/instanceConfigMap";
 
 const props = defineProps<{
@@ -18,7 +19,7 @@ const data:
     }
   | undefined = configData[props.configName];
 
-const parsedConfig = jsonToMap(props.config);
+const parsedConfig = computed(() => jsonToMap(props.config));
 </script>
 
 <template>
@@ -44,7 +45,7 @@ const parsedConfig = jsonToMap(props.config);
       <template #body>
         <div v-if="!isEmpty(props.config)">
           <div v-for="(item, index) in parsedConfig" :key="index" class="p-1">
-            <LineOption :option-value="parsedConfig" :option-key="index">
+            <LineOption :option-value="parsedConfig" :option-key="index" boolean-switch>
               <template #title>{{ index }}</template>
               <template #info>{{ getDescriptionByTitle(data?.config, index) }}</template>
             </LineOption>

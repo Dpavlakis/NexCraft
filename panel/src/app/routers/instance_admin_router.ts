@@ -163,15 +163,30 @@ router.delete(
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       if (!instanceUuids || !Array.isArray(instanceUuids))
         throw new Error("Type error, invalid uuids or daemonId");
-      const instanceIds = instanceUuids.map((uuid: string) => {
-        return { instanceUuid: uuid, daemonId };
-      });
-      await userSystem.deleteUserInstances(null, instanceIds, true);
+      const requested = new Set(instanceUuids);
       const result = await new RemoteRequest(remoteService).request("instance/delete", {
         instanceUuids,
         deleteFile
       });
-      result.instances.forEach((e: { instanceUuid: string; nickname: string }) => {
+      // The echoed instanceUuids are requests, not acknowledgements. Per-instance
+      // daemon failures are omitted from instances, so retain those users' access.
+      const confirmed = new Map<string, { instanceUuid: string; nickname: string }>();
+      for (const instance of Array.isArray(result?.instances) ? result.instances : []) {
+        if (
+          typeof instance?.instanceUuid === "string" &&
+          requested.has(instance.instanceUuid)
+        ) {
+          if (!confirmed.has(instance.instanceUuid)) confirmed.set(instance.instanceUuid, instance);
+        }
+      }
+      if (confirmed.size > 0) {
+        await userSystem.deleteUserInstances(
+          null,
+          [...confirmed.keys()].map((instanceUuid) => ({ instanceUuid, daemonId })),
+          true
+        );
+      }
+      confirmed.forEach((e) => {
         operationLogger.log(
           "instance_delete",
           {

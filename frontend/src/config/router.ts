@@ -104,6 +104,12 @@ const originRouterConfig: RouterConfig[] = [
         },
         children: [
           {
+            path: `/instances/quickSettings`,
+            name: t("TXT_CODE_quick_title"),
+            component: LayoutContainer,
+            meta: { permission: ROLE.USER }
+          },
+          {
             path: `/instances/terminal/files`,
             name: t("TXT_CODE_ae533703"),
             component: LayoutContainer,

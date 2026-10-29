@@ -81,10 +81,13 @@ jobs:
       - name: Frontend reliability behavior tests
         working-directory: frontend
         run: node node_modules/vitest/vitest.mjs run --config src/reliability-tests/reliability.config.ts
+      - name: Frontend settings presentation tests
+        working-directory: frontend
+        run: node node_modules/vitest/vitest.mjs run --config src/settings-tests/group-backup.config.ts
       - name: Type-check and build frontend
         run: |
           npm run type-check --prefix frontend
-          npm run build --prefix frontend
+          npm run build-only --prefix frontend
       - name: Cold browser boot of production frontend
         timeout-minutes: 2
         run: |

@@ -108,21 +108,12 @@ export function toUnicode(str: string) {
   let value = "";
   for (let i = 0; i < str.length; i++) {
     if (/([\u4E00-\u9FA5]|[\uFE30-\uFFA0])/g.test(str[i])) {
-      value += "\\u" + leftZero4(parseInt(str.charCodeAt(i).toString(16)).toString());
+      value += "\\u" + str.charCodeAt(i).toString(16).padStart(4, "0");
     } else {
       value += str[i];
     }
   }
   return value;
-}
-
-function leftZero4(str: string) {
-  if (str != null && str !== "" && str !== "undefined") {
-    if (str.length == 2) {
-      return "00" + str;
-    }
-  }
-  return str || "";
 }
 
 const isIPv6 = (str: string) => {

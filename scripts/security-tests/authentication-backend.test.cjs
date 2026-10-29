@@ -192,7 +192,7 @@ function makeUser(uuid = "player", permission = 1, options = {}) {
   return user;
 }
 function code(secret) {
-  return authenticator.generate(secret);
+  return authenticator.clone({ epoch: Date.now() }).generate(secret);
 }
 function stagedSecret() {
   return new URL(qrUris.at(-1)).searchParams.get("secret");
@@ -366,7 +366,11 @@ async function startApp(options = {}) {
   apps.add(instance);
   return instance;
 }
-beforeEach(() => {
+beforeEach((t) => {
+  // Pin authenticator validation/code generation and the initial store clock at
+  // the reported 30-second boundary. advance() still moves session time alone,
+  // so expiry/proof-budget tests do not accidentally become TOTP-drift tests.
+  t.mock.method(Date, "now", () => 1793312490000);
   for (const user of users.objects.values()) users.onSecurityChange(user.uuid);
   users.objects.clear();
   disk.clear();
@@ -698,6 +702,48 @@ test("ordinary API keys work; sensitive APIs reject query/header keys with or wi
   assert.equal((await h.request("/api/ordinary?apikey=player-api-key")).status, 403);
 });
 
+test("TOTP boundary keeps configured login drift separate from strict current proof", async () => {
+  const beforeOptions = { ...authenticator.options },
+    secret = "JBSWY3DPEHPK3PXP";
+  makeUser("player", 1, { open2FA: true, secret });
+  const h = await startApp(),
+    epoch = h.store.now(),
+    current = code(secret),
+    adjacent = [-30000, 30000].map((offset) =>
+      authenticator.clone({ epoch: epoch + offset }).generate(secret)
+    );
+  assert.equal(epoch, Date.now());
+  assert.equal(epoch % 30000, 0);
+  for (const factor of adjacent) {
+    assert.notEqual(factor, current);
+    assert.throws(() => users.checkUser({ userName: "player", passWord: password }, factor));
+  }
+  settings.systemConfig.totpDriftToleranceSteps = 1;
+  for (const factor of adjacent) {
+    const session = await h.login("player", password, factor);
+    assert.equal(
+      (
+        await h.request("/api/auth/bind2fa", {
+          ...session,
+          method: "POST",
+          body: { currentPassword: password, currentTOTP: factor }
+        })
+      ).status,
+      403
+    );
+    assert.equal(
+      (
+        await h.request("/api/auth/bind2fa", {
+          ...session,
+          method: "POST",
+          body: { currentPassword: password, currentTOTP: current }
+        })
+      ).status,
+      200
+    );
+  }
+  assert.deepEqual(authenticator.options, beforeOptions);
+});
 test("password proof, bcrypt/legacy MD5, self factor preservation and admin recovery", async () => {
   const secret = authenticator.generateSecret();
   makeUser("player", 1, { open2FA: true, secret });

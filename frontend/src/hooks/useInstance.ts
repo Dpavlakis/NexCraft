@@ -189,7 +189,7 @@ export const INSTANCE_CONFIGS: InstanceConfigs[] = [
     fileName: t("TXT_CODE_9b36d5a2"),
     path: "server.properties",
     redirect: "common/server.properties",
-    type: "properties",
+    type: "properties_lossless",
     info: t("TXT_CODE_12e3afa9"),
     category: [
       TYPE_MINECRAFT_SPIGOT,
@@ -281,7 +281,7 @@ export const INSTANCE_CONFIGS: InstanceConfigs[] = [
     fileName: "[Bedrock] server.properties",
     path: "server.properties",
     redirect: "bds/server.properties",
-    type: "properties",
+    type: "properties_not_unicode_lossless",
     info: t("TXT_CODE_3a3f9a57"),
     category: [TYPE_MINECRAFT_BDS, TYPE_MINECRAFT_BEDROCK]
   },

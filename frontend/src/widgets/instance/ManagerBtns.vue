@@ -53,6 +53,8 @@ import InstancePlayers from "./Players.vue";
 import InstanceWorld from "./World.vue";
 import InstanceSchedule from "./Schedule.vue";
 import InstanceServerConfigOverview from "./ServerConfigOverview.vue";
+import InstanceQuickSettings from "./QuickSettings.vue";
+import { quickEdition } from "@/tools/quickSettings";
 
 const terminalConfigDialog = ref<InstanceType<typeof TermConfig>>();
 const rconSettingsDialog = ref<InstanceType<typeof RconSettings>>();
@@ -129,6 +131,16 @@ const refreshInstanceInfo = async () => {
 const btns = computed(() => {
   if (!instanceInfo.value) return [];
   return arrayFilter([
+    {
+      title: t("TXT_CODE_quick_title"),
+      icon: ControlOutlined,
+      condition: () => !isGlobalTerminal.value && !!quickEdition(instanceInfo.value?.config.type ?? ""),
+      click: () => {
+        openManage(InstanceQuickSettings, t("TXT_CODE_quick_title"), {
+          type: instanceInfo.value?.config.type
+        });
+      }
+    },
     {
       title: t("TXT_CODE_d07742fe"),
       icon: ControlOutlined,
