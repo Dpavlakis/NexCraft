@@ -1,4 +1,5 @@
 import Router from "@koa/router";
+import { Middleware } from "koa";
 import { ROLE } from "../entity/user";
 import { $t } from "../i18n";
 import { requestConcurrencyLimiter, speedLimit } from "../middleware/limit";
@@ -15,21 +16,13 @@ import { checkSafeUrl } from "../utils/url";
 
 const router = new Router({ prefix: "/mod" });
 
-// Permission check middleware
-router.use(async (ctx, next) => {
-  if (
-    ctx.path === "/mod/mc_versions" ||
-    ctx.path === "/mod/search" ||
-    ctx.path === "/mod/versions" ||
-    ctx.path === "/mod/info" ||
-    ctx.path === "/mod/batch_info"
-  ) {
-    return await next();
-  }
-
+// Instance routes opt into target authorization, independent of router mount prefixes.
+const requireModTarget: Middleware = async (ctx, next) => {
   let target: ModTarget;
   try {
-    target = resolveModTarget(ctx.method, ctx.query, ctx.request.body);
+    // @koa/router dispatches HEAD through GET routes; authorize the same query target.
+    const method = ctx.method === "HEAD" ? "GET" : ctx.method;
+    target = resolveModTarget(method, ctx.query, ctx.request.body);
   } catch (err: any) {
     ctx.status = 400;
     ctx.body = err.message;
@@ -58,7 +51,7 @@ router.use(async (ctx, next) => {
     enumerable: true
   });
   await next();
-});
+};
 
 router.get("/mc_versions", speedLimit(0.5), permission({ level: ROLE.USER }), async (ctx) => {
   try {
@@ -71,6 +64,7 @@ router.get("/mc_versions", speedLimit(0.5), permission({ level: ROLE.USER }), as
 
 router.get(
   "/list",
+  requireModTarget,
   speedLimit(0.5),
   permission({ level: ROLE.USER }),
   validator({
@@ -174,6 +168,7 @@ router.get(
 
 router.post(
   "/download",
+  requireModTarget,
   permission({ level: ROLE.USER }),
   speedLimit(5),
   requestConcurrencyLimiter("mod_manager:download"),
@@ -223,6 +218,7 @@ router.post(
 
 router.post(
   "/stop_transfer",
+  requireModTarget,
   speedLimit(1),
   permission({ level: ROLE.USER }),
   validator({
@@ -258,6 +254,7 @@ router.post(
 
 router.get(
   "/config_files",
+  requireModTarget,
   speedLimit(0.5),
   permission({ level: ROLE.USER }),
   validator({
@@ -283,6 +280,7 @@ router.get(
 
 router.post(
   "/toggle",
+  requireModTarget,
   speedLimit(0.5),
   permission({ level: ROLE.USER }),
   validator({
@@ -306,6 +304,7 @@ router.post(
 
 router.post(
   "/delete",
+  requireModTarget,
   speedLimit(1),
   permission({ level: ROLE.USER }),
   validator({
