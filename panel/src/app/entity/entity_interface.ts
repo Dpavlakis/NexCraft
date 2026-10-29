@@ -1,3 +1,4 @@
+import { isIP } from "net";
 import { removeTrail } from "mcsmanager-common";
 import { ManagerOptions, SocketOptions } from "socket.io-client";
 
@@ -55,6 +56,7 @@ type RemoteMappingEntry = {
 };
 
 export interface IRemoteService {
+  gameHost?: string;
   uuid?: string;
   ip?: string;
   port?: number;
@@ -66,6 +68,7 @@ export interface IRemoteService {
 
 // @Entity
 export class RemoteServiceConfig {
+  public gameHost = "";
   public ip = "";
   public port = 24444;
   public prefix = "";
@@ -124,4 +127,32 @@ export class RemoteServiceConfig {
   public get fullAddr() {
     return this.addr + this.canonicalPrefix;
   }
+}
+
+/** A player-facing host only; never a URL, RPC port or arbitrary authority. */
+export function normalizeGameHost(value: unknown): string {
+  if (value === undefined || value === "") return "";
+  if (
+    typeof value !== "string" ||
+    value.length > 253 ||
+    /[\s\x00-\x20\x7f-\x9f/@\\?#%]/.test(value)
+  )
+    throw new Error("Player game host must be a hostname, IPv4 or IPv6 address without a port");
+  let host = value;
+  if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
+  if (host.includes(":")) {
+    if (isIP(host) !== 6) throw new Error("Invalid player IPv6 host");
+    return new URL("http://[" + host + "]/").hostname.slice(1, -1);
+  }
+  if (value.includes("[") || value.includes("]")) throw new Error("Invalid player host");
+  if (isIP(host) === 4) return host;
+  if (
+    /^[\d.]+$/.test(host) ||
+    !host
+      .replace(/\.$/, "")
+      .split(".")
+      .every((label) => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(label))
+  )
+    throw new Error("Invalid player hostname");
+  return host.toLowerCase();
 }

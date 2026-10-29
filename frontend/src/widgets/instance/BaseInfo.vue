@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import InstanceVersionInfo from "@/components/InstanceVersionInfo.vue";
+import { useGameEndpoint } from "@/hooks/useGameEndpoint";
 import { getFileConfigAddr } from "@/hooks/useFileManager";
 import { useInstanceInfo } from "@/hooks/useInstance";
 import { t } from "@/lang/i18n";
@@ -29,6 +31,8 @@ const { statusText, isRunning, isStopped, instanceTypeText, instanceInfo, execut
     daemonId,
     autoRefresh: true
   });
+
+const gameEndpoint = useGameEndpoint(() => instanceInfo.value);
 
 const getInstanceName = computed(() => {
   if (instanceInfo.value?.config.nickname === GLOBAL_INSTANCE_NAME) {
@@ -86,7 +90,7 @@ onMounted(async () => {
 
 <template>
   <!-- eslint-disable vue/html-indent -->
-  <CardPanel class="containerWrapper" style="height: 100%">
+  <CardPanel class="containerWrapper" :full-height="false" style="height: auto">
     <template #title>
       {{ card.title }}
     </template>
@@ -119,10 +123,35 @@ onMounted(async () => {
         <span>{{ t("TXT_CODE_68831be6") }}</span>
         <span>{{ instanceTypeText }}</span>
       </a-typography-paragraph>
-      <a-typography-paragraph v-if="Number(instanceInfo?.config?.pingConfig?.port) > 0">
+      <a-typography-paragraph
+        v-if="instanceInfo?.config.type.includes('minecraft') && instanceInfo.gameEndpoint?.port"
+      >
         <span>{{ t("TXT_CODE_baseinfo_port") }}</span>
-        <span>{{ instanceInfo?.config?.pingConfig?.port }}</span>
+        <span>{{ instanceInfo.gameEndpoint.port }}</span>
       </a-typography-paragraph>
+      <a-typography-paragraph v-if="instanceInfo?.config.type.includes('minecraft')">
+        <span class="configured-address-label">{{ t("TXT_CODE_game_endpoint_configured_address_label") }}</span>
+        <a-typography-text
+          v-if="gameEndpoint.address"
+          :copyable="{ text: gameEndpoint.address }"
+          style="overflow-wrap: anywhere"
+        >
+          {{ gameEndpoint.address }}
+        </a-typography-text>
+        <a-typography-text v-else type="secondary">{{ t(gameEndpoint.unknown) }}</a-typography-text>
+        <div>
+          <a-typography-text type="secondary"
+            >{{ t(gameEndpoint.hostHint) }}. {{ t(gameEndpoint.sourceHint) }}</a-typography-text
+          >
+        </div>
+        <a-tag v-if="gameEndpoint.protocol">{{ gameEndpoint.protocol.toUpperCase() }}</a-tag>
+      </a-typography-paragraph>
+      <InstanceVersionInfo
+        v-if="instanceInfo?.config.type.includes('minecraft')"
+        :instance="instanceInfo"
+        :daemon-id="String(daemonId)"
+        :compact="true"
+      />
       <a-typography-paragraph>
         <span>
           {{ t("TXT_CODE_ad30f3c5") }}
@@ -222,6 +251,12 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" scoped>
+.configured-address-label {
+  margin-inline-end: 4px;
+}
+.containerWrapper {
+  height: auto !important;
+}
 .server-icon {
   width: 48px;
   height: 48px;

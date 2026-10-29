@@ -115,6 +115,7 @@ export const installModpack = useDefineApi<
       versionName?: string;
       iconUrl?: string;
       instanceName: string;
+      gamePort?: number;
       maxMemoryMB?: number;
       acceptEula?: boolean;
     };
@@ -224,6 +225,7 @@ export const installServer = useDefineApi<
       mcVersion: string;
       loader: string; // vanilla | fabric | forge | neoforge | quilt
       instanceName: string;
+      gamePort?: number;
       maxMemoryMB?: number;
       acceptEula?: boolean;
       loaderVersion?: string;

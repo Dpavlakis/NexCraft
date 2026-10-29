@@ -7,6 +7,7 @@ import { ROLE } from "../entity/user";
 import { $t } from "../i18n";
 import permission from "../middleware/permission";
 import validator from "../middleware/validator";
+import { withPlayerGameEndpoint } from "../service/game_endpoint";
 import { multiOperationForwarding } from "../service/instance_service";
 import { logger } from "../service/log";
 import { operationLogger } from "../service/operation_logger";
@@ -33,10 +34,11 @@ router.get(
       if (!isHaveInstanceByUuid(getUserUuid(ctx), daemonId, instanceUuid))
         throw new Error($t("TXT_CODE_permission.forbidden"));
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+      if (!remoteService) throw new Error($t("TXT_CODE_dd559000"));
       const result = await new RemoteRequest(remoteService).request("instance/detail", {
         instanceUuid
       });
-      ctx.body = result;
+      ctx.body = withPlayerGameEndpoint(result, remoteService.config);
     } catch (err) {
       ctx.body = err;
     }

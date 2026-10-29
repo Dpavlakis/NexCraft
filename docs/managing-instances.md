@@ -8,6 +8,30 @@ Each instance has a **Manage Instance** grid (full-page features) and an **Insta
 
 Each card shows an **edition badge** and a coloured accent stripe — **green for Java**, **teal for Bedrock** — so you can tell editions apart at a glance. When a node has both, the toolbar gains an **All / Java / Bedrock** filter to narrow the list to one edition (single-node view; the global all-daemons tree shows everything).
 
+## Game addresses and node hosts
+
+The **Instances** cards and table rows, and an instance's **Basic Info**, show a copyable game address. The port comes from that instance's `server.properties`, including for stopped instances. If the configured port is missing or invalid, the address is unavailable rather than guessed.
+
+In node settings, **Player game host** is the optional hostname or IP address that players use to connect. It is separate from the daemon host and **RPC port**, which NexCraft uses to manage the node. Leave Player game host blank to use the existing node host. Enter only a hostname, IPv4 address, or IPv6 address, without a URL scheme, path, or port.
+
+For example, a player host of `play.example.com` and configured game port `25565` produce `play.example.com:25565`. IPv6 addresses are displayed and copied with brackets, such as `[2001:db8::1]:25565`. Setting a player host does not configure DNS, forwarding, or the server's listening port.
+
+Addresses show the **configured** port. After editing `server.properties`, restart the server to apply the change; follow the restart hint before sharing a changed address. Reset/reinstall within the same edition preserves existing game/query ports and RCON settings, including the password. Switching between Java and Bedrock reallocates ports compatible with the destination edition.
+
+## Installed versions and updates
+
+Version information keeps the installed **pack version** separate from the **Minecraft version**. Bedrock shows the installed **Bedrock Dedicated Server (BDS) version**. Missing installed metadata is shown as **Unknown**; it is not replaced by the provider's newest release.
+
+Update checks support **CurseForge**, **Modrinth**, and **Bedrock** in the existing update flow. **FTB** update checking is unsupported, so an FTB installation is not marked up to date on that basis. Unknown metadata and failed checks also do not mean the server is up to date.
+
+Successful update checks are cached for **10 minutes**, with simultaneous requests shared, so refreshing the instance list does not force a new provider check each time. When an update is available, use the badge to open the existing **Update** panel and review release notes before updating. Existing administrator permissions still apply.
+
+## Day/night appearance
+
+Use the day/night switch near the profile controls in the desktop or mobile header, or in the sidebar layout. Toggling chooses an explicit light or dark mode based on the current appearance. Use the adjacent mode selector's **System (Auto)** option to follow your device's appearance again.
+
+Your mode choice is saved independently of the colour palette, so changing brightness preserves your selected theme. The switch and mode selector work with the keyboard, and the switch respects reduced-motion preferences.
+
 ## Instance Settings
 
 Open **Instance Settings** from the manage grid. The **Basic** tab holds the everyday settings; **Advanced** holds working directory, file encoding, and run-as user.

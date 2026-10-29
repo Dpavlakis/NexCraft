@@ -9,7 +9,18 @@ import InstanceConfig from "../../entity/instance/Instance_config";
 import { $t } from "../../i18n";
 import downloadManager from "../download_manager";
 import javaManager from "../java_manager";
-import { assignFreeBedrockPort, assignFreeMcPort } from "../mc_port";
+import wakeListenerService from "../wake_listener_service";
+import { setServerProperty } from "../mc_motd";
+import {
+  assignFreeBedrockPort,
+  assignFreeMcPort,
+  validateGamePort,
+  snapshotMcNetwork,
+  reservePreservedMcNetwork,
+  restoreReservedMcNetwork,
+  releaseMcNetwork,
+  type NetworkSnapshot
+} from "../mc_port";
 import { ModloaderBootstrap, resolveJavaMajorForMc, type ModLoader } from "../modloader_bootstrap";
 import {
   clearForReset,
@@ -57,6 +68,7 @@ export interface IModpackInstallDescriptor {
   packInfo: IModpackInfo;
   maxMemoryMB?: number;
   acceptEula?: boolean;
+  gamePort?: number;
   buildParams?: Partial<IGlobalInstanceConfig>;
 }
 
@@ -79,6 +91,13 @@ export class ModpackInstallTask extends AsyncTask {
   private bootstrap?: ModloaderBootstrap;
   private tmpFiles: string[] = [];
   private lastProgressOutput = 0;
+  private networkSnapshot?: NetworkSnapshot;
+  private networkReserved = false;
+  private cancelled = false;
+
+  private ensureActive() {
+    if (this.cancelled) throw new Error("Installation cancelled.");
+  }
 
   // When reinstalling into an existing instance, this controls the pre-install
   // file handling. Undefined for a normal (new-instance) install.
@@ -91,11 +110,13 @@ export class ModpackInstallTask extends AsyncTask {
     resetMode?: ResetMode
   ) {
     super();
+    descriptor.gamePort = validateGamePort(descriptor.gamePort, descriptor.source === "bedrock");
     const config = new InstanceConfig();
     config.nickname = instanceName;
     config.stopCommand = "stop"; // both BDS and Java servers accept "stop"
     config.type = descriptor.source === "bedrock" ? "minecraft/bedrock" : "minecraft/java";
-    if (descriptor.buildParams?.processType) config.processType = descriptor.buildParams.processType;
+    if (descriptor.buildParams?.processType)
+      config.processType = descriptor.buildParams.processType;
     if (descriptor.buildParams?.docker)
       config.docker = { ...config.docker, ...descriptor.buildParams.docker };
 
@@ -115,6 +136,7 @@ export class ModpackInstallTask extends AsyncTask {
 
   // Download a single archive with byte-level progress (modeled on QuickInstallTask).
   private async downloadWithProgress(url: string, dest: string) {
+    this.ensureActive();
     this.abortController = new AbortController();
     this.writeStream = fs.createWriteStream(dest);
     this.downloadProgress = { percentage: 0, downloadedBytes: 0, totalBytes: 0, speed: 0, eta: 0 };
@@ -161,10 +183,15 @@ export class ModpackInstallTask extends AsyncTask {
     await new Promise<void>((resolve, reject) => {
       pipeline(response.data, this.writeStream!, (err) => (err ? reject(err) : resolve()));
     });
+    this.ensureActive();
     this.downloadProgress.percentage = 100;
   }
 
-  private async installCurseForge(): Promise<{ mc: string; loader: ModLoader; loaderVersion: string }> {
+  private async installCurseForge(): Promise<{
+    mc: string;
+    loader: ModLoader;
+    loaderVersion: string;
+  }> {
     if (!this.descriptor.serverPackUrl) throw new Error($t("TXT_CODE_modpack.noServerPack"));
     const cwd = this.instance.absoluteCwdPath();
     const tmp = path.join(cwd, ".mcsm_serverpack.zip");
@@ -189,7 +216,11 @@ export class ModpackInstallTask extends AsyncTask {
     };
   }
 
-  private async installModrinth(): Promise<{ mc: string; loader: ModLoader; loaderVersion: string }> {
+  private async installModrinth(): Promise<{
+    mc: string;
+    loader: ModLoader;
+    loaderVersion: string;
+  }> {
     if (!this.descriptor.mrpackUrl) throw new Error($t("TXT_CODE_modpack.noMrpack"));
     const cwd = this.instance.absoluteCwdPath();
     const tmp = path.join(cwd, ".mcsm_modpack.mrpack");
@@ -312,24 +343,11 @@ export class ModpackInstallTask extends AsyncTask {
 
     // Auto-assign a free UDP port pair so multiple Bedrock servers don't all
     // sit on 19132 (mirrors the Java port auto-assignment).
-    try {
-      const port = await assignFreeBedrockPort(inst);
-      inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
-    } catch {
-      // non-fatal — user can set the port manually
-    }
+    const port = await assignFreeBedrockPort(inst, this.descriptor.gamePort, this.networkSnapshot);
+    inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
 
-    // Enable server telemetry by default (silences the BDS startup nag).
     try {
-      const propFile = path.join(cwd, "server.properties");
-      let props = fs.existsSync(propFile) ? fs.readFileSync(propFile, "utf-8") : "";
-      const re = /^emit-server-telemetry\s*=.*$/m;
-      if (re.test(props)) {
-        props = props.replace(re, "emit-server-telemetry=true");
-      } else {
-        props = (props && !props.endsWith("\n") ? props + "\n" : props) + "emit-server-telemetry=true\n";
-      }
-      fs.writeFileSync(propFile, props);
+      setServerProperty(inst, "emit-server-telemetry", "true");
     } catch {
       // non-fatal
     }
@@ -362,6 +380,7 @@ export class ModpackInstallTask extends AsyncTask {
       }
       await this.waitForStop();
     }
+    this.ensureActive();
     inst.status(Instance.STATUS_BUSY);
     // Back up before any reinstall that keeps data — both "backup_wipe" and
     // "preserve_world". Only the explicit "wipe" skips the backup. (preserve_world
@@ -377,11 +396,19 @@ export class ModpackInstallTask extends AsyncTask {
         ? $t("TXT_CODE_modpack.resetPreserve")
         : $t("TXT_CODE_modpack.resetWipe")
     );
+    this.ensureActive();
     await clearForReset(inst.absoluteCwdPath(), this.resetMode === "preserve_world");
+    // Restore immediately, so a failed download still leaves the reserved network configuration intact.
+    if (this.networkSnapshot) {
+      if (this.descriptor.source === "bedrock")
+        await assignFreeBedrockPort(inst, undefined, this.networkSnapshot);
+      else await assignFreeMcPort(inst, undefined, this.networkSnapshot);
+    }
   }
 
   async onStart() {
     const inst = this.instance;
+    let resumeWakeListener: (() => void) | undefined;
     inst.print("\n");
     if (
       inst.config.processType === "docker" &&
@@ -396,12 +423,49 @@ export class ModpackInstallTask extends AsyncTask {
       // both stop/clear/download into the same folder and corrupt it.
       if (inst.asynchronousTask && inst.asynchronousTask !== this)
         throw new Error($t("TXT_CODE_5b0e93b5"));
+      this.ensureActive();
       inst.asynchronousTask = this;
+      if (!this.isInitInstance && this.resetMode)
+        resumeWakeListener = await wakeListenerService.suspendForInstance(inst);
+
+      // Reserve network settings before downloads or destructive reset preparation.
+      const bedrock = this.descriptor.source === "bedrock";
+      const originalType = inst.config.type;
+      const sameEdition = bedrock === (originalType === "minecraft/bedrock");
+      const deferAllocation = !this.isInitInstance && !sameEdition && !!this.resetMode;
+      this.networkSnapshot =
+        !this.isInitInstance && sameEdition ? snapshotMcNetwork(inst) : undefined;
+      if (this.networkSnapshot) {
+        await reservePreservedMcNetwork(
+          inst,
+          this.networkSnapshot,
+          bedrock,
+          inst.status() !== Instance.STATUS_STOP
+        );
+        this.networkReserved = true;
+      } else if (!deferAllocation) {
+        if (!this.isInitInstance && sameEdition)
+          throw new Error("Existing network settings are unavailable; reset cannot preserve them.");
+        if (bedrock) await assignFreeBedrockPort(inst, this.descriptor.gamePort, undefined, true);
+        else await assignFreeMcPort(inst, this.descriptor.gamePort, undefined, true);
+        this.networkReserved = true;
+        this.networkSnapshot = snapshotMcNetwork(inst, bedrock);
+      }
+      this.ensureActive();
 
       // Reinstall into an existing instance: stop + (backup) + clear first.
       if (!this.isInitInstance && this.resetMode) {
         await this.prepareReset();
       }
+      this.ensureActive();
+      // Cross-edition resets must back up the original files/config before allocating the target.
+      if (deferAllocation) {
+        if (bedrock) await assignFreeBedrockPort(inst, this.descriptor.gamePort, undefined, true);
+        else await assignFreeMcPort(inst, this.descriptor.gamePort, undefined, true);
+        this.networkReserved = true;
+        this.networkSnapshot = snapshotMcNetwork(inst, bedrock);
+      }
+      this.ensureActive();
       inst.status(Instance.STATUS_BUSY);
       inst.println("INFO", $t("TXT_CODE_modpack.start"));
 
@@ -421,19 +485,21 @@ export class ModpackInstallTask extends AsyncTask {
           this.descriptor.source === "curseforge"
             ? await this.installCurseForge()
             : this.descriptor.source === "modrinth"
-              ? await this.installModrinth()
-              : this.descriptor.source === "ftb"
-                ? await this.installFTB()
-                : {
-                    // "vanilla": build a fresh server (vanilla or a loader) from
-                    // scratch — no files to download, just bootstrap the loader.
-                    mc: this.descriptor.mcVersion || "",
-                    loader: this.descriptor.loader || "vanilla",
-                    loaderVersion: this.descriptor.loaderVersion || ""
-                  };
+            ? await this.installModrinth()
+            : this.descriptor.source === "ftb"
+            ? await this.installFTB()
+            : {
+                // "vanilla": build a fresh server (vanilla or a loader) from
+                // scratch — no files to download, just bootstrap the loader.
+                mc: this.descriptor.mcVersion || "",
+                loader: this.descriptor.loader || "vanilla",
+                loaderVersion: this.descriptor.loaderVersion || ""
+              };
         resolvedMc = resolved.mc;
         resolvedLoader = resolved.loader;
         resolvedLoaderVersion = resolved.loaderVersion;
+
+        this.ensureActive();
 
         // Strip client-only mods that would crash a dedicated server (e.g. e4mc
         // shipped in client optimization packs like Fabulously Optimized).
@@ -473,13 +539,10 @@ export class ModpackInstallTask extends AsyncTask {
         }
 
         // Auto-assign a free port so multiple servers don't all sit on 25565
-        try {
-          const port = await assignFreeMcPort(inst);
-          inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
-        } catch {
-          // non-fatal — user can set the port manually
-        }
+        const port = await assignFreeMcPort(inst, this.descriptor.gamePort, this.networkSnapshot);
+        inst.println("INFO", $t("TXT_CODE_modpack.portAssigned", { port: String(port) }));
 
+        this.ensureActive();
         this.phase = "bootstrap";
         if (this.descriptor.source === "serverjar") {
           // Paper / Purpur / Folia: a single runnable server jar.
@@ -496,8 +559,12 @@ export class ModpackInstallTask extends AsyncTask {
         }
       }
 
+      this.ensureActive();
+      if (this.networkSnapshot) await restoreReservedMcNetwork(inst, this.networkSnapshot);
+      this.ensureActive();
       inst.parameters(
         {
+          type: bedrock ? "minecraft/bedrock" : "minecraft/java",
           startCommand,
           stopCommand: "stop",
           packInfo: {
@@ -513,12 +580,34 @@ export class ModpackInstallTask extends AsyncTask {
 
       this.phase = "done";
       inst.println("INFO", $t("TXT_CODE_modpack.installDone"));
-      this.stop();
+      await this.stop();
     } catch (error: any) {
-      this.error(error);
+      await this.error(error);
     } finally {
-      inst.status(Instance.STATUS_STOP);
-      if (inst.asynchronousTask === this) inst.asynchronousTask = undefined;
+      try {
+        if (inst.asynchronousTask === this) {
+          try {
+            // Providers can overwrite properties before throwing. Restore before
+            // releasing, including cancellation and destructive-reset failures.
+            if (this.networkReserved && this.networkSnapshot)
+              await restoreReservedMcNetwork(inst, this.networkSnapshot);
+            if (this.networkReserved) releaseMcNetwork(inst);
+          } catch (error: any) {
+            // Keep the reservation if safe persistence failed, so wiped endpoints
+            // cannot be stolen while the administrator repairs the filesystem.
+            await this.error(error);
+          } finally {
+            if (inst.status() === Instance.STATUS_BUSY) inst.status(Instance.STATUS_STOP);
+            inst.asynchronousTask = undefined;
+          }
+        }
+      } finally {
+        try {
+          resumeWakeListener?.();
+        } catch (error: any) {
+          await this.error(error);
+        }
+      }
       for (const f of this.tmpFiles) {
         try {
           await fs.remove(f);
@@ -530,6 +619,7 @@ export class ModpackInstallTask extends AsyncTask {
   }
 
   async onStop() {
+    if (this.phase !== "done") this.cancelled = true;
     try {
       this.abortController?.abort();
       this.writeStream?.destroy();

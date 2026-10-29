@@ -1,4 +1,13 @@
 declare global {
+  interface IGameEndpoint {
+    port: number | null;
+    protocol: "tcp" | "udp";
+    ipv6Port?: number;
+    source: "server.properties" | "unavailable";
+    host?: string;
+    hostSource?: "gameHost" | "node" | "unavailable";
+  }
+
   interface IGlobalInstanceConfig {
     nickname: string;
     startCommand: string;
@@ -169,6 +178,7 @@ declare global {
   }
 
   interface IPanelOverviewRemoteResponse {
+    gameHost?: string;
     version: string;
     process?: {
       cpu: number;

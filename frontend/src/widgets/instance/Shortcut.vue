@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import InstanceVersionInfo from "@/components/InstanceVersionInfo.vue";
+import { useGameEndpoint } from "@/hooks/useGameEndpoint";
 import CardPanel from "@/components/CardPanel.vue";
 import { openInstanceTagsEditor, useDeleteInstanceDialog } from "@/components/fc/index";
 import { useAppRouters } from "@/hooks/useAppRouters";
@@ -21,7 +23,7 @@ import { arrayFilter } from "@/tools/array";
 import { formatMemoryUsage } from "@/tools/memory";
 import { parseTimestamp } from "@/tools/time";
 import { reportErrorMsg } from "@/tools/validator";
-import type { InstanceDetail, LayoutCard } from "@/types/index";
+import type { InstanceDetail, LayoutCard, NodeStatus } from "@/types/index";
 import {
   CheckCircleOutlined,
   CloseOutlined,
@@ -45,6 +47,7 @@ const props = defineProps<{
   card: LayoutCard;
   targetInstanceInfo?: InstanceDetail;
   targetDaemonId?: string;
+  targetNode?: NodeStatus;
 }>();
 
 const emits = defineEmits(["refreshList"]);
@@ -60,8 +63,13 @@ const { statusText, isRunning, isStopped, instanceTypeText, instanceInfo, isStar
     instanceId: props.targetInstanceInfo ? undefined : instanceId,
     daemonId: props.targetInstanceInfo ? undefined : daemonId,
     autoRefresh: props.targetInstanceInfo ? false : true,
-    instanceInfo: props.targetInstanceInfo ? ref(props.targetInstanceInfo) : undefined
+    instanceInfo: props.targetInstanceInfo ? computed(() => props.targetInstanceInfo!) : undefined
   });
+
+const gameEndpoint = useGameEndpoint(
+  () => instanceInfo.value,
+  () => props.targetNode
+);
 
 const operationConfig = {
   params: {
@@ -337,7 +345,9 @@ const instanceOperations = computed(() =>
 
 <template>
   <CardPanel
-    style="width: 100%; height: 100%; position: relative"
+    :full-height="false"
+    class="game-instance-card"
+    style="width: 100%; height: auto; min-height: 340px; position: relative"
     :class="instanceEdition ? 'edition-card edition-card-' + instanceEdition : ''"
   >
     <template #title>
@@ -382,13 +392,48 @@ const instanceOperations = computed(() =>
               class="m-0 edition-tag"
               :class="instanceEdition === 'bedrock' ? 'edition-bedrock' : 'edition-java'"
             >
-              {{ instanceEdition === "bedrock" ? t("TXT_CODE_edition_bedrock") : t("TXT_CODE_edition_java") }}
+              {{
+                instanceEdition === "bedrock"
+                  ? t("TXT_CODE_edition_bedrock")
+                  : t("TXT_CODE_edition_java")
+              }}
             </a-tag>
 
             <div v-if="instanceInfo?.config.tag && instanceInfo?.config.tag.length > 0">|</div>
             <a-tag v-for="item in instanceInfo?.config.tag" :key="item" class="m-0">
               {{ item }}
             </a-tag>
+          </div>
+          <div v-if="instanceEdition" class="instance-info-line" @click.stop>
+            <span class="title">{{ t("TXT_CODE_game_endpoint_configured_address_label") }}</span>
+            <a-tooltip :title="t(gameEndpoint.hostHint) + '. ' + t(gameEndpoint.sourceHint)">
+              <a-typography-text
+                v-if="gameEndpoint.address"
+                :copyable="{ text: gameEndpoint.address }"
+                style="overflow-wrap: anywhere"
+                >{{ gameEndpoint.address }}</a-typography-text
+              >
+              <a-typography-text v-else type="secondary">{{
+                t(gameEndpoint.unknown)
+              }}</a-typography-text>
+            </a-tooltip>
+          </div>
+          <div v-if="instanceEdition" class="endpoint-hints" @click.stop>
+            <a-typography-text
+              v-if="gameEndpoint.source !== 'server.properties'"
+              type="secondary"
+              >{{ t(gameEndpoint.sourceHint) }}</a-typography-text
+            >
+            <a-typography-text v-if="gameEndpoint.hostSource === 'node'" type="secondary">{{
+              t(gameEndpoint.hostHint)
+            }}</a-typography-text>
+          </div>
+          <div v-if="instanceInfo && instanceEdition" class="mb-4" @click.stop>
+            <InstanceVersionInfo
+              :instance="instanceInfo"
+              :daemon-id="String(daemonId)"
+              :compact="true"
+            />
           </div>
           <div class="instance-info-line">
             <span class="title">{{ t("TXT_CODE_2f291d8b") }}:</span>
@@ -480,6 +525,23 @@ const instanceOperations = computed(() =>
 </template>
 
 <style clang="scss" scoped>
+.game-instance-card {
+  height: auto !important;
+  min-height: 340px;
+}
+.game-instance-card :deep(.card-panel-content) {
+  overflow: visible;
+}
+.endpoint-hints {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 3px 0 6px;
+}
+.game-instance-card .instance-info-line {
+  flex-wrap: wrap;
+}
 .instance-card {
   cursor: pointer;
   min-height: 170px;
@@ -501,7 +563,7 @@ const instanceOperations = computed(() =>
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 100%;
+  height: auto;
 }
 
 .server-icon {

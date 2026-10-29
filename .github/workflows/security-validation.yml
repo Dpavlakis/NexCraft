@@ -8,6 +8,8 @@ on:
       - 'panel/src/**'
       - 'common/src/**'
       - 'common/global.d.ts'
+      - 'frontend/src/hooks/useInstanceVersions.ts'
+      - 'frontend/src/tools/instanceVersions.ts'
       - 'scripts/security-tests/**'
       - 'scripts/run-security-tests.cjs'
       - 'package.json'
@@ -31,13 +33,18 @@ env:
 
 jobs:
   security-validation:
+    name: Security validation (Node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 24]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: ${{ matrix.node }}
       - name: Install validation dependencies
         run: |
           npm ci --ignore-scripts --no-audit --no-fund

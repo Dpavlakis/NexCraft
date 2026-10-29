@@ -4,6 +4,13 @@ const embeddedInManageModal = inject<boolean>("embeddedInManageModal", false);
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
 import { useAppRouters } from "@/hooks/useAppRouters";
+import { INSTANCE_VERSIONS_TIMEOUT } from "@/hooks/useInstanceVersions";
+import {
+  getInstanceVersionTarget,
+  instanceReleaseId,
+  selectInstanceUpdate
+} from "@/tools/instanceVersions";
+import { useRoute } from "vue-router";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
@@ -37,6 +44,7 @@ const props = defineProps<{
 
 const { isPhone } = useScreen();
 const { toPage } = useAppRouters();
+const route = useRoute();
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
 const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
@@ -51,6 +59,8 @@ const toConsole = () => {
 // ---- Current pack info (from instance config.packInfo) ----
 const packInfo = ref<IModpackInfo>();
 const infoLoading = ref(false);
+let disposed = false;
+let infoRequest = 0;
 
 const isBedrock = computed(() => packInfo.value?.source === "bedrock");
 // CurseForge/Modrinth packs update from their source; Bedrock updates to a new
@@ -68,6 +78,8 @@ const cardTitle = computed(() =>
 );
 
 const loadInfo = async () => {
+  if (disposed) return;
+  const request = ++infoRequest;
   const { execute } = getInstanceInfo();
   try {
     infoLoading.value = true;
@@ -75,12 +87,15 @@ const loadInfo = async () => {
       params: { uuid: instanceId, daemonId },
       forceRequest: true
     });
+    if (disposed || request !== infoRequest) return;
+    selectedVersion.value = "";
+    versions.value = [];
     packInfo.value = res.value?.config?.packInfo;
     if (isUpdatable.value) await loadVersions();
   } catch (err: any) {
-    reportErrorMsg(err.message);
+    if (!disposed && request === infoRequest) reportErrorMsg(err.message);
   } finally {
-    infoLoading.value = false;
+    if (!disposed && request === infoRequest) infoLoading.value = false;
   }
 };
 
@@ -88,13 +103,15 @@ const loadInfo = async () => {
 const versions = ref<ModpackVersion[]>([]);
 const versionsLoading = ref(false);
 const selectedVersion = ref<string>("");
+let versionsRequest = 0;
+let versionsController: AbortController | undefined;
 
-const versionId = (v: ModpackVersion) => String(v.fileId || v.id || "");
+const versionId = (v: ModpackVersion) => instanceReleaseId(v, packInfo.value?.source || "");
 const versionLabel = (v: ModpackVersion) =>
   v.displayName || v.name || v.version_number || versionId(v);
 // CurseForge packs without a server pack file can't be installed/updated.
 const isInstallable = (v: ModpackVersion) =>
-  packInfo.value?.source === "curseforge" ? v.hasServerPack !== false && !!v.fileId : true;
+  !!versionId(v) && (packInfo.value?.source !== "curseforge" || v.hasServerPack === true);
 
 // What identifies the currently-installed version: Bedrock keys off the MC
 // version string, modpacks key off the file id.
@@ -116,31 +133,90 @@ const versionOptions = computed(() =>
   })
 );
 
+// A merged route can retain a badge candidate from a different instance/provider.
+const requestedVersion = computed(() => {
+  const target = getInstanceVersionTarget(packInfo.value);
+  const query = route.query;
+  if (
+    route.path !== "/instances/modpackUpdate" ||
+    !target ||
+    query.daemonId !== daemonId ||
+    query.instanceId !== instanceId ||
+    query.updateDaemonId !== daemonId ||
+    query.updateInstanceId !== instanceId ||
+    query.updateSource !== target.source ||
+    query.updateProjectId !== target.projectId ||
+    typeof query.updateVersionId !== "string"
+  ) {
+    return "";
+  }
+  return query.updateVersionId;
+});
+
+const defaultVersion = () => {
+  const requested = versions.value.find(
+    (v) => versionId(v) === requestedVersion.value && isInstallable(v)
+  );
+  if (requested) {
+    // Recheck compatibility/channel and ordering against the installed release.
+    const result = selectInstanceUpdate(
+      packInfo.value,
+      versions.value.filter(
+        (v) => versionId(v) === versionId(requested) || versionId(v) === currentVersionKey.value
+      )
+    );
+    if (result.status === "available") return versionId(requested);
+  }
+  const latest = selectInstanceUpdate(packInfo.value, versions.value).latest;
+  if (latest && isInstallable(latest)) return versionId(latest);
+  const current = versions.value.find(
+    (v) => versionId(v) === currentVersionKey.value && isInstallable(v)
+  );
+  return current ? versionId(current) : "";
+};
+
+watch(requestedVersion, () => {
+  if (!versionsLoading.value) selectedVersion.value = defaultVersion();
+});
+
 const loadVersions = async () => {
-  if (!packInfo.value) return;
+  const pack = packInfo.value;
+  if (!pack || disposed) return;
+  const request = ++versionsRequest;
+  versionsController?.abort();
+  const controller = (versionsController = new AbortController());
+  selectedVersion.value = "";
+  versions.value = [];
   try {
     versionsLoading.value = true;
-    if (isBedrock.value) {
-      // Bedrock: list the available Bedrock Dedicated Server releases.
+    let rows: ModpackVersion[];
+    if (pack.source === "bedrock") {
       const res = await serverVersionsGet().execute({
         params: { software: "bedrock" },
-        forceRequest: true
+        forceRequest: true,
+        timeout: INSTANCE_VERSIONS_TIMEOUT,
+        signal: controller.signal
       });
-      versions.value = (res.value || []).map((v) => ({ id: v.id, name: v.id }));
+      rows = (res.value || []).map((v) => ({ ...v, name: v.id }));
     } else {
       const res = await modpackVersions().execute({
-        params: { source: packInfo.value.source, projectId: packInfo.value.projectId },
-        forceRequest: true
+        params: { source: pack.source, projectId: pack.projectId },
+        forceRequest: true,
+        timeout: INSTANCE_VERSIONS_TIMEOUT,
+        signal: controller.signal
       });
-      versions.value = res.value || [];
+      rows = res.value || [];
     }
-    // Default the picker to the newest installable version
-    const first = versions.value.find(isInstallable);
-    selectedVersion.value = first ? versionId(first) : "";
+    if (disposed || request !== versionsRequest || packInfo.value !== pack) return;
+    versions.value = rows;
+    selectedVersion.value = defaultVersion();
   } catch (err: any) {
-    reportErrorMsg(err.message);
+    if (!disposed && request === versionsRequest) reportErrorMsg(err.message);
   } finally {
-    versionsLoading.value = false;
+    if (!disposed && request === versionsRequest) {
+      versionsLoading.value = false;
+      versionsController = undefined;
+    }
   }
 };
 
@@ -149,7 +225,6 @@ const changelogHtml = ref("");
 const changelogLoading = ref(false);
 const changelogError = ref(false);
 let changelogRequest = 0;
-let disposed = false;
 const supportsChangelog = computed(
   () => packInfo.value?.source === "curseforge" || packInfo.value?.source === "modrinth"
 );
@@ -284,7 +359,9 @@ const pollTask = (taskId: string, onDone: () => void) => {
 };
 
 const runUpdate = async () => {
-  if (taskRunning.value || !packInfo.value || !selectedVersion.value) return;
+  if (disposed || taskRunning.value || infoLoading.value || versionsLoading.value || !packInfo.value || !selectedVersion.value) return;
+  const selected = versions.value.find((v) => versionId(v) === selectedVersion.value);
+  if (!selected || !isInstallable(selected)) return;
   try {
     let taskId = "";
     if (isBedrock.value) {
@@ -330,6 +407,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   disposed = true;
+  ++infoRequest;
+  ++versionsRequest;
+  versionsController?.abort();
   ++changelogRequest;
   stopPolling();
 });
@@ -451,7 +531,7 @@ onBeforeUnmount(() => {
                       <a-button
                         type="primary"
                         :loading="taskRunning"
-                        :disabled="!selectedVersion || isCurrentSelected || taskRunning"
+                        :disabled="!selectedVersion || isCurrentSelected || infoLoading || versionsLoading || taskRunning"
                       >
                         <template #icon><CloudDownloadOutlined /></template>
                         {{ t("TXT_CODE_modpack_update_btn") }}

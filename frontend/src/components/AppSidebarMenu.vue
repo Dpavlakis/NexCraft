@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import nexcraftLogo from "@/assets/nexcraft_logo.svg";
+import ColorModeSwitch from "@/components/ColorModeSwitch.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import {
@@ -21,12 +22,15 @@ import {
   UserOutlined
 } from "@ant-design/icons-vue";
 import type { Key } from "ant-design-vue/es/table/interface";
-import type { Component } from "vue";
+import { computed, type Component } from "vue";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
 const { sidebarItems, handleToPage } = useHeaderMenus();
 const { state: appState } = useAppStateStore();
+const hasProfileAction = computed(() =>
+  sidebarItems.value.some((entry) => entry.type === "app" && entry.showAvatar)
+);
 
 /** Whether route menu item is active (current path equals or is child of this path) */
 const isRouteActive = (path: string): boolean => {
@@ -102,24 +106,25 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
         </a-dropdown>
 
         <!-- App menu (single click) -->
-        <a
-          v-else-if="entry.type === 'app'"
-          class="sidebar-item"
-          :class="entry.customClass"
-          @click.prevent="entry.click()"
-        >
-          <UserAvatar
-            v-if="entry.showAvatar"
-            :avatar="appState.userInfo?.avatar"
-            :name="appState.userInfo?.userName"
-            :size="20"
-            class="sidebar-item-icon"
-          />
-          <component :is="entry.icon" v-else-if="entry.icon" class="sidebar-item-icon" />
-          <span class="sidebar-item-text">{{ entry.title }}</span>
-        </a>
+        <div v-else-if="entry.type === 'app'" class="sidebar-app-row">
+          <a class="sidebar-item" :class="entry.customClass" @click.prevent="entry.click()">
+            <UserAvatar
+              v-if="entry.showAvatar"
+              :avatar="appState.userInfo?.avatar"
+              :name="appState.userInfo?.userName"
+              :size="20"
+              class="sidebar-item-icon"
+            />
+            <component :is="entry.icon" v-else-if="entry.icon" class="sidebar-item-icon" />
+            <span class="sidebar-item-text">{{ entry.title }}</span>
+          </a>
+          <ColorModeSwitch v-if="entry.showAvatar" class="sidebar-color-mode" />
+        </div>
       </template>
     </nav>
+    <div v-if="!hasProfileAction" class="sidebar-appearance">
+      <ColorModeSwitch class="sidebar-color-mode" />
+    </div>
   </aside>
 </template>
 
@@ -193,6 +198,29 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
   gap: 8px;
   width: 100%;
   overflow-y: auto;
+}
+
+.sidebar-app-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+
+  .sidebar-item {
+    flex: 1;
+    min-width: 0;
+    padding-right: 8px;
+  }
+}
+
+.sidebar-appearance {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px;
+}
+
+.sidebar-color-mode {
+  color: #fff;
 }
 
 .sidebar-item {

@@ -1,4 +1,5 @@
 import fs from "fs-extra";
+import { resolveGameEndpoint } from "../service/game_endpoint";
 import path from "path";
 import Instance from "../entity/instance/instance";
 import { $t } from "../i18n";
@@ -101,6 +102,7 @@ routerApp.on("instance/select", (ctx, data) => {
       autoRestarted: instance.autoRestartCount,
       status: instance.status(),
       config: instance.config,
+      gameEndpoint: resolveGameEndpoint(instance),
       info: instance.info
     });
   });
@@ -124,6 +126,7 @@ routerApp.on("instance/overview", (ctx) => {
       autoRestarted: instance.autoRestartCount,
       status: instance.status(),
       config: instance.config,
+      gameEndpoint: resolveGameEndpoint(instance),
       info: instance.info
     });
   });
@@ -144,6 +147,7 @@ routerApp.on("instance/section", (ctx, data) => {
           autoRestarted: instance.autoRestartCount,
           status: instance.status(),
           config: instance.config,
+          gameEndpoint: resolveGameEndpoint(instance),
           info: instance.info
         });
       }
@@ -170,6 +174,7 @@ routerApp.on("instance/detail", async (ctx, data) => {
       autoRestarted: instance.autoRestartCount,
       status: instance.status(),
       config: instance.config,
+      gameEndpoint: resolveGameEndpoint(instance),
       info: instance.info,
       space,
       processInfo

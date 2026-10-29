@@ -17,7 +17,7 @@ import {
   SearchOutlined,
   WarningOutlined
 } from "@ant-design/icons-vue";
-import { computed, h, onMounted, ref } from "vue";
+import { computed, h, onMounted, onUnmounted, ref } from "vue";
 
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import { router } from "@/config/router";
@@ -98,6 +98,9 @@ const initNodes = async () => {
   }
   if (localStorage.getItem("pageSelectedRemote")) {
     currentRemoteNode.value = JSON.parse(localStorage.pageSelectedRemote);
+    currentRemoteNode.value =
+      nodes.value?.find((node) => node.uuid === currentRemoteNode.value?.uuid) ||
+      currentRemoteNode.value;
     if (isGlobalDaemonMode.value) return;
     if (!nodes.value?.some((item) => item.uuid === currentRemoteNode.value?.uuid)) {
       currentRemoteNode.value = undefined;
@@ -108,8 +111,10 @@ const initNodes = async () => {
 };
 
 const tableTreeData = ref<any[]>([]);
+let endpointGeneration = 0;
 
 const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanceId?: string) => {
+  ++endpointGeneration;
   try {
     selectedInstance.value = [];
     if (resetPage) operationForm.value.currentPage = 1;
@@ -218,6 +223,7 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
 };
 
 const loadMoreInstances = async (daemonId: string) => {
+  ++endpointGeneration;
   const targetNodeIndex = tableTreeData.value.findIndex((n) => n.key === daemonId);
   if (targetNodeIndex === -1) return;
   const nodeData = tableTreeData.value[targetNodeIndex];
@@ -337,6 +343,20 @@ const instanceTableColumns: AntColumnsType[] = [
     key: "lastDatetime",
     width: 160,
     align: "center"
+  },
+  {
+    title: t("TXT_CODE_game_endpoint_configured_address"),
+    dataIndex: "gameAddress",
+    key: "gameAddress",
+    width: 230,
+    align: "left"
+  },
+  {
+    title: t("TXT_CODE_game_endpoint_installed_versions"),
+    dataIndex: "installedVersion",
+    key: "installedVersion",
+    width: 250,
+    align: "left"
   },
   { title: t("TXT_CODE_b283e720"), dataIndex: "resources", key: "resources", align: "left" },
   {
@@ -531,9 +551,136 @@ const globalNode = {
   remarks: ""
 };
 
+// Refresh data without replacing the grid with a loading state or clearing
+// selection. Configured endpoints can change while the instance is stopped.
+let endpointRefresh: ReturnType<typeof setInterval> | undefined;
+let refreshInFlight = false;
+let mounted = true;
+const refreshVisibleInstances = async () => {
+  if (
+    document.hidden ||
+    refreshInFlight ||
+    isLoading.value ||
+    multipleMode.value ||
+    !currentRemoteNode.value
+  )
+    return;
+  refreshInFlight = true;
+  const generation = endpointGeneration;
+  const nodeId = currentRemoteNode.value.uuid;
+  const query = JSON.stringify([operationForm.value, selectedTags.value]);
+  const filters = {
+    instance_name: operationForm.value.instanceName.trim(),
+    status: operationForm.value.status,
+    tag: JSON.stringify(selectedTags.value),
+    type: isGlobalDaemonMode.value ? undefined : operationForm.value.type
+  };
+  const stillCurrent = () =>
+    mounted &&
+    !document.hidden &&
+    endpointGeneration === generation &&
+    currentRemoteNode.value?.uuid === nodeId &&
+    JSON.stringify([operationForm.value, selectedTags.value]) === query &&
+    !multipleMode.value;
+  const requestPage = async (daemonId: string, page: number, pageSize: number) => {
+    const { execute } = remoteInstances();
+    return (
+      await execute({
+        forceRequest: true,
+        timeout: 15000,
+        errorAlert: false,
+        params: { daemonId, page, page_size: pageSize, ...filters }
+      })
+    ).value;
+  };
+  try {
+    if (!isGlobalDaemonMode.value) {
+      const updated = await requestPage(
+        nodeId,
+        operationForm.value.currentPage,
+        operationForm.value.pageSize
+      );
+      if (stillCurrent() && updated) instances.value = updated;
+    } else {
+      const rows = tableTreeData.value.map((row) => ({
+        row,
+        pages: row.nodeCurrentPage || 1,
+        failed: false,
+        results: [] as Awaited<ReturnType<typeof requestPage>>[]
+      }));
+      const jobs = rows.flatMap((item) =>
+        Array.from({ length: item.pages }, (_, index) => async () => {
+          try {
+            item.results[index] = await requestPage(item.row.key, index + 1, 10);
+          } catch {
+            item.failed = true;
+          }
+        })
+      );
+      // One shared queue limits total node/page requests to four.
+      let nextJob = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(4, jobs.length) }, async () => {
+          while (stillCurrent()) {
+            const job = jobs[nextJob++];
+            if (!job) return;
+            await job();
+          }
+        })
+      );
+      for (const item of rows) {
+        if (
+          !stillCurrent() ||
+          item.failed ||
+          item.row.nodeCurrentPage !== item.pages ||
+          item.results.length !== item.pages ||
+          item.results.some((result) => !result)
+        )
+          continue;
+        // Page one describes the latest total. Keep every still-loaded page,
+        // discard pages removed by deletions, and rebuild the load-more row.
+        const maxPage = Math.max(1, item.results[0]?.maxPage ?? item.pages);
+        const currentPage = Math.min(item.pages, maxPage);
+        const seen = new Set<string>();
+        const children = item.results.slice(0, currentPage).flatMap((result) =>
+          (result?.data || []).flatMap((inst) => {
+            if (seen.has(inst.instanceUuid)) return [];
+            seen.add(inst.instanceUuid);
+            const info = useInstanceMoreDetail(inst);
+            return [{
+              daemonId: item.row.key,
+              key: info.instanceUuid,
+              name: info.config.nickname || info.instanceUuid,
+              inst: info
+            }];
+          })
+        );
+        item.row.maxPage = maxPage;
+        item.row.nodeCurrentPage = currentPage;
+        item.row.children = [
+          ...children,
+          ...(currentPage < maxPage ? [{
+            isLoadMore: true,
+            daemonId: item.row.key,
+            key: `${item.row.key}-load-more`
+          }] : [])
+        ];
+      }
+    }
+  } catch {
+    /* Retain the last successful snapshot; normal refresh controls report errors. */
+  } finally {
+    refreshInFlight = false;
+  }
+};
 onMounted(async () => {
   await initInstancesData();
   setRefreshFn(initInstancesData);
+  if (mounted) endpointRefresh = setInterval(refreshVisibleInstances, 3000);
+});
+onUnmounted(() => {
+  mounted = false;
+  if (endpointRefresh) clearInterval(endpointRefresh);
 });
 </script>
 
@@ -622,12 +769,16 @@ onMounted(async () => {
                 >
                   <a-select-option value="">{{ t("TXT_CODE_filter_all_types") }}</a-select-option>
                   <a-select-option value="java">{{ t("TXT_CODE_edition_java") }}</a-select-option>
-                  <a-select-option value="bedrock">{{ t("TXT_CODE_edition_bedrock") }}</a-select-option>
+                  <a-select-option value="bedrock">{{
+                    t("TXT_CODE_edition_bedrock")
+                  }}</a-select-option>
                 </a-select>
                 <a-input
                   v-model:value.trim="operationForm.instanceName"
                   :placeholder="t('TXT_CODE_ce132192')"
-                  :style="{ width: isGlobalDaemonMode ? 'calc(100% - 90px)' : 'calc(100% - 200px)' }"
+                  :style="{
+                    width: isGlobalDaemonMode ? 'calc(100% - 90px)' : 'calc(100% - 200px)'
+                  }"
                   @press-enter="handleQueryInstance"
                   @change="handleQueryInstance"
                   @mouseenter="searchExpanded = true"
@@ -746,10 +897,11 @@ onMounted(async () => {
               <Shortcut
                 class="instance-card"
                 :class="{ selected: multipleMode && findInstance(item) }"
-                style="height: 100%"
+                style="height: auto; min-height: 340px"
                 :card="card"
                 :target-instance-info="item"
                 :target-daemon-id="currentRemoteNode?.uuid"
+                :target-node="currentRemoteNode"
                 @click="handleSelectInstance(item)"
                 @refresh-list="initInstancesData()"
               />
@@ -797,6 +949,7 @@ onMounted(async () => {
                 :record="record"
                 :target-instance-info="record.inst"
                 :target-daemon-id="record.daemonId"
+                :target-node="nodes?.find((node) => node.uuid === record.daemonId)"
                 @refresh-list="
                   (daemonId: string, instanceId: string) =>
                     initInstancesData(false, daemonId, instanceId)

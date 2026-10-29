@@ -51,6 +51,7 @@ export interface InstanceRuntimeInfo {
 }
 
 export interface InstanceDetail {
+  gameEndpoint?: IGameEndpoint;
   instanceUuid: string;
   started: number;
   autoRestarted: number;
@@ -61,6 +62,7 @@ export interface InstanceDetail {
 }
 
 export interface NodeStatus {
+  gameHost?: string;
   available: boolean;
   ip: string;
   port: number;

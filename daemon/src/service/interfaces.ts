@@ -6,6 +6,7 @@ export interface IInstanceDetail {
   status: number;
   config: InstanceConfig;
   info?: any;
+  gameEndpoint?: IGameEndpoint;
 }
 
 export interface IJson<T> {

@@ -1,4 +1,5 @@
 import Router from "@koa/router";
+import { normalizeGameHost } from "../entity/entity_interface";
 import { ROLE } from "../entity/user";
 import permission from "../middleware/permission";
 import validator from "../middleware/validator";
@@ -18,6 +19,7 @@ router.get("/remote_services_list", permission({ level: ROLE.ADMIN }), async (ct
     result.push({
       uuid: remoteService.uuid,
       ip: remoteService.config.ip,
+      gameHost: remoteService.gameHost,
       port: remoteService.config.port,
       prefix: remoteService.config.prefix,
       available: remoteService.available,
@@ -119,7 +121,7 @@ router.get("/remote_services_system", permission({ level: ROLE.ADMIN }), async (
     } catch (err) {
       continue;
     }
-    result.push(instancesInfo);
+    result.push({ ...instancesInfo, gameHost: remoteService.gameHost });
   }
   ctx.body = result;
 });
@@ -140,6 +142,7 @@ router.get("/remote_services", permission({ level: ROLE.ADMIN }), async (ctx) =>
     result.push({
       uuid: remoteService.uuid,
       ip: remoteService.config.ip,
+      gameHost: remoteService.gameHost,
       port: remoteService.config.port,
       prefix: remoteService.config.prefix,
       available: remoteService.available,
@@ -158,6 +161,7 @@ router.post(
   validator({ body: { apiKey: String, port: Number, ip: String, remarks: String } }),
   async (ctx) => {
     const parameter = ctx.request.body;
+    const gameHost = normalizeGameHost(parameter.gameHost);
     // do asynchronous registration
     const instance = await RemoteServiceSubsystem.registerRemoteService({
       apiKey: parameter.apiKey,
@@ -166,6 +170,10 @@ router.post(
       prefix: parameter.prefix ?? "",
       remarks: parameter.remarks ?? ""
     });
+
+    // The subsystem persists the full config through edit(), including gameHost.
+    instance.config.gameHost = gameHost;
+    await RemoteServiceSubsystem.edit(instance.uuid, {});
 
     operationLogger.log("daemon_create", {
       operator_ip: ctx.ip,
@@ -186,6 +194,8 @@ router.put(
   async (ctx) => {
     const uuid = String(ctx.request.query.uuid);
     const parameter = ctx.request.body || {};
+    const gameHost =
+      parameter.gameHost === undefined ? undefined : normalizeGameHost(parameter.gameHost);
     const daemonSetting = parameter?.setting || {};
     const daemon = RemoteServiceSubsystem.getInstance(uuid);
 
@@ -198,6 +208,8 @@ router.put(
 
     if (!RemoteServiceSubsystem.services.has(uuid)) throw new Error("Instance does not exist");
 
+    if (!daemon) throw new Error("Instance does not exist");
+    if (gameHost !== undefined) daemon.config.gameHost = gameHost;
     await RemoteServiceSubsystem.edit(uuid, {
       port: parameter.port,
       ip: parameter.ip,
