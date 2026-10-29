@@ -3871,6 +3871,7 @@
   "TXT_CODE_game_endpoint_properties_hint": "Configured in server.properties; restart required after changes",
   "TXT_CODE_game_endpoint_ping_config_hint": "Configured ping port; server.properties unavailable",
   "TXT_CODE_game_endpoint_port_unavailable": "Configured game port unavailable",
+  "TXT_CODE_game_endpoint_daemon_update_hint": "Update the node daemon to show the configured address",
   "TXT_CODE_game_endpoint_host_unavailable": "Player host unavailable",
   "TXT_CODE_game_endpoint_configured_address": "Configured address",
   "TXT_CODE_game_endpoint_configured_address_label": "Configured address:",

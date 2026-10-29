@@ -53,7 +53,16 @@ jobs:
           npm ci --prefix panel --ignore-scripts --no-audit --no-fund
       - name: Run security tests
         run: npm run test:security
-      - name: Build daemon
-        run: npm run build --prefix daemon
+      - name: Build daemon with isolated dependencies
+        run: |
+          set -euo pipefail
+          build_root="$(mktemp -d "${RUNNER_TEMP}/nexcraft-daemon-build.XXXXXX")"
+          trap 'rm -rf "$build_root"' EXIT
+          # Match the daemon Docker builder inputs; exclude checkout-root dependencies.
+          git archive HEAD common daemon languages lib-urls.txt | tar -x -C "$build_root"
+          # Preserve the relative mcsmanager-common link into ../common.
+          cp -a common/node_modules "$build_root/common/"
+          cp -a daemon/node_modules "$build_root/daemon/"
+          npm run build --prefix "$build_root/daemon"
       - name: Build panel
         run: npm run build --prefix panel

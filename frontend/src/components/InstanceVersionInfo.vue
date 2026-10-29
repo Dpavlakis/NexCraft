@@ -94,15 +94,15 @@ const openUpdate = () => {
         type="button"
         class="version-update-button"
         :title="latestLabel"
-        :aria-label="t('TXT_CODE_instance_version_open_updates')"
+        :aria-label="statusText + '. ' + t('TXT_CODE_instance_version_open_updates')"
         @click.stop="openUpdate"
       >
         <span class="status-dot" aria-hidden="true"></span>
-        {{ statusText }}
+        <span class="status-label">{{ statusText }}</span>
       </button>
-      <span v-else class="status-text">
+      <span v-else class="status-text" :title="latestLabel">
         <span class="status-dot" aria-hidden="true"></span>
-        {{ statusText }}
+        <span class="status-label">{{ statusText }}</span>
       </span>
     </div>
   </div>
@@ -125,6 +125,8 @@ const openUpdate = () => {
   padding-block: 1px;
   dt {
     flex: 0 0 auto;
+    max-width: 55%;
+    overflow-wrap: anywhere;
     color: var(--color-gray-9);
   }
   dd {
@@ -136,16 +138,28 @@ const openUpdate = () => {
   }
 }
 .version-status {
-  margin-top: 4px;
-  color: var(--color-gray-12);
-  &[data-status="available"] .status-dot {
-    background: var(--color-warning);
+  margin-top: 6px;
+  color: var(--color-gray-9);
+  &[data-status="available"] {
+    color: var(--color-orange-9);
+    .status-text,
+    .version-update-button {
+      border-color: var(--color-orange-3);
+      background: var(--color-orange-1);
+    }
+    .status-dot {
+      background: var(--color-orange-7);
+    }
+    .version-update-button:hover {
+      border-color: var(--color-orange-5);
+      background: var(--color-orange-2);
+    }
   }
   &[data-status="current"] .status-dot {
-    background: var(--color-success);
+    background: var(--color-green-7);
   }
   &[data-status="error"] .status-dot {
-    background: var(--color-danger);
+    background: var(--color-red-7);
   }
 }
 .status-text,
@@ -153,33 +167,35 @@ const openUpdate = () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid var(--color-gray-5);
+  border-radius: 999px;
+  background: var(--color-gray-3);
+  color: inherit;
+  font: inherit;
+  line-height: 1.35;
+  text-align: left;
+}
+.status-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .status-dot {
-  flex: 0 0 5px;
-  width: 5px;
-  height: 5px;
-  background: currentColor;
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  background: var(--color-gray-7);
   border-radius: 50%;
 }
 .version-update-button {
-  max-width: 100%;
-  padding: 2px 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  &:hover {
-    color: var(--color-gray-12);
-    text-decoration-thickness: 2px;
-  }
   &:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 3px;
-    border-radius: 2px;
   }
 }
 .is-compact .version-row dd {

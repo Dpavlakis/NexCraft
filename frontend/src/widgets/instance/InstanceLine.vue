@@ -153,7 +153,15 @@ const toInstanceTerminal = async () => {
 
     <template v-else-if="column.key === 'gameAddress' && !node">
       <div v-if="targetInstanceInfo?.config.type.includes('minecraft')" @click.stop>
-        <a-tooltip :title="t(gameEndpoint.hostHint) + '. ' + t(gameEndpoint.sourceHint)">
+        <a-tooltip
+          :title="
+            gameEndpoint.address
+              ? t(gameEndpoint.hostHint) + '. ' + t(gameEndpoint.sourceHint)
+              : gameEndpoint.source === 'server.properties'
+              ? t(gameEndpoint.sourceHint)
+              : undefined
+          "
+        >
           <a-typography-text
             v-if="gameEndpoint.address"
             :copyable="{ text: gameEndpoint.address }"
@@ -161,12 +169,18 @@ const toInstanceTerminal = async () => {
           >
             {{ gameEndpoint.address }}
           </a-typography-text>
-          <a-typography-text v-else type="secondary">{{ t(gameEndpoint.unknown) }}</a-typography-text>
+          <a-typography-text v-else type="secondary">
+            {{
+              targetInstanceInfo && !targetInstanceInfo.gameEndpoint
+                ? t("TXT_CODE_game_endpoint_daemon_update_hint")
+                : t(gameEndpoint.unknown)
+            }}
+          </a-typography-text>
         </a-tooltip>
-        <div v-if="gameEndpoint.source !== 'server.properties'" style="font-size: 11px">
-          <a-typography-text type="secondary">{{ t(gameEndpoint.sourceHint) }}</a-typography-text>
-        </div>
-        <div v-if="gameEndpoint.hostSource === 'node'" style="font-size: 11px">
+        <div
+          v-if="gameEndpoint.address && gameEndpoint.hostSource === 'node'"
+          style="font-size: 11px"
+        >
           <a-typography-text type="secondary">{{ t(gameEndpoint.hostHint) }}</a-typography-text>
         </div>
       </div>

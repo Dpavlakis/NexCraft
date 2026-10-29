@@ -406,25 +406,36 @@ const instanceOperations = computed(() =>
           </div>
           <div v-if="instanceEdition" class="instance-info-line" @click.stop>
             <span class="title">{{ t("TXT_CODE_game_endpoint_configured_address_label") }}</span>
-            <a-tooltip :title="t(gameEndpoint.hostHint) + '. ' + t(gameEndpoint.sourceHint)">
+            <a-tooltip
+              :title="
+                gameEndpoint.address
+                  ? t(gameEndpoint.hostHint) + '. ' + t(gameEndpoint.sourceHint)
+                  : gameEndpoint.source === 'server.properties'
+                  ? t(gameEndpoint.sourceHint)
+                  : undefined
+              "
+            >
               <a-typography-text
                 v-if="gameEndpoint.address"
                 :copyable="{ text: gameEndpoint.address }"
                 style="overflow-wrap: anywhere"
                 >{{ gameEndpoint.address }}</a-typography-text
               >
-              <a-typography-text v-else type="secondary">{{
-                t(gameEndpoint.unknown)
-              }}</a-typography-text>
+              <a-typography-text v-else type="secondary">
+                {{
+                  instanceInfo && !instanceInfo.gameEndpoint
+                    ? t("TXT_CODE_game_endpoint_daemon_update_hint")
+                    : t(gameEndpoint.unknown)
+                }}
+              </a-typography-text>
             </a-tooltip>
           </div>
-          <div v-if="instanceEdition" class="endpoint-hints" @click.stop>
-            <a-typography-text
-              v-if="gameEndpoint.source !== 'server.properties'"
-              type="secondary"
-              >{{ t(gameEndpoint.sourceHint) }}</a-typography-text
-            >
-            <a-typography-text v-if="gameEndpoint.hostSource === 'node'" type="secondary">{{
+          <div
+            v-if="instanceEdition && gameEndpoint.address && gameEndpoint.hostSource === 'node'"
+            class="endpoint-hints"
+            @click.stop
+          >
+            <a-typography-text type="secondary">{{
               t(gameEndpoint.hostHint)
             }}</a-typography-text>
           </div>

@@ -138,11 +138,20 @@ onMounted(async () => {
         >
           {{ gameEndpoint.address }}
         </a-typography-text>
-        <a-typography-text v-else type="secondary">{{ t(gameEndpoint.unknown) }}</a-typography-text>
-        <div>
-          <a-typography-text type="secondary"
-            >{{ t(gameEndpoint.hostHint) }}. {{ t(gameEndpoint.sourceHint) }}</a-typography-text
+        <a-typography-text v-else type="secondary">
+          {{
+            instanceInfo && !instanceInfo.gameEndpoint
+              ? t("TXT_CODE_game_endpoint_daemon_update_hint")
+              : t(gameEndpoint.unknown)
+          }}
+        </a-typography-text>
+        <div v-if="gameEndpoint.address || gameEndpoint.source === 'server.properties'">
+          <a-typography-text
+            v-if="gameEndpoint.address && gameEndpoint.hostSource === 'node'"
+            type="secondary"
+            >{{ t(gameEndpoint.hostHint) }}. </a-typography-text
           >
+          <a-typography-text type="secondary">{{ t(gameEndpoint.sourceHint) }}</a-typography-text>
         </div>
         <a-tag v-if="gameEndpoint.protocol">{{ gameEndpoint.protocol.toUpperCase() }}</a-tag>
       </a-typography-paragraph>
