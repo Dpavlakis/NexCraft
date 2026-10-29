@@ -1,7 +1,7 @@
 # Authentication hardening — implemented contract (audit #3)
 
 Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
-Status: source implementation and local integration verification complete. Docker final-image and hosted Chrome CI gates remain pending the parent push.
+Status: #3 source `673783fd` and readiness follow-up `4fd56431` passed hosted CI, including Chrome cold boot and both actual Docker final-image gates. No #3 GHCR dispatch has occurred; main is unchanged. The parent will publish #3 and #4 together after #4 CI passes.
 
 This contract addresses replayable browser sessions, credential/factor invalidation and unsafe 2FA replacement. Browser sessions are revocable server-side records; replacement secrets are staged until verified and persisted. The following sections define the implemented guarantees.
 
@@ -108,4 +108,10 @@ Expiry sweeps erase pending secrets, keeping only bounded owner/setup-ID markers
 
 The Windows 6.2.0 run is historical compatibility evidence. Actual Windows node_modules have since been refreshed from the final locks, including Vue 3.5.44, vue-i18n 11.4.16 and Vite 7.3.7. No tests were weakened.
 
-See the [implementation and verification record](../plans/2026-10-29-authentication-hardening.md) and [runtime results](../plans/2026-10-29-runtime-dependency-hardening-results.md) for production browser evidence and pending CI gates. Multi-process shared sessions, reverse-proxy/TLS cookie redesign, retroactive daemon-capability revocation and general authentication cleanup remain outside #3. Malformed/oversized JSON parser callbacks still log and continue with HTTP 200; rejection handling is queued for #4 reliability. Broader design, including Modpack/Custom sections, remains queued for #5.
+See the [implementation and verification record](../plans/2026-10-29-authentication-hardening.md) and [runtime results](../plans/2026-10-29-runtime-dependency-hardening-results.md) for production browser evidence and the completed #3 CI gates. Multi-process shared sessions, reverse-proxy/TLS cookie redesign, retroactive daemon-capability revocation and general authentication cleanup remain outside #3. At the #3 baseline, malformed/oversized JSON parser callbacks logged and continued with HTTP 200. #4 implements rejection handling; its local verification is complete, with remote CI/publication pending in the [reliability results](../plans/2026-10-29-reliability-hardening-results.md). Broader design, including Modpack/Custom sections, remains queued for #5.
+
+## Hosted CI outcome and publication status
+
+[Successful #3 CI run 40940013639](https://github.com/Dpavlakis/NexCraft/actions/runs/40940013639) passed on Node 24.22.2: security 256/256, account/iframe 26/26, daemon/panel/frontend builds, hosted Chrome cold boot, both actual Docker image builds, runtime/npm/common links, Java/shared libraries, fresh HTTP startup and SIGTERM exit 0. Source was `673783fd`; follow-up `4fd56431` added bounded HTTP readiness retries. [Initial run 40939107627](https://github.com/Dpavlakis/NexCraft/actions/runs/40939107627) failed only because its startup probe reset roughly 0.3 seconds after launch; that initial run did not pass. These outcomes are parent-supplied evidence.
+
+No #3 GHCR dispatch has occurred; main is unchanged. The parent integrates, reviews and tests, then commits/pushes `test` and dispatches GHCR after successful #4 CI so #3 and #4 publish together. Promotion to `main` requires manual acceptance. Nonblocking action-metadata annotations report Node 20 actions under forced Node 24; #27 now queues a refresh to verified action versions, with no action major bumps in this batch.

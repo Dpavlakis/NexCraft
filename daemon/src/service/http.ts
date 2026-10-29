@@ -38,7 +38,13 @@ export function initKoa() {
       },
       jsonLimit: "10mb",
       onError(err, ctx) {
-        logger.error("koaBody Lib Error:", err);
+        // Parser errors may contain the raw request body; never log or expose it.
+        logger.error("koaBody Lib Error");
+        const parserError = err as Error & { status?: number; httpCode?: number };
+        const status = parserError.status || parserError.httpCode;
+        if (status === 413) ctx.throw(413, "Request body too large");
+        if (status === 400) ctx.throw(400, "Invalid request body");
+        throw err;
       }
     })
   );

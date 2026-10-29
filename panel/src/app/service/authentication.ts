@@ -33,8 +33,14 @@ export function installAuthentication(
       ],
       formidable: { maxFileSize: 1024 * 1024 * 500, maxFiles: 1 },
       jsonLimit: "10mb",
-      onError(error) {
-        logger.error("koaBody Lib Error:", error);
+      onError(error, ctx) {
+        // Parser errors may contain the raw request body; never log or expose it.
+        logger.error("koaBody Lib Error");
+        const parserError = error as Error & { status?: number; httpCode?: number };
+        const status = parserError.status || parserError.httpCode;
+        if (status === 413) ctx.throw(413, "Request body too large");
+        if (status === 400) ctx.throw(400, "Invalid request body");
+        throw error;
       }
     })
   );

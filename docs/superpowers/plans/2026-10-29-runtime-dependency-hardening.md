@@ -1,7 +1,7 @@
 # Runtime and dependency hardening — implementation and verification record (audit #3)
 
 Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
-Status: source changes integrated and locally verified; Docker final-image and hosted Chrome CI gates pending the parent push.
+Status: #3 source `673783fd` and readiness follow-up `4fd56431` passed hosted CI, including Chrome cold boot and both actual Docker final-image gates. No #3 GHCR dispatch has occurred; main is unchanged. The parent will publish #3 and #4 together after #4 CI passes.
 Contract: [runtime specification](../specs/2026-10-29-runtime-dependency-hardening.md).
 Evidence: [final results](2026-10-29-runtime-dependency-hardening-results.md).
 
@@ -52,13 +52,19 @@ node scripts/frontend-production-smoke.mjs --dist frontend/dist --browser /path/
 
 The maintained helper checks cold login against real dist bytes in isolated contexts. Authenticated read-only fixture checks are additional local evidence; the helper does not claim all-route/backend or chart visual-equivalence coverage.
 
-## Pending gates and follow-up
+## CI outcome, remaining gates and follow-up
 
-- Docker final-image CI and hosted Chrome CI have not run. The parent records their results after push; local Linux/Edge checks do not establish success on those environments.
-- Actual Alpine/Temurin assembly/startup, final-base Java/shared-library checks, arm64 execution and real-engine Dockerode smoke remain unrun.
+- Docker final-image CI and hosted Chrome CI passed in run 40940013639; see the exact source/follow-up and initial failure below.
+- Actual Alpine/Temurin assembly/startup and final-base Java/shared-library checks passed in #3 CI. Arm64 execution and real-engine Dockerode smoke remain unrun.
 - No #3 GHCR dispatch has occurred; main is unchanged.
 - Production/full audits retain one high session-to-Zod 3 advisory chain (two panel nodes) and one low development deepmerge advisory duplicated in root/frontend scanners. Upstream compatible fixes or separately reviewed replacements own follow-up.
-- Existing malformed/oversized JSON callbacks log and continue with HTTP 200. #3 preserves this preexisting behavior; explicit rejection handling is queued for #4 reliability.
+- At the #3 baseline, malformed/oversized JSON callbacks logged and continued with HTTP 200. #4 implements rejection handling; its [results](2026-10-29-reliability-hardening-results.md) retain the remaining verification gates.
 - Broader design/UserList and Modpack/Custom work remain queued for #5.
 
-Local verification is complete for the recorded scope; CI/container outcomes must be added after they actually pass.
+Local verification and the recorded #3 CI/container gates passed; publication and the explicitly unrun checks above remain separate gates.
+
+## Hosted CI outcome and publication status
+
+[Successful #3 CI run 40940013639](https://github.com/Dpavlakis/NexCraft/actions/runs/40940013639) passed on Node 24.22.2: security 256/256, account/iframe 26/26, daemon/panel/frontend builds, hosted Chrome cold boot, both actual Docker image builds, runtime/npm/common links, Java/shared libraries, fresh HTTP startup and SIGTERM exit 0. Source was `673783fd`; follow-up `4fd56431` added bounded HTTP readiness retries. [Initial run 40939107627](https://github.com/Dpavlakis/NexCraft/actions/runs/40939107627) failed only because its startup probe reset roughly 0.3 seconds after launch; that initial run did not pass. These outcomes are parent-supplied evidence.
+
+No #3 GHCR dispatch has occurred; main is unchanged. The parent integrates, reviews and tests, then commits/pushes `test` and dispatches GHCR after successful #4 CI so #3 and #4 publish together. Promotion to `main` requires manual acceptance. Nonblocking action-metadata annotations report Node 20 actions under forced Node 24; #27 now queues a refresh to verified action versions, with no action major bumps in this batch.

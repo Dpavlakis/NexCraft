@@ -1,7 +1,7 @@
 # Runtime and dependency hardening — final implementation results (audit #3)
 
 Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
-Status: source implementation and local integration complete. Docker final-image and hosted Chrome CI gates have not run and await the parent push. No #3 GHCR dispatch has occurred; main is unchanged.
+Status: #3 source `673783fd` and readiness follow-up `4fd56431` passed hosted CI, including Chrome cold boot and both actual Docker final-image gates. No #3 GHCR dispatch has occurred; main is unchanged. The parent will publish #3 and #4 together after #4 CI passes.
 
 ## Final integrated verification
 
@@ -74,7 +74,7 @@ AntDesignVueResolver, JSX, CSS and intentional chunk grouping remain. Bundle-siz
 
 Fresh npm ci --omit=dev --ignore-scripts installs pass in common/daemon/web, with both common links resolving. Production audits there are common 0, daemon 0, web 2. Built daemon/panel start from temporary data, serve HTTP, complete real daemon auth and info/overview RPC, and exit 0 on SIGTERM. Official x64 zip/PTY tools were staged in disposable runtime/lib. No real user data or Minecraft instance was used; Linux Node ldd has no missing libraries.
 
-**Parser reliability follow-up (#4):** the existing onError callbacks log and continue. Malformed/oversized JSON yields HTTP 200 with an absent body in the isolated harness. This is confirmed preexisting behavior, preserved by #3; request rejection is not claimed as fixed.
+**Parser reliability follow-up (#4):** at the #3 baseline, onError callbacks logged and continued; malformed/oversized JSON yielded HTTP 200 with absent data in the isolated harness. #3 did not fix this defect. #4 implements rejection handling; see its [results](2026-10-29-reliability-hardening-results.md) for final verification status.
 
 ## Runtime, CI and remaining gates
 
@@ -82,7 +82,7 @@ Builders/web pin node:24.22.2-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeff
 
 CI supports Node 24.22.2, preserves full backend discovery and adds account/iframe tests, frontend type/build, compiled cold-login smoke, and final-image build/runtime/common-link/HTTP/graceful-exit gates. Workflow triggers cover relevant frontend/backend/dependency/Docker/helper paths. Checkout/setup action majors and publisher workflow remain unchanged.
 
-Docker final-image CI and hosted Chrome CI have not run. Actual Alpine/Temurin builds/startup, Java/shared-library verification in those final bases, arm64 execution and real-engine Dockerode smoke remain unrun. Local Linux and isolated Edge evidence do not establish those outcomes. The parent records CI results after push and before subsequent GHCR test activity; no #3 GHCR dispatch has occurred.
+Docker final-image CI and hosted Chrome CI passed in run 40940013639, including actual Alpine/Temurin image builds/startup and final-base Java/shared-library verification. Arm64 execution and real-engine Dockerode smoke remain unrun. No #3 GHCR dispatch has occurred; publication awaits #4 CI as recorded below.
 
 ## Resume locations
 
@@ -104,7 +104,7 @@ The maintained helper uses Node 24 built-in HTTP, WebSocket and Chrome DevTools 
 node scripts/frontend-production-smoke.mjs --dist frontend/dist --browser /path/to/google-chrome
 ```
 
-The CI step follows the existing frontend production build, checks `google-chrome`/`google-chrome-stable` on PATH and runs the helper. The helper is included in workflow path triggers. No action or dependency was added. The [official hosted Ubuntu 24.04 inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md#browsers-and-drivers), image 20261026.354.1 checked on 2026-10-29, lists Google Chrome. The hosted Actions execution itself remains unrun; local browser validation used isolated Edge 156.0.4314.50 and Windows Node 24.16.0 reading the real Linux-built dist through the WSL share.
+The CI step follows the existing frontend production build, checks `google-chrome`/`google-chrome-stable` on PATH and runs the helper. The helper is included in workflow path triggers. No action or dependency was added. The [official hosted Ubuntu 24.04 inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md#browsers-and-drivers), image 20261026.354.1 checked on 2026-10-29, lists Google Chrome. Hosted Actions Chrome execution subsequently passed in run 40940013639. The earlier local browser validation used isolated Edge 156.0.4314.50 and Windows Node 24.16.0 reading the real Linux-built dist through the WSL share.
 
 | Browser control | Actual result |
 | --- | --- |
@@ -114,7 +114,7 @@ The CI step follows the existing frontend production build, checks `google-chrom
 | Actual compiled Instances/account UI | Read-only fake admin, node and general-process instance render; account modal opens through the real desktop/mobile user menu in both viewports. No account operation was submitted. |
 | Actual compiled Overview InstanceChart | ECharts initializes and paints a canvas at both widths: 1326×250 desktop (5,499 painted pixels), 332×250 mobile (1,388). Zero uncaught errors, failed requests, non-200 responses or blocked requests throughout authenticated checks. |
 
-All application traffic in these checks stayed at `http://localhost:4182/`; no real user data, daemon, Minecraft instance or remote application service was used. Browser profiles were removed and owned browser/server processes stopped. This isolated production check left port 4180, shared node_modules and `.nexcraft-preview-cache-preserve` untouched at the time. The later lockfile-fresh Windows development preview passed an expanded sample without runtime/network errors at http://localhost:4180/. The authenticated fixture adapter stays in task temp; the maintained CI helper deliberately covers the narrow cold-login regression. This is not all-route or backend validation, chart visual equivalence, or proof of shipping-image/hosted-Chrome success.
+All application traffic in these checks stayed at `http://localhost:4182/`; no real user data, daemon, Minecraft instance or remote application service was used. Browser profiles were removed and owned browser/server processes stopped. This isolated production check left port 4180, shared node_modules and `.nexcraft-preview-cache-preserve` untouched at the time. The later lockfile-fresh Windows development preview passed an expanded sample without runtime/network errors at http://localhost:4180/. The authenticated fixture adapter stays in task temp; the maintained CI helper deliberately covers the narrow cold-login regression. This local sample does not establish all-route/backend validation or chart visual equivalence. Separate shipping-image and hosted-Chrome CI success is recorded below.
 
 Exact evidence:
 
@@ -126,4 +126,10 @@ Exact evidence:
 - Production output: `/home/dimit/nexcraft-integrated.MQy9oG/frontend/dist`; principal files `index.html`, `assets/index-CNTAJQft.js`, `assets/mount-D-oPE9Z_.js`, `assets/ant-CWI-SgKr.js`, `assets/echart-BhOSovaa.js`.
 - Index SHA256: `0c1a0a640e7c6c313cf86b9027268b34cd4d932fffe8a044273262962c7d6fb0`. Principal-file checksums and static graph: `/home/dimit/nexcraft-boot-fix.Ya6geo/production-sha256.json` and `chunk-graph.json`. Baseline retained at `/home/dimit/nexcraft-boot-fix.Ya6geo/baseline-dist` with original index SHA256 `2ff8989326d0b93cd397f3386fcd349e952211ae0b9568cd7a58e1e04f9aa38c`.
 
-The production-bootstrap fix consists of the chunk config, maintained helper and security-validation browser step/trigger. Overall #3 implementation and local integration are complete. Docker final-image and hosted Chrome CI gates remain pending the parent push; the parent updates this record after actual success. No #3 GHCR dispatch has occurred; main is unchanged. Broader design preview work is unchanged, with Modpack/Custom sections queued for #5.
+The production-bootstrap fix consists of the chunk config, maintained helper and security-validation browser step/trigger. Overall #3 implementation and local integration are complete. Docker final-image and hosted Chrome CI gates subsequently passed in run 40940013639, as recorded below. No #3 GHCR dispatch has occurred; main is unchanged. Broader design preview work is unchanged, with Modpack/Custom sections queued for #5.
+
+## Hosted CI outcome and publication status
+
+[Successful #3 CI run 40940013639](https://github.com/Dpavlakis/NexCraft/actions/runs/40940013639) passed on Node 24.22.2: security 256/256, account/iframe 26/26, daemon/panel/frontend builds, hosted Chrome cold boot, both actual Docker image builds, runtime/npm/common links, Java/shared libraries, fresh HTTP startup and SIGTERM exit 0. Source was `673783fd`; follow-up `4fd56431` added bounded HTTP readiness retries. [Initial run 40939107627](https://github.com/Dpavlakis/NexCraft/actions/runs/40939107627) failed only because its startup probe reset roughly 0.3 seconds after launch; that initial run did not pass. These outcomes are parent-supplied evidence.
+
+No #3 GHCR dispatch has occurred; main is unchanged. The parent integrates, reviews and tests, then commits/pushes `test` and dispatches GHCR after successful #4 CI so #3 and #4 publish together. Promotion to `main` requires manual acceptance. Nonblocking action-metadata annotations report Node 20 actions under forced Node 24; #27 now queues a refresh to verified action versions, with no action major bumps in this batch.

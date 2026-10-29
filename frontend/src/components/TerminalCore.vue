@@ -8,7 +8,7 @@ import { useLayoutContainerStore } from "@/stores/useLayoutContainerStore";
 import { CodeOutlined, DeleteOutlined, DownOutlined, LoadingOutlined } from "@ant-design/icons-vue";
 import { Terminal } from "@xterm/xterm";
 import { message } from "ant-design-vue";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { INSTANCE_STATUS_CODE } from "@/types/const";
 import { encodeConsoleColor, type UseTerminalHook } from "../hooks/useTerminal";
 import { getRandomId } from "../tools/randId";
@@ -51,6 +51,11 @@ const socketError = ref<Error>();
 const { isXhrPollError, xhrPollErrorReason } = useXhrPollError(socketError);
 
 let term: Terminal | undefined;
+let disposed = false;
+onUnmounted(() => {
+  disposed = true;
+  term = undefined;
+});
 
 // Show a "jump to latest" button the moment the user scrolls up the console.
 const showScrollBottom = ref(false);
@@ -171,7 +176,9 @@ onMounted(async () => {
         daemonId
       });
     }
+    if (disposed) return;
     term = await initTerminal();
+    if (disposed) return;
     if (term) {
       // xterm's onScroll is the primary signal, but it can miss small wheel
       // ticks — also bind the native scroll on xterm's viewport element so the
@@ -184,6 +191,7 @@ onMounted(async () => {
       updateScrollState();
     }
   } catch (error: any) {
+    if (disposed) return;
     console.error(error);
     throw error;
   }

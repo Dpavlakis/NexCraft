@@ -17,7 +17,7 @@ import {
   SearchOutlined,
   WarningOutlined
 } from "@ant-design/icons-vue";
-import { computed, h, onMounted, onUnmounted, ref } from "vue";
+import { computed, h, onMounted, onUnmounted, ref, watch } from "vue";
 
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import { router } from "@/config/router";
@@ -65,7 +65,8 @@ const currentRemoteNode = ref<NodeStatus>();
 const isGlobalDaemonMode = computed(() => currentRemoteNode.value?.uuid === ALL_DAEMON_MODE);
 
 const { execute: getNodes, state: nodes, isLoading: loadingNodes } = remoteNodeList();
-const { execute: getInstances, state: instances, isLoading: loadingInstance } = remoteInstances();
+const { state: instances } = remoteInstances();
+const loadingInstance = ref(false);
 const isGlobalLoading = ref(true);
 const { updateTagTips, tagTips } = useInstanceTagTips();
 const {
@@ -82,6 +83,7 @@ const isLoading = computed(
 );
 
 const instancesMoreInfo = computed(() => {
+  if (!isPageCurrent()) return [];
   const newInstances: InstanceMoreDetail[] = [];
   for (const instance of instances.value?.data || []) {
     const instanceMoreInfo = useInstanceMoreDetail(instance);
@@ -112,26 +114,48 @@ const initNodes = async () => {
 
 const tableTreeData = ref<any[]>([]);
 let endpointGeneration = 0;
+const pageContext = () =>
+  JSON.stringify([currentRemoteNode.value?.uuid, operationForm.value, selectedTags.value]);
+const loadedPage = ref<{ daemonId: string; query: string; generation: number }>();
+const isPageCurrent = () =>
+  mounted &&
+  !isGlobalDaemonMode.value &&
+  !!loadedPage.value &&
+  loadedPage.value.daemonId === currentRemoteNode.value?.uuid &&
+  loadedPage.value.query === pageContext() &&
+  loadedPage.value.generation === endpointGeneration;
 
 const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanceId?: string) => {
-  ++endpointGeneration;
+  selectedInstance.value = [];
+  loadedPage.value = undefined;
+  if (resetPage) operationForm.value.currentPage = 1;
+  let generation = ++endpointGeneration;
+  let query = pageContext();
+  const stillCurrent = () => mounted && generation === endpointGeneration && query === pageContext();
   try {
-    selectedInstance.value = [];
-    if (resetPage) operationForm.value.currentPage = 1;
     if (!currentRemoteNode.value) await initNodes();
-
+    if (!mounted) return;
+    generation = ++endpointGeneration;
+    query = pageContext();
+    const nodeId = currentRemoteNode.value?.uuid ?? "";
     if (!isGlobalDaemonMode.value) {
-      await getInstances({
+      loadingInstance.value = true;
+      // Each request owns its response ref; an old request cannot overwrite the active page.
+      const { execute: getInstances } = remoteInstances();
+      const result = await getInstances({
         params: {
           page: operationForm.value.currentPage,
           page_size: operationForm.value.pageSize,
           status: operationForm.value.status,
           instance_name: operationForm.value.instanceName.trim(),
           tag: JSON.stringify(selectedTags.value),
-          daemonId: currentRemoteNode.value?.uuid ?? "",
+          daemonId: nodeId,
           type: operationForm.value.type
         }
       });
+      if (!stillCurrent()) return;
+      instances.value = result.value;
+      loadedPage.value = { daemonId: nodeId, query, generation };
       updateTagTips(instances.value?.allTags || []);
       return;
     }
@@ -141,7 +165,7 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
     if (daemonId && instanceId) {
       const { execute: getInfo, state: info } = getInstanceInfo();
       await getInfo({ params: { uuid: instanceId, daemonId } });
-      if (!info.value) return;
+      if (!stillCurrent() || !info.value) return;
 
       const targetNodeIndex = tableTreeData.value.findIndex((n) => n.key === daemonId);
       if (targetNodeIndex === -1) return;
@@ -168,6 +192,7 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
       }
     });
 
+    if (!stillCurrent()) return;
     if (globalInstances.value) {
       const newTreeData = [];
 
@@ -216,9 +241,12 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
       tableTreeData.value = newTreeData;
     }
   } catch (err) {
-    return reportErrorMsg(t("TXT_CODE_e109c091"));
+    if (stillCurrent()) return reportErrorMsg(t("TXT_CODE_e109c091"));
   } finally {
-    isGlobalLoading.value = false;
+    if (stillCurrent()) {
+      loadingInstance.value = false;
+      isGlobalLoading.value = false;
+    }
   }
 };
 
@@ -320,6 +348,25 @@ const toNodesPage = () => {
 
 const multipleMode = ref(false);
 const selectedInstance = ref<InstanceMoreDetail[]>([]);
+watch(
+  pageContext,
+  () => {
+    ++endpointGeneration;
+    loadedPage.value = undefined;
+    selectedInstance.value = [];
+  },
+  { flush: "sync" }
+);
+
+const snapshotSelection = () => {
+  if (!isPageCurrent() || !loadedPage.value || selectedInstance.value.length === 0) return;
+  const visible = new Set(instancesMoreInfo.value.map((item) => item.instanceUuid));
+  const uuids = [...new Set(selectedInstance.value.map((item) => item.instanceUuid))];
+  if (uuids.some((uuid) => !visible.has(uuid))) return;
+  return { owner: loadedPage.value, uuids };
+};
+const isSnapshotCurrent = (snapshot: NonNullable<ReturnType<typeof snapshotSelection>>) =>
+  isPageCurrent() && loadedPage.value === snapshot.owner;
 
 const instanceTableColumns: AntColumnsType[] = [
   { title: t("TXT_CODE_f70badb9"), dataIndex: "name", key: "name", width: 250, align: "left" },
@@ -380,14 +427,20 @@ const findInstance = (item: InstanceMoreDetail) => {
 };
 
 const selectInstance = (item: InstanceMoreDetail) => {
-  if (findInstance(item)) {
-    selectedInstance.value.splice(selectedInstance.value.indexOf(item), 1);
+  if (
+    !isPageCurrent() ||
+    !instancesMoreInfo.value.some((row) => row.instanceUuid === item.instanceUuid)
+  ) return;
+  const index = selectedInstance.value.findIndex((row) => row.instanceUuid === item.instanceUuid);
+  if (index !== -1) {
+    selectedInstance.value.splice(index, 1);
   } else {
     selectedInstance.value.push(item);
   }
 };
 
 const handleSelectInstance = (item: InstanceMoreDetail) => {
+  if (!isPageCurrent()) return;
   if (multipleMode.value) {
     selectInstance(item);
   } else {
@@ -396,21 +449,10 @@ const handleSelectInstance = (item: InstanceMoreDetail) => {
 };
 
 const selectAllInstances = () => {
-  // The card grid renders from `instancesMoreInfo` (single-node view); the global
-  // daemon view renders a tree from `tableTreeData`. The old code only walked
-  // `tableTreeData`, so Select All did nothing in the normal card view (that tree
-  // is empty there). Select from both sources, deduped via findInstance().
   selectedInstance.value = [];
+  if (!isPageCurrent()) return;
   for (const item of instancesMoreInfo.value) {
-    if (findInstance(item)) continue;
-    selectedInstance.value.push(item);
-  }
-  for (const node of tableTreeData.value) {
-    if (!node.children) continue;
-    for (const child of node.children) {
-      if (!child.inst || findInstance(child.inst)) continue;
-      selectedInstance.value.push(child.inst);
-    }
+    if (!findInstance(item)) selectedInstance.value.push(item);
   }
 };
 
@@ -455,7 +497,8 @@ const instanceOperations = [
 ];
 
 const batchOperation = async (actName: "start" | "stop" | "kill" | "restart") => {
-  if (selectedInstance.value.length === 0) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
+  const snapshot = snapshotSelection();
+  if (!snapshot) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
   const operationMap = {
     start: async () => exec(batchStart().execute, t("TXT_CODE_2b5fd76e")),
     stop: async () => exec(batchStop().execute, t("TXT_CODE_4822a21")),
@@ -466,12 +509,12 @@ const batchOperation = async (actName: "start" | "stop" | "kill" | "restart") =>
   const exec = async (fn: Function, msg: string) => {
     try {
       const state = await fn({
-        data: selectedInstance.value.map((item) => ({
-          instanceUuid: item.instanceUuid,
-          daemonId: currentRemoteNode.value?.uuid ?? ""
+        data: snapshot.uuids.map((instanceUuid) => ({
+          instanceUuid,
+          daemonId: snapshot.owner.daemonId
         }))
       });
-      if (state.value) {
+      if (state.value && isSnapshotCurrent(snapshot)) {
         notification.success({
           message: msg,
           description: t("TXT_CODE_1514d08f")
@@ -485,16 +528,16 @@ const batchOperation = async (actName: "start" | "stop" | "kill" | "restart") =>
     }
   };
 
-  operationMap[actName]();
+  return operationMap[actName]();
 };
 
 const batchDeleteInstance = async (deleteFile: boolean) => {
-  if (selectedInstance.value.length === 0) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
+  const snapshot = snapshotSelection();
+  if (!snapshot) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
   const { execute, state } = batchDelete();
-  const uuids: string[] = [];
+  const uuids = snapshot.uuids;
   const paths: string[] = [];
   for (const i of selectedInstance.value) {
-    uuids.push(i.instanceUuid);
     if (i.config?.cwd) {
       paths.push(i.config.cwd);
     }
@@ -515,17 +558,18 @@ const batchDeleteInstance = async (deleteFile: boolean) => {
       ]),
     okText: t("TXT_CODE_d507abff"),
     async onOk() {
+      if (!isSnapshotCurrent(snapshot)) return;
       try {
         await execute({
           params: {
-            daemonId: currentRemoteNode.value?.uuid ?? ""
+            daemonId: snapshot.owner.daemonId
           },
           data: {
             uuids: uuids,
             deleteFile: deleteFile
           }
         });
-        if (state.value) {
+        if (state.value && isSnapshotCurrent(snapshot)) {
           confirmDeleteInstanceModal.destroy();
           exitMultipleMode();
           notification.success({
@@ -810,7 +854,7 @@ onUnmounted(() => {
               >
                 {{ t("TXT_CODE_df87c46d") }}
               </a-button>
-              <a-button v-else class="mr-10" @click="selectAllInstances">
+              <a-button v-else class="mr-10" :disabled="!isPageCurrent()" @click="selectAllInstances">
                 {{ t("TXT_CODE_f466d7a") }}
               </a-button>
               <a-dropdown>
@@ -826,7 +870,7 @@ onUnmounted(() => {
                     </a-menu-item>
                   </a-menu>
                 </template>
-                <a-button type="primary">
+                <a-button type="primary" :disabled="!isPageCurrent()">
                   {{ t("TXT_CODE_8fd8bfd3") }}
                   <DownOutlined />
                 </a-button>

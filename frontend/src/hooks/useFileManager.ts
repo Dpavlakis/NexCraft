@@ -38,7 +38,15 @@ import { useLocalStorage } from "@vueuse/core";
 import { message, Modal } from "ant-design-vue";
 import type { Key } from "ant-design-vue/es/table/interface";
 import { v4 } from "uuid";
-import { computed, createVNode, onMounted, reactive, ref, type VNodeRef } from "vue";
+import {
+  computed,
+  createVNode,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  type VNodeRef
+} from "vue";
 
 export function getFileConfigAddr(config: { addr: string; remoteMappings?: RemoteMappingEntry[] }) {
   let addr = config.addr;
@@ -93,6 +101,45 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
   const currentTabKey = instanceId + daemonId;
   const currentTabs = computed(() => tabList.value[currentTabKey] ?? []);
   const activeTab = ref<string>("");
+  let disposed = false;
+  let listingGeneration = 0;
+  let listingLoading = false;
+  let folderUploads = 0;
+  let pendingNavigation: { tab: string; path: string; target: string; name: string } | undefined;
+  let listingContext:
+    | {
+        generation: number;
+        daemonId: string;
+        instanceId: string;
+        tab: string;
+        path: string;
+        page: number;
+        pageSize: number;
+        search: string;
+      }
+    | undefined;
+
+  onBeforeUnmount(() => {
+    disposed = true;
+    listingGeneration++;
+  });
+
+  const isCurrentListing = (generation: number) => {
+    const context = listingContext;
+    return (
+      !disposed &&
+      context?.generation === generation &&
+      listingGeneration === generation &&
+      context.daemonId === daemonId &&
+      context.instanceId === instanceId &&
+      context.tab === activeTab.value &&
+      context.path === currentPath.value &&
+      context.page === operationForm.value.current &&
+      context.pageSize === operationForm.value.pageSize &&
+      context.search === operationForm.value.name &&
+      (!context.tab || currentTabs.value.some((tab) => tab.key === context.tab))
+    );
+  };
 
   const initDefaultTab = (path = "/") => {
     const key = v4();
@@ -199,15 +246,17 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
   };
 
   const handleChangeTab = async (key: string) => {
-    const path = currentTabs.value.find((tab) => tab.key === key)?.path || "";
+    const tab = currentTabs.value.find((tab) => tab.key === key);
+    if (disposed || !tab) return;
+    pendingNavigation = undefined;
     activeTab.value = key;
-    updateBreadcrumbs(path);
+    updateBreadcrumbs(tab.path);
 
+    listingLoading = true;
     spinning.value = true;
     operationForm.value.name = "";
     operationForm.value.current = 1;
     await getFileList();
-    spinning.value = false;
   };
 
   const parsePath = (path: string) => {
@@ -296,48 +345,68 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
   };
 
   const getFileList = async (throwErr = false, initPath?: string) => {
-    const { execute } = getFileListApi();
-    const thisTab = currentTabs.value.find((e) => e.key === activeTab.value);
-
+    if (disposed) return false;
+    const generation = ++listingGeneration;
+    if (initPath) updateBreadcrumbs(initPath);
+    const path = initPath || currentPath.value;
+    const context = (listingContext = {
+      generation,
+      daemonId,
+      instanceId,
+      tab: activeTab.value,
+      path: currentPath.value,
+      page: operationForm.value.current,
+      pageSize: operationForm.value.pageSize,
+      search: operationForm.value.name
+    });
+    // Search/page requests inherit metadata only while staying in this navigation.
+    if (pendingNavigation?.tab !== context.tab || pendingNavigation?.path !== context.path) {
+      pendingNavigation = undefined;
+    }
     try {
+      const { execute } = getFileListApi();
       clearSelected();
-      let path;
-      if (initPath) {
-        path = initPath;
-        updateBreadcrumbs(initPath);
-      } else {
-        path = currentPath.value;
-      }
       const res = await execute({
         params: {
-          daemonId: daemonId || "",
-          uuid: instanceId || "",
-          page: operationForm.value.current - 1,
-          page_size: operationForm.value.pageSize,
-          file_name: operationForm.value.name,
+          daemonId: context.daemonId || "",
+          uuid: context.instanceId || "",
+          page: context.page - 1,
+          page_size: context.pageSize,
+          file_name: context.search,
           target: path
         }
       });
+      if (!isCurrentListing(generation)) return false;
       dataSource.value = res.value?.items || [];
       operationForm.value.total = res.value?.total || 0;
-      if (!thisTab) {
-        initDefaultTab(path);
+      const thisTab = currentTabs.value.find((tab) => tab.key === context.tab);
+      if (thisTab && pendingNavigation) {
+        thisTab.path = pendingNavigation.target;
+        thisTab.name = pendingNavigation.name;
+        pendingNavigation = undefined;
       }
+      if (!thisTab) initDefaultTab(path);
+      return true;
     } catch (error: any) {
-      // if (thisTab) {
-      //   handleRemoveTab(thisTab.key);
-      // } else {
-      //   initDefaultTab();
-      // }
-
+      if (!isCurrentListing(generation)) return false;
+      pendingNavigation = undefined;
       if (throwErr) throw error;
-      return reportErrorMsg(error.message);
+      reportErrorMsg(error.message);
+      return false;
+    } finally {
+      // A newer listing inherits navigation loading, including search/page requests.
+      if (isCurrentListing(generation) && listingLoading) {
+        listingLoading = false;
+        spinning.value = folderUploads > 0;
+      }
     }
   };
 
   const reloadList = async () => {
-    await getFileList();
-    return message.success(t("TXT_CODE_8ccb5428"));
+    const generation = listingGeneration + 1;
+    if ((await getFileList()) && isCurrentListing(generation)) {
+      return message.success(t("TXT_CODE_8ccb5428"));
+    }
   };
 
   const touchFile = async (dir?: boolean) => {
@@ -736,6 +805,7 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
     const hasConflict = occupiedNames.has(folderName);
 
     const startUpload = async () => {
+      folderUploads++;
       try {
         spinning.value = true;
         const zipKey = `zip_${folderName}`;
@@ -793,7 +863,8 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
       } catch (error: any) {
         reportErrorMsg(error.message);
       } finally {
-        spinning.value = false;
+        folderUploads--;
+        spinning.value = listingLoading || folderUploads > 0;
       }
     };
 
@@ -801,7 +872,9 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
       Modal.confirm({
         title: t("TXT_CODE_99ca8563"),
         content: t("TXT_CODE_58a55f17", { name: folderName }),
-        onOk: () => { startUpload(); },
+        onOk: () => {
+          startUpload();
+        },
         okText: t("TXT_CODE_5bf41818"),
         cancelText: t("TXT_CODE_518528d0")
       });
@@ -835,31 +908,26 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
   };
 
   const rowClickTable = async (item: string, type: number) => {
-    if (type === 1) return;
+    if (type === 1 || disposed) return;
+    const generation = listingGeneration + 1;
     try {
+      listingLoading = true;
       spinning.value = true;
       const target = currentPath.value + item;
-
-      breadcrumbs.push({
-        path: target,
-        name: item,
-        disabled: false
-      });
+      breadcrumbs.push({ path: target, name: item, disabled: false });
+      pendingNavigation = {
+        tab: activeTab.value,
+        path: currentPath.value,
+        target,
+        name: item
+      };
       operationForm.value.name = "";
       operationForm.value.current = 1;
       await getFileList(true);
-
-      const thisTab = currentTabs.value.find((e) => e.key === activeTab.value);
-      if (thisTab) {
-        thisTab.path = target;
-        thisTab.name = item;
-        return;
-      }
     } catch (error: any) {
+      if (!isCurrentListing(generation)) return;
       breadcrumbs.splice(breadcrumbs.length - 1, 1);
       return reportErrorMsg(error.message);
-    } finally {
-      spinning.value = false;
     }
   };
 
@@ -945,43 +1013,37 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
   };
 
   const handleChangeDir = async (dir: string) => {
-    if (!dir) return;
-
+    if (!dir || disposed) return;
     const oldPath = currentPath.value;
     const oldBreadcrumbs = [...breadcrumbs];
     const oldDisk = currentDisk.value;
-
+    let generation = listingGeneration + 1;
+    listingLoading = true;
     spinning.value = true;
     try {
       updateBreadcrumbs(dir);
-
+      pendingNavigation = {
+        tab: activeTab.value,
+        path: currentPath.value,
+        target: dir,
+        name: getLastNameFromPath(dir)
+      };
       operationForm.value.name = "";
       operationForm.value.current = 1;
-
       await getFileList(true);
-
-      const thisTab = currentTabs.value.find((e) => e.key === activeTab.value);
-      if (thisTab) {
-        thisTab.path = dir;
-        thisTab.name = getLastNameFromPath(dir);
-      }
     } catch (error: any) {
+      if (!isCurrentListing(generation)) return;
       console.error("Path jump failed:", error);
-
-      breadcrumbs.length = 0;
-      oldBreadcrumbs.forEach((item) => breadcrumbs.push(item));
+      breadcrumbs.splice(0, breadcrumbs.length, ...oldBreadcrumbs);
       currentDisk.value = oldDisk;
-
-      await getFileList(false, oldPath).catch((err) =>
-        console.error("Failed to revert to old path after jump failure:", err)
-      );
-
-      const errorMsg = `${t("TXT_CODE_96281410")} ${
-        error.response?.data?.message || error.message || ""
-      }`;
+      generation = listingGeneration + 1;
+      listingLoading = true;
+      spinning.value = true;
+      await getFileList(false, oldPath);
+      if (!isCurrentListing(generation)) return;
+      const errorMsg =
+        t("TXT_CODE_96281410") + " " + (error.response?.data?.message || error.message || "");
       return reportErrorMsg(errorMsg);
-    } finally {
-      spinning.value = false;
     }
   };
 
@@ -1107,6 +1169,8 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
   const currentDisk = ref(t("TXT_CODE_28124988"));
 
   const toDisk = async (disk: string) => {
+    if (disposed) return;
+    pendingNavigation = undefined;
     const diskName = disk === "/" ? disk : disk + ":\\";
     breadcrumbs.splice(0, breadcrumbs.length);
     breadcrumbs.push({
@@ -1114,6 +1178,7 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
       name: "/",
       disabled: false
     });
+    listingLoading = true;
     spinning.value = true;
     operationForm.value.name = "";
     operationForm.value.current = 1;
@@ -1122,7 +1187,6 @@ export const useFileManager = (instanceId: string = "", daemonId: string = "") =
       thisTab.name = thisTab.path = diskName;
     }
     await getFileList();
-    spinning.value = false;
   };
 
   const isImage = (extName: string) => {

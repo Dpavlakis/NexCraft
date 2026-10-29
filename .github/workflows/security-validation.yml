@@ -78,6 +78,9 @@ jobs:
       - name: Account and iframe behavior tests
         working-directory: frontend
         run: node node_modules/vitest/vitest.mjs run --config src/components/__tests__/account-security.config.ts
+      - name: Frontend reliability behavior tests
+        working-directory: frontend
+        run: node node_modules/vitest/vitest.mjs run --config src/reliability-tests/reliability.config.ts
       - name: Type-check and build frontend
         run: |
           npm run type-check --prefix frontend

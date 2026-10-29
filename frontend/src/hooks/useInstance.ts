@@ -93,6 +93,7 @@ export function useInstanceMoreDetail(info: InstanceMoreDetail): InstanceMoreDet
 
 export function useInstanceInfo(params: Params) {
   let task: ReturnType<typeof setInterval> | undefined;
+  let disposed = false;
   const { daemonId, instanceId, instanceInfo, autoRefresh } = params;
 
   const { execute, state, isLoading, isReady } = getInstanceInfo();
@@ -127,8 +128,9 @@ export function useInstanceInfo(params: Params) {
         }
       });
 
-      if (autoRefresh) {
+      if (autoRefresh && !disposed) {
         task = setInterval(async () => {
+          if (disposed) return;
           await execute({
             params: {
               uuid: instanceId,
@@ -141,6 +143,7 @@ export function useInstanceInfo(params: Params) {
   });
 
   onUnmounted(() => {
+    disposed = true;
     if (task) clearInterval(task);
     task = undefined;
   });

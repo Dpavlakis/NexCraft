@@ -53,12 +53,12 @@ async function parser(tree, tweak = x => x) {
 for (const tree of ["daemon", "panel"]) {
   test(tree + ": actual parser JSON/form methods, multipart shape, errors and limits", { timeout: 20000 }, async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "nexcraft-parser-"));
-    const load = req(tree), Koa = load("koa"), app = new Koa(); app.on("error", () => {});
+    const load = req(tree), Koa = load("koa"), app = new Koa(); app.on("error", () => {}); let downstream = 0;
     app.use(await parser(tree, options => {
       assert.equal(options.formidable.maxFileSize, 1024 * 1024 * (tree === "panel" ? 500 : 100));
       return { ...options, formidable: { ...options.formidable, uploadDir: tmp } };
     }));
-    app.use(async ctx => {
+    app.use(async ctx => { downstream++;
       const files = ctx.request.files?.file, file = Array.isArray(files) ? files[0] : files;
       ctx.body = file ? { name: file.originalFilename, text: await fs.readFile(file.filepath, "utf8"), array: Array.isArray(files), field: ctx.request.body.label }
         : { data: ctx.request.body };
@@ -74,21 +74,22 @@ for (const tree of ["daemon", "panel"]) {
         const form = new FormData(); form.append("file", new Blob(["fixture"]), "fixture.txt"); form.append("label", "metadata");
         const upload = await load("axios").post(url, form, { timeout: 3000 });
         assert.deepEqual(upload.data, { name: "fixture.txt", text: "fixture", array: false, field: "metadata" });
-        // Current application logs and continues; record this existing error semantic.
+        // Parser rejection must stop dispatch at the production callback.
         for (const body of ["{", JSON.stringify({ value: "x".repeat(10 * 1024 * 1024 + 1) })]) {
-          const bad = await request(url, "POST", body, "application/json");
-          assert.equal(bad.status, 200); assert.equal(JSON.parse(bad.text).data, undefined);
+          const before = downstream; const bad = await request(url, "POST", body, "application/json");
+          assert.equal(bad.status, body === "{" ? 400 : 413); assert.equal(downstream, before);
         }
       });
       const limited = new Koa(); limited.on("error", () => {});
-      limited.use(await parser(tree, options => ({ ...options, onError: error => { throw error; },
+      limited.use(await parser(tree, options => ({ ...options,
         formidable: { ...options.formidable, uploadDir: tmp, maxFileSize: 1024 } })));
-      limited.use(ctx => { ctx.body = "unexpected"; });
+      let limitedDownstream = 0; limited.use(ctx => { limitedDownstream++; ctx.body = "unexpected"; });
       await serve(limited, async url => {
         const large = new FormData(); large.append("file", new Blob(["x".repeat(2048)]), "large.txt");
         assert.ok((await fetch(url, { method: "POST", body: large })).status >= 400);
         const two = new FormData(); for (const name of ["one", "two"]) two.append("file", new Blob([name]), name + ".txt");
         assert.ok((await fetch(url, { method: "POST", body: two })).status >= 400);
+        assert.equal(limitedDownstream, 0);
       });
     } finally { await fs.rm(tmp, { recursive: true, force: true }); }
   });
