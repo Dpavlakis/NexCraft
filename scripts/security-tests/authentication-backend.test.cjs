@@ -408,19 +408,20 @@ test("real signed-cookie login/logout/replay, helpers, and opaque rotation", asy
     assert.equal(log.includes(secret), false);
 });
 
-test("overlapping ordinary mounted saves all succeed; same-clock rate admission counts eight", async () => {
-  const gate = barrier(8),
+test("overlapping ordinary mounted saves all succeed; same-clock burst admission counts 48", async () => {
+  const gate = barrier(48),
     h = await startApp({ ordinaryGate: gate }),
     session = await h.login();
-  const requests = Array.from({ length: 8 }, () => h.request("/api/ordinary", session));
+  const requests = Array.from({ length: 48 }, () => h.request("/api/ordinary", session));
   await gate.entered;
   const denied = await h.request("/api/ordinary", session);
-  assert.equal(denied.status, 500);
+  assert.equal(denied.status, 429);
+  assert.equal(denied.headers["retry-after"], "1");
   gate.release();
   const responses = await Promise.all(requests);
   assert.deepEqual(
     responses.map((r) => r.status),
-    Array(8).fill(200)
+    Array(48).fill(200)
   );
   assert.equal((await h.request("/api/auth/token", session)).status, 200);
   h.advance(1001);
@@ -735,6 +736,29 @@ test("five wrong current-proof attempts keep session alive; sixth returns 429", 
     ).status,
     200
   );
+});
+
+test("ordinary 48-call burst and refill never enlarge the five-wrong-TOTP proof budget", async () => {
+  const secret = authenticator.generateSecret();
+  makeUser("player", 1, { open2FA: true, secret });
+  const h = await startApp(), session = await h.login("player", password, code(secret));
+  // Leave six ordinary admissions so the sixth proof reaches its independent cap.
+  for (let i = 0; i < 42; i++) assert.equal((await h.request("/api/ordinary", session)).status, 200);
+  const proof = currentTOTP => h.request("/api/auth/bind2fa", {
+    ...session, method: "POST", body: { currentPassword: password, currentTOTP }
+  });
+  for (let i = 0; i < 5; i++) assert.equal((await proof(badCode(secret))).status, 403);
+  const denied = await proof(code(secret));
+  assert.equal(denied.status, 429);
+  assert.equal(denied.data, "Too many proof attempts; retry later");
+  assert.equal(qrUris.length, 0);
+  assert.equal((await h.request("/api/auth/token", session)).status, 200);
+  h.advance(1000);
+  const afterOrdinaryRefill = await proof(code(secret));
+  assert.equal(afterOrdinaryRefill.status, 429);
+  assert.equal(afterOrdinaryRefill.data, "Too many proof attempts; retry later");
+  h.advance(300001);
+  assert.equal((await proof(code(secret))).status, 200);
 });
 
 test("new-code cap, expiry, cancel and stale setup IDs preserve active factor", async () => {

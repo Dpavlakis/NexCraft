@@ -5,7 +5,7 @@ import { getUuidByApiKey, ILLEGAL_ACCESS_KEY, isAjax, logout } from "../service/
 import { browserRequestAdmission, liveBrowserUser } from "../service/session_store";
 
 /**
- * @description Request speed limit, 8 requests per second
+ * @description Browser admission: sustained 8/sec with bounded authenticated burst
  */
 function requestSpeedLimit(ctx: Koa.ParameterizedContext) {
   const admission = browserRequestAdmission(ctx);
@@ -47,7 +47,8 @@ function apiError(ctx: Koa.ParameterizedContext) {
 }
 
 function tooFast(ctx: Koa.ParameterizedContext) {
-  ctx.status = 500;
+  ctx.status = 429;
+  ctx.set("Retry-After", "1");
   ctx.body = `${$t("TXT_CODE_permission.tooFast")}`;
 }
 
