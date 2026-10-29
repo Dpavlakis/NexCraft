@@ -146,11 +146,6 @@ onMounted(async () => {
           }}
         </a-typography-text>
         <div v-if="gameEndpoint.address || gameEndpoint.source === 'server.properties'">
-          <a-typography-text
-            v-if="gameEndpoint.address && gameEndpoint.hostSource === 'node'"
-            type="secondary"
-            >{{ t(gameEndpoint.hostHint) }}. </a-typography-text
-          >
           <a-typography-text type="secondary">{{ t(gameEndpoint.sourceHint) }}</a-typography-text>
         </div>
         <a-tag v-if="gameEndpoint.protocol">{{ gameEndpoint.protocol.toUpperCase() }}</a-tag>

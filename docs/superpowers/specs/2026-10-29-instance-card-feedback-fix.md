@@ -9,3 +9,5 @@ Render one unavailable-address message. Show node guidance only for a valid fall
 Validate Vue SFC compilation and focused existing regressions. Parent reviews the actual mounted Vue preview before any publication. Do not commit, push or publish.
 
 Parent confirmed the daemon image failed to build because of an undeclared dependency; endpoint resolution remains unchanged. Only responses missing gameEndpoint entirely show the concise daemon-update message in place of the unknown-address reason. Explicit unavailable endpoint metadata retains its original reason.
+
+Approved wording feedback (2026-10-29): The normal Unraid default uses the daemon address and needs no address customization. Remove persistent fallback-host guidance from cards, table rows and Basic Info without adding a replacement warning. Label the copyable endpoint Server address; retain unavailable messages, status pills, port row and source/restart details. Explain Player address (optional) in node settings: leave blank unless players connect through a different IP or hostname; omit the port. Presentation only; endpoint resolution, allocation, validation and security remain unchanged.

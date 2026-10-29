@@ -156,7 +156,7 @@ const toInstanceTerminal = async () => {
         <a-tooltip
           :title="
             gameEndpoint.address
-              ? t(gameEndpoint.hostHint) + '. ' + t(gameEndpoint.sourceHint)
+              ? t(gameEndpoint.hostHint) + ' ' + t(gameEndpoint.sourceHint)
               : gameEndpoint.source === 'server.properties'
               ? t(gameEndpoint.sourceHint)
               : undefined
@@ -177,12 +177,6 @@ const toInstanceTerminal = async () => {
             }}
           </a-typography-text>
         </a-tooltip>
-        <div
-          v-if="gameEndpoint.address && gameEndpoint.hostSource === 'node'"
-          style="font-size: 11px"
-        >
-          <a-typography-text type="secondary">{{ t(gameEndpoint.hostHint) }}</a-typography-text>
-        </div>
       </div>
     </template>
 

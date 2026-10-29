@@ -10,9 +10,11 @@ Each card shows an **edition badge** and a coloured accent stripe — **green fo
 
 ## Game addresses and node hosts
 
-The **Instances** cards and table rows, and an instance's **Basic Info**, show a copyable game address. The port comes from that instance's `server.properties`, including for stopped instances. If the configured port is missing or invalid, the address is unavailable rather than guessed.
+The **Instances** cards and table rows, and an instance's **Basic Info**, show a copyable **Server address**. The port comes from that instance's `server.properties`, including for stopped instances. If the configured port is missing or invalid, the address is unavailable rather than guessed.
 
-In node settings, **Player game host** is the optional hostname or IP address that players use to connect. It is separate from the daemon host and **RPC port**, which NexCraft uses to manage the node. Leave Player game host blank to use the existing node host. Enter only a hostname, IPv4 address, or IPv6 address, without a URL scheme, path, or port.
+The normal Unraid setup uses the daemon’s address plus each server’s game port; no address customization is needed.
+
+In node settings, **Player address (optional)** lets you enter a different IP address or hostname only when that is what players use to connect (for example, `play.example.com`). Leave it blank to use this daemon’s address. Enter the address without a port; NexCraft adds each server’s port. Hostnames, IPv4 and IPv6 addresses are supported; URL schemes and paths are not. This field is separate from the daemon host and **RPC port**, which NexCraft uses to manage the node.
 
 For example, a player host of `play.example.com` and configured game port `25565` produce `play.example.com:25565`. IPv6 addresses are displayed and copied with brackets, such as `[2001:db8::1]:25565`. Setting a player host does not configure DNS, forwarding, or the server's listening port.
 
