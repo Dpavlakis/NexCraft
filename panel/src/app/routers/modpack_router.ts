@@ -44,6 +44,25 @@ router.get(
   }
 );
 
+// Release notes for the selected modpack version.
+router.get(
+  "/changelog",
+  permission({ level: ROLE.USER }),
+  requestConcurrencyLimiter("modpack:changelog"),
+  validator({ query: { source: String, projectId: String, versionId: String } }),
+  async (ctx) => {
+    try {
+      ctx.body = await modManagerService.getModpackChangelog(
+        String(ctx.query.source),
+        String(ctx.query.projectId),
+        String(ctx.query.versionId)
+      );
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
 // Full project detail (description, screenshots, categories) for the dialog
 router.get(
   "/detail",

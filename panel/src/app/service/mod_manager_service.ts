@@ -1116,6 +1116,47 @@ class ModManagerService {
     )}`;
   }
 
+  public async getModpackChangelog(
+    source: string,
+    projectId: string,
+    versionId: string
+  ): Promise<{ content: string; format: "html" | "markdown" }> {
+    const s = source.toLowerCase();
+    if (s !== "curseforge" && s !== "modrinth") {
+      throw new Error("Unsupported modpack changelog source");
+    }
+
+    // Only allow identifiers, never paths, query strings, or external URLs.
+    const identifier = s === "curseforge" ? /^[0-9]+$/ : /^[a-zA-Z0-9]+$/;
+    if (!identifier.test(projectId) || !identifier.test(versionId)) {
+      throw new Error("Invalid modpack project or version identifier");
+    }
+
+    if (s === "curseforge") {
+      const res = await this.requestWithRetry({
+        method: "GET",
+        url: `${this.curseforgeUrl}/v1/cf/mods/${projectId}/files/${versionId}/changelog`,
+        headers: { Accept: "application/json", "x-api-key": this.CF_KEY }
+      });
+      return {
+        content: typeof res.data?.data === "string" ? res.data.data : "",
+        format: "html"
+      };
+    }
+
+    const res = await this.requestWithRetry({
+      method: "GET",
+      url: `${this.baseUrl}/version/${versionId}`
+    });
+    if (res.data?.project_id !== projectId) {
+      throw new Error("Modrinth version does not belong to the requested project");
+    }
+    return {
+      content: typeof res.data?.changelog === "string" ? res.data.changelog : "",
+      format: "markdown"
+    };
+  }
+
   // List installable versions of a CurseForge modpack, flagging server-pack availability.
   public async getCurseForgeModpackVersions(modId: string) {
     const res = await this.requestWithRetry({

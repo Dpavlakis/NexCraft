@@ -3836,5 +3836,13 @@
   "TXT_CODE_loader_feat_quilt_1": "Fabric-compatible mod loader",
   "TXT_CODE_loader_feat_quilt_2": "Most Fabric mods run on Quilt",
   "TXT_CODE_loader_feat_quilt_3": "Extra hooks & the QSL library",
-  "TXT_CODE_loader_feat_quilt_4": "Community-driven"
+  "TXT_CODE_loader_feat_quilt_4": "Community-driven",
+  "TXT_CODE_modpack_changelog_title": "What changed",
+  "TXT_CODE_modpack_changelog_selected": "Selected version: {version}",
+  "TXT_CODE_modpack_changelog_loading": "Loading release notes...",
+  "TXT_CODE_modpack_changelog_empty": "The publisher has not provided release notes for this version.",
+  "TXT_CODE_modpack_changelog_unavailable": "Release notes are unavailable.",
+  "TXT_CODE_modpack_changelog_retry": "Retry",
+  "TXT_CODE_file_drop_title": "Drop files or folders here",
+  "TXT_CODE_file_drop_hint": "Upload to the current folder"
 }

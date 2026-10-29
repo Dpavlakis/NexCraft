@@ -75,6 +75,20 @@ export const modpackDetail = useDefineApi<
   method: "GET"
 });
 
+export interface ModpackChangelog {
+  content: string;
+  format: "html" | "markdown";
+}
+
+// Publisher release notes for the selected version (not a generated diff).
+export const modpackChangelog = useDefineApi<
+  { params: { source: string; projectId: string; versionId: string } },
+  ModpackChangelog
+>({
+  url: "/api/protected_modpack/changelog",
+  method: "GET"
+});
+
 // List installable versions of a modpack
 export const modpackVersions = useDefineApi<
   {
