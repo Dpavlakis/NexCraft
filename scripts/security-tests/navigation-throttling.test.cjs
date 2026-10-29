@@ -444,7 +444,7 @@ async function mountedPage(h) {
 }
 
 test("actual default 20-card mount and initial terminal navigation retain every credential once", async (t) => {
-  const h = await fixture({ realtime: true });
+  const h = await fixture();
   let page;
   try {
     page = await mountedPage(h);
@@ -528,6 +528,25 @@ test("actual default 20-card mount and initial terminal navigation retain every 
         (el) => el.dataset.status === "current"
       )
     );
+    // Repeated navigation at the SAME store clock exceeds the former 48 ceiling.
+    for (let wave = 0; wave < 4; wave++) {
+      const results = await Promise.allSettled(
+        Array.from({ length: 3 }, (_, i) => {
+          const params = { daemonId: "fixture", uuid: `navigation${wave}-${i}` };
+          return Promise.all([
+            getInstanceInfo().execute({ params }),
+            modListApi().execute({ params }),
+            setUpTerminalStreamChannel().execute({ params }),
+            downloadAddress().execute({ params: { ...params, file_name: "server-icon.png" } })
+          ]);
+        })
+      );
+      assert.ok(results.every((r) => r.status === "fulfilled"));
+    }
+    assert.equal(page.transport.length, 94);
+    assert.ok(page.transport.every((r) => r.status === 200));
+    assert.equal(h.remoteCalls.filter((r) => r.event === "passport/register").length, 46);
+    assert.deepEqual(page.errors, []);
   } finally {
     if (page) await page.close();
     await h.close();
@@ -574,88 +593,29 @@ test("mounted cold six-pack checks and three rapid terminal views stay admitted"
         ["POST", 200]
       ]
     );
-    // The smaller 18-call workload still leaves only the fixed remaining credit.
-    for (let i = 0; i < 30; i++) assert.equal((await h.request("/api/fixture-read")).status, 200);
-    assert.equal((await h.request("/api/fixture-read")).status, 429);
+    for (let wave = 0; wave < 4; wave++) {
+      const repeated = await startup(h);
+      assert.ok(repeated.every((r) => r.status === 200));
+    }
   } finally {
     await h.close();
   }
 });
 
-test("mounted admission stays atomic, refills eight/sec, bounds abuse and preserves denied sessions", async () => {
+test("simultaneous normal signed-in waves remain unlimited at a frozen clock", async () => {
   const h = await fixture();
   try {
-    const burst = await Promise.all(
-      Array.from({ length: 64 }, () => h.request("/api/fixture-read"))
-    );
-    assert.equal(burst.filter((r) => r.status === 200).length, 48);
-    assert.equal(burst.filter((r) => r.status === 429).length, 16);
-    for (const response of burst.filter((r) => r.status === 429)) {
-      assert.equal(response.headers.get("retry-after"), "1");
-      assert.equal(response.headers.get("set-cookie"), null);
-    }
-    assert.deepEqual((await h.request("/api/fixture-identity")).data, { authenticated: true });
-    h.advance(124);
-    assert.equal((await h.request("/api/fixture-read")).status, 429);
-    h.advance(1);
-    assert.equal((await h.request("/api/fixture-read")).status, 200);
-    assert.equal((await h.request("/api/fixture-read")).status, 429);
-    // A backward clock cannot create credits, including when it catches up.
-    h.advance(-100);
-    assert.equal((await h.request("/api/fixture-read")).status, 429);
-    h.advance(100);
-    assert.equal((await h.request("/api/fixture-read")).status, 429);
-    for (let second = 0; second < 3; second++) {
-      h.advance(1000);
-      const wave = await Promise.all(
-        Array.from({ length: 16 }, () => h.request("/api/fixture-read"))
+    for (let wave = 0; wave < 4; wave++) {
+      const ordinary = await Promise.all(
+        Array.from({ length: 128 }, () => h.request("/api/fixture-read"))
       );
-      assert.equal(wave.filter((r) => r.status === 200).length, 8);
-      assert.equal(wave.filter((r) => r.status === 429).length, 8);
+      assert.ok(ordinary.every((r) => r.status === 200));
     }
-    h.advance(10000);
-    const capped = await Promise.all(
-      Array.from({ length: 49 }, () => h.request("/api/fixture-read"))
-    );
-    assert.equal(capped.filter((r) => r.status === 200).length, 48);
-    // Credential creation is rejected before dispatch and is never automatically replayed.
-    const query = "?daemonId=fixture&uuid=pack0";
-    const before = h.remoteCalls.length;
-    assert.equal(
-      (await h.request("/api/protected_instance/stream_channel" + query, "POST")).status,
-      429
-    );
-    assert.equal(h.remoteCalls.length, before);
-    h.advance(1000);
-    assert.equal(
-      (await h.request("/api/protected_instance/stream_channel" + query, "POST")).status,
-      200
-    );
-    assert.equal(h.remoteCalls.filter((r) => r.event === "passport/register").length, 1);
-  } finally {
-    await h.close();
-  }
-});
-
-test("six provider pills share panel admission failure and recover without a provider outage", async () => {
-  const h = await fixture();
-  try {
-    for (let n = 0; n < 48; n++) assert.equal((await h.request("/api/fixture-read")).status, 200);
-    const versions = (i) =>
-      h.request(
-        "/api/protected_modpack/versions?source=" +
-          ["modrinth", "curseforge", "ftb"][i % 3] +
-          "&projectId=pill" +
-          i
-      );
-    const denied = await Promise.all(Array.from({ length: 6 }, (_, i) => versions(i)));
-    assert.ok(denied.every((r) => r.status === 429));
-    assert.equal(h.providerCalls.length, 0);
+    const responses = await startup(h);
+    assert.ok(responses.every((r) => r.status === 200));
     assert.deepEqual((await h.request("/api/fixture-identity")).data, { authenticated: true });
-    h.advance(1000);
-    const recovered = await Promise.all(Array.from({ length: 6 }, (_, i) => versions(i)));
-    assert.ok(recovered.every((r) => r.status === 200 && r.data[0].id === "installed"));
     assert.equal(h.providerCalls.length, 6);
+    assert.equal(h.remoteCalls.filter((r) => r.event === "passport/register").length, 6);
   } finally {
     await h.close();
   }

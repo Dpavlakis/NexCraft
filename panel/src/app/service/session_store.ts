@@ -15,7 +15,6 @@ type Entry = {
   fingerprint?: string;
   providerAt?: number;
   requestTimes?: number[];
-  requestBucket?: { credit: number; at: number };
 };
 type RequestState = {
   id: string;
@@ -172,20 +171,10 @@ export class SessionStore {
   admitRequest(ctx: Koa.Context): boolean {
     const entry = this.requests.get(ctx)?.entry;
     if (!entry || !this.valid(entry)) return false;
+    // Signed-in ordinary traffic has no generic throttle. Revalidate the live
+    // store identity before bypassing; copied/stale session JSON grants nothing.
+    if (entry.uuid) return !!this.user(ctx);
     const now = this.now();
-    if (entry.uuid) {
-      // Six seconds of idle credit cover the default 20-card page and navigation.
-      // Ordinary saves cannot reset this store-owned bucket; equal-clock calls debit it.
-      // Millitokens avoid fractional drift: refill 8/sec, spend 1000, cap at 48.
-      const bucket = entry.requestBucket ?? { credit: 48000, at: now };
-      const at = Math.max(now, bucket.at); // clock rollback must not mint credit
-      bucket.credit = Math.min(48000, bucket.credit + (at - bucket.at) * 8);
-      bucket.at = at;
-      entry.requestBucket = bucket;
-      if (bucket.credit < 1000) return false;
-      bucket.credit -= 1000;
-      return true;
-    }
     const times = (entry.requestTimes || []).filter((time) => now - time < 1000);
     entry.requestTimes = times;
     if (times.length >= 8) return false;

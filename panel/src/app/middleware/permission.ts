@@ -5,7 +5,7 @@ import { getUuidByApiKey, ILLEGAL_ACCESS_KEY, isAjax, logout } from "../service/
 import { browserRequestAdmission, liveBrowserUser } from "../service/session_store";
 
 /**
- * @description Browser admission: sustained 8/sec with bounded authenticated burst
+ * @description Anonymous admission; live authenticated browser sessions bypass it
  */
 function requestSpeedLimit(ctx: Koa.ParameterizedContext) {
   const admission = browserRequestAdmission(ctx);
@@ -65,7 +65,8 @@ export default (parameter: IPermissionCfg) => {
       (parameter.speedLimit == null || parameter.speedLimit === true) &&
       Number(parameter.level) < 10
     ) {
-      // Request speed check
+      // Store-backed live authentication bypasses only generic admission.
+      // API-key, token, role and route-specific protections still run below.
       if (!requestSpeedLimit(ctx)) {
         return tooFast(ctx);
       }

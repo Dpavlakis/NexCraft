@@ -248,6 +248,21 @@ async function startApp(options = {}) {
     }
     ctx.body = true;
   });
+  if (options.admissionGate)
+    router.get(
+      "/late-admission",
+      async (ctx, next) => {
+        // Load a valid identity, then revoke/change it before permission runs.
+        assert.equal(ctx.session.login, true);
+        options.admissionGate.enter();
+        await options.admissionGate.wait;
+        await next();
+      },
+      permission({ level: 1 }),
+      (ctx) => {
+        ctx.body = true;
+      }
+    );
   router.get("/admin-only", permission({ level: 10 }), async (ctx) => {
     ctx.body = true;
   });
@@ -408,25 +423,113 @@ test("real signed-cookie login/logout/replay, helpers, and opaque rotation", asy
     assert.equal(log.includes(secret), false);
 });
 
-test("overlapping ordinary mounted saves all succeed; same-clock burst admission counts 48", async () => {
-  const gate = barrier(48),
-    h = await startApp({ ordinaryGate: gate }),
+test(
+  "repeated overlapping ordinary signed-in waves exceed 48 at the same clock",
+  { timeout: 10000 },
+  async () => {
+    const gate = barrier(128),
+      h = await startApp({ ordinaryGate: gate }),
+      session = await h.login();
+    const requests = Array.from({ length: 128 }, () => h.request("/api/ordinary", session));
+    await gate.entered;
+    gate.release();
+    assert.ok((await Promise.all(requests)).every((r) => r.status === 200));
+    for (let wave = 0; wave < 3; wave++) {
+      const responses = await Promise.all(
+        Array.from({ length: 128 }, () => h.request("/api/ordinary", session))
+      );
+      assert.ok(responses.every((r) => r.status === 200));
+    }
+    // Ordinary preference writes under /auth are also unlimited.
+    for (let wave = 0; wave < 2; wave++) {
+      const responses = await Promise.all(
+        Array.from({ length: 64 }, (_, i) =>
+          h.request(i % 2 ? "/api/auth/avatar" : "/api/auth/theme", {
+            ...session,
+            method: "PUT",
+            body: i % 2 ? { avatar: "data:image/png;base64,AA==" } : { theme: "nexcraft" }
+          })
+        )
+      );
+      assert.ok(responses.every((r) => r.status === 200));
+    }
+    assert.equal((await h.request("/api/ordinary", { ...session, token: "wrong" })).status, 403);
+    assert.equal((await h.request("/api/admin-only", session)).status, 403);
+    assert.equal((await h.request("/api/auth/token", session)).status, 200);
+  }
+);
+
+test("signed-in login/install skip credential verification; anonymous login retains eight admissions", async () => {
+  const h = await startApp(),
     session = await h.login();
-  const requests = Array.from({ length: 48 }, () => h.request("/api/ordinary", session));
-  await gate.entered;
-  const denied = await h.request("/api/ordinary", session);
+  for (let wave = 0; wave < 4; wave++) {
+    assert.ok(
+      (
+        await Promise.all(Array.from({ length: 128 }, () => h.request("/api/ordinary", session)))
+      ).every((r) => r.status === 200)
+    );
+  }
+  for (let wave = 0; wave < 2; wave++) {
+    const responses = await Promise.all(
+      Array.from({ length: 64 }, () =>
+        h.request("/api/auth/login", {
+          ...session,
+          method: "POST",
+          body: { username: "player", password: "wrong" }
+        })
+      )
+    );
+    assert.ok(responses.every((r) => r.status === 200 && r.data === "Logined"));
+  }
+  for (let i = 0; i < 64; i++) {
+    const response = await h.request("/api/auth/install", {
+      ...session,
+      method: "POST",
+      body: { username: "player", password }
+    });
+    assert.notEqual(response.status, 429);
+  }
+  const attempt = (cookie) =>
+    h.request("/api/auth/login", {
+      cookie,
+      method: "POST",
+      body: { username: "player", password: "wrong" }
+    });
+  const first = await attempt("");
+  assert.notEqual(first.status, 429);
+  assert.ok(first.cookie.includes("auth-test="));
+  const admitted = await Promise.all(Array.from({ length: 7 }, () => attempt(first.cookie)));
+  assert.ok(admitted.every((r) => r.status !== 429));
+  const denied = await attempt(first.cookie);
   assert.equal(denied.status, 429);
   assert.equal(denied.headers["retry-after"], "1");
-  gate.release();
-  const responses = await Promise.all(requests);
-  assert.deepEqual(
-    responses.map((r) => r.status),
-    Array(48).fill(200)
-  );
-  assert.equal((await h.request("/api/auth/token", session)).status, 200);
-  h.advance(1001);
+  assert.equal(denied.cookie, "");
   assert.equal((await h.request("/api/ordinary", session)).status, 200);
+  assert.equal((await h.request("/api/auth/token", session)).status, 200);
+  assert.equal((await h.request("/api/auth/status", session)).status, 200);
+  h.advance(1001);
+  assert.notEqual((await attempt(first.cookie)).status, 429);
 });
+
+for (const transition of ["revoke", "ban", "fingerprint", "delete", "expiry"])
+  test(
+    "ordinary admission rechecks the live store after loaded-session " + transition,
+    async () => {
+      const gate = barrier(),
+        h = await startApp({ admissionGate: gate }),
+        session = await h.login();
+      const pending = h.request("/api/late-admission", session);
+      await gate.entered;
+      if (transition === "revoke") h.store.revoke("player");
+      if (transition === "ban") users.getInstance("player").permission = -1;
+      if (transition === "fingerprint") users.getInstance("player").passWord += "changed";
+      if (transition === "delete") users.objects.delete("player");
+      if (transition === "expiry") h.advance(86400001);
+      gate.release();
+      assert.equal((await pending).status, 429);
+      assert.equal((await h.request("/api/identity", session)).data.found, false);
+    }
+  );
 
 for (const transition of ["logout", "password", "admin-reset", "expiry", "eviction"])
   test("deferred ordinary save cannot resurrect after " + transition, async () => {
@@ -462,6 +565,7 @@ for (const transition of ["logout", "password", "admin-reset", "expiry", "evicti
     if (transition === "eviction") for (let n = 0; n < 10; n++) await h.login();
     gate.release();
     assert.equal((await late).status, 200);
+    assert.notEqual((await h.request("/api/ordinary", session)).status, 200);
     assert.equal((await h.request("/api/auth/token", session)).status, 403);
     if (["password", "admin-reset"].includes(transition))
       assert.equal((await h.login("player", nextPassword)).token.length, 64);
@@ -535,6 +639,7 @@ test("fixed TTL, constant signing keys restart, legacy payload, disabled/deleted
     makeUser();
     const auth = await restart.login();
     mutate(users.getInstance("player"));
+    assert.notEqual((await restart.request("/api/ordinary", auth)).status, 200);
     assert.equal((await restart.request("/api/auth/token", auth)).status, 403);
     assert.equal((await restart.request("/api/identity", auth)).data.found, false);
   }
@@ -738,15 +843,23 @@ test("five wrong current-proof attempts keep session alive; sixth returns 429", 
   );
 });
 
-test("ordinary 48-call burst and refill never enlarge the five-wrong-TOTP proof budget", async () => {
+test("large ordinary traffic never enlarges the independent five-wrong-TOTP proof budget", async () => {
   const secret = authenticator.generateSecret();
   makeUser("player", 1, { open2FA: true, secret });
-  const h = await startApp(), session = await h.login("player", password, code(secret));
-  // Leave six ordinary admissions so the sixth proof reaches its independent cap.
-  for (let i = 0; i < 42; i++) assert.equal((await h.request("/api/ordinary", session)).status, 200);
-  const proof = currentTOTP => h.request("/api/auth/bind2fa", {
-    ...session, method: "POST", body: { currentPassword: password, currentTOTP }
-  });
+  const h = await startApp(),
+    session = await h.login("player", password, code(secret));
+  for (let wave = 0; wave < 4; wave++) {
+    const responses = await Promise.all(
+      Array.from({ length: 128 }, () => h.request("/api/ordinary", session))
+    );
+    assert.ok(responses.every((r) => r.status === 200));
+  }
+  const proof = (currentTOTP) =>
+    h.request("/api/auth/bind2fa", {
+      ...session,
+      method: "POST",
+      body: { currentPassword: password, currentTOTP }
+    });
   for (let i = 0; i < 5; i++) assert.equal((await proof(badCode(secret))).status, 403);
   const denied = await proof(code(secret));
   assert.equal(denied.status, 429);
