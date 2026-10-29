@@ -71,7 +71,7 @@ export default class GeneralStartCommand extends AbsStartCommand {
     if (!fs.existsSync(instance.absoluteCwdPath())) fs.mkdirpSync(instance.absoluteCwdPath());
 
     // command parsing
-    const tmpStartCmd = await instance.parseTextParams(instance.config.startCommand);
+    const tmpStartCmd = await instance.parseTextParams(instance.config.startCommand, true);
     const commandList = commandStringToArray(tmpStartCmd);
     const commandExeFile = commandList[0];
     const commandParameters = commandList.slice(1);
@@ -105,6 +105,26 @@ export default class GeneralStartCommand extends AbsStartCommand {
       // leading to an abnormal instance state.
       detached: false
     });
+
+    // A vanished executable reports an asynchronous error, often with no PID.
+    // Listen before checking the PID so Node cannot emit an unhandled ENOENT.
+    if (subProcess) {
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          subProcess.removeListener("spawn", onSpawn);
+          subProcess.removeListener("error", onError);
+        };
+        const onSpawn = () => { cleanup(); resolve(); };
+        const onError = (error: Error) => {
+          cleanup();
+          subProcess.stdout?.destroy();
+          subProcess.stderr?.destroy();
+          reject(new StartupError(`${$t("TXT_CODE_general_start.startErr")}: ${error.message}`));
+        };
+        subProcess.once("spawn", onSpawn);
+        subProcess.once("error", onError);
+      });
+    }
 
     // child process creation result check
     if (!subProcess || !subProcess.pid) {

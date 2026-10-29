@@ -1,4 +1,5 @@
 import axios from "axios";
+import { Mutex } from "async-mutex";
 import { spawn } from "child_process";
 import fs from "fs-extra";
 import os from "os";
@@ -6,6 +7,7 @@ import path from "path";
 import { extract } from "tar";
 import { URL } from "url";
 import StorageSubsystem from "../common/system_storage";
+import { replaceJavaLauncher } from "../entity/commands/base/command_parser";
 import { JavaInfo } from "../entity/commands/java/java_manager";
 import { globalConfiguration } from "../entity/config";
 import { $t } from "../i18n";
@@ -27,6 +29,7 @@ class JavaManager {
   private javaDataDir = "";
   public readonly javaList = new Map<string, IJavaRuntime>();
   private _sysMajor?: number;
+  private readonly mutations = new Mutex();
 
   constructor() {
     let javaDataDir = path.join(process.cwd(), "data/JavaData");
@@ -251,7 +254,36 @@ class JavaManager {
     });
   }
 
-  async getJavaRuntimeCommand(id: string) {
+  async selectJava(instanceId: string, id: string) {
+    return this.mutations.runExclusive(async () => {
+      const instance = InstanceSubsystem.getInstance(instanceId);
+      if (!instance) throw new Error($t("TXT_CODE_ef6b54fb"));
+      await this.resolveJavaRuntimeCommand(id);
+      const startCommand = replaceJavaLauncher(instance.config.startCommand);
+      instance.saveJavaSelection(id, startCommand);
+    });
+  }
+
+  async getJavaRuntimeCommand(id: string, instanceUuid?: string) {
+    return this.mutations.runExclusive(async () => {
+      const command = await this.resolveJavaRuntimeCommand(id);
+      // Reserve before returning the resolved launcher, including awaits before spawn/open.
+      // The configured ID can change while this runtime is starting or running.
+      if (instanceUuid) {
+        const java = this.getJava(id)!;
+        if (!java.usingInstances.includes(instanceUuid)) java.usingInstances.push(instanceUuid);
+      }
+      return command;
+    });
+  }
+
+  releaseRuntimeUsage(instanceUuid: string) {
+    for (const java of this.javaList.values()) {
+      java.usingInstances = java.usingInstances.filter((uuid) => uuid !== instanceUuid);
+    }
+  }
+
+  private async resolveJavaRuntimeCommand(id: string) {
     const java = this.getJava(id);
     if (!java) throw new Error($t("TXT_CODE_77ce8542"));
     if (java.info.downloading) throw new Error($t("TXT_CODE_45d02bb7"));
@@ -287,6 +319,12 @@ class JavaManager {
       os.platform() == "win32" ? "java.exe" : "java"
     );
 
+    try {
+      if (!(await fs.stat(javaRuntimePath)).isFile()) throw new Error("ENOTFILE");
+      await fs.access(javaRuntimePath, os.platform() === "win32" ? fs.constants.R_OK : fs.constants.X_OK);
+    } catch {
+      throw new Error($t("TXT_CODE_java_selection.executableUnavailable", { path: javaRuntimePath }));
+    }
     return `"${javaRuntimePath}"`;
   }
 
@@ -342,7 +380,17 @@ class JavaManager {
       this.updateJavaInfo(info);
     } catch (error: any) {
       logger.warn(`Install Env Error: ${error?.message}`);
-      await this.removeJava(info.fullname).catch(() => {});
+      // updateJavaInfo can fail after clearing the flag; this attempt still failed.
+      info.downloading = true;
+      // Discard only this still-pending installation. Public deletion rejects
+      // active downloads and scans saved configs, neither of which should block
+      // cleanup of our own failed partial directory.
+      await this.mutations.runExclusive(async () => {
+        const runtime = this.getJava(info.fullname);
+        if (runtime?.info !== info || !info.downloading) return;
+        await fs.remove(runtime.path);
+        this.javaList.delete(info.fullname);
+      }).catch(() => {});
       throw error;
     }
   }
@@ -420,47 +468,37 @@ class JavaManager {
   }
 
   async removeJava(id: string) {
-    const java = this.getJava(id);
-    if (!java) throw new Error($t("TXT_CODE_77ce8542"));
+    return this.mutations.runExclusive(async () => {
+      const java = this.getJava(id);
+      if (!java) throw new Error($t("TXT_CODE_77ce8542"));
+      if (java.info.downloading) throw new Error($t("TXT_CODE_887fee99"));
 
-    // if (java.info.downloading) throw new Error($t("TXT_CODE_887fee99"));
-    if (java.usingInstances.length) throw new Error($t("TXT_CODE_ea8ea5d1"));
-
-    let javaPath = java.path;
-    if (!javaPath) throw new Error($t("TXT_CODE_82c8bca3"));
-
-    await fs.remove(javaPath);
-    this.javaList.delete(id);
-
-    return true;
+      const references = new Set(java.usingInstances);
+      for (const instance of InstanceSubsystem.instances.values()) {
+        if (instance.config.java.id === id) references.add(instance.instanceUuid);
+      }
+      // Include saved instances even when they are not loaded in memory.
+      // Invalid/unreadable configs fail closed rather than allowing a dangling reference.
+      for (const uuid of StorageSubsystem.list("InstanceConfig")) {
+        const config = JSON.parse(StorageSubsystem.readFile(`InstanceConfig/${uuid}.json`));
+        if (config?.java?.id === id) references.add(uuid);
+      }
+      if (references.size) {
+        throw new Error(`${$t("TXT_CODE_ea8ea5d1")}: ${Array.from(references).join(", ")}`);
+      }
+      const javaPath = java.path;
+      if (!javaPath) throw new Error($t("TXT_CODE_82c8bca3"));
+      await fs.remove(javaPath);
+      this.javaList.delete(id);
+      return true;
+    });
   }
 }
 
 const javaManager = new JavaManager();
 
-InstanceSubsystem.on("open", (obj: { instanceUuid: string }) => {
-  const instanceUuid = obj.instanceUuid;
-  const config = InstanceSubsystem.getInstance(instanceUuid)?.config;
-  if (!config) return;
-
-  const javaId = config.java.id;
-  if (!javaId) return;
-
-  const java = javaManager.getJava(javaId);
-  if (java && !java.usingInstances.includes(instanceUuid)) java.usingInstances.push(instanceUuid);
-});
-
 const handleStopInstance = (obj: { instanceUuid: string }) => {
-  const instanceUuid = obj.instanceUuid;
-  const config = InstanceSubsystem.getInstance(instanceUuid)?.config;
-  if (!config) return;
-
-  const javaId = config.java.id;
-  if (!javaId) return;
-
-  const java = javaManager.getJava(javaId);
-  if (java && !java.usingInstances.includes(instanceUuid))
-    java.usingInstances.filter((uuid) => uuid !== instanceUuid);
+  javaManager.releaseRuntimeUsage(obj.instanceUuid);
 };
 
 InstanceSubsystem.on("exit", handleStopInstance);

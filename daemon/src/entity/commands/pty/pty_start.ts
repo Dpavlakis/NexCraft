@@ -169,7 +169,7 @@ export default class PtyStartCommand extends AbsStartCommand {
 
     // command parsing
     let commandList: string[] = [];
-    const tmpStarCmd = await instance.parseTextParams(instance.config.startCommand);
+    const tmpStarCmd = await instance.parseTextParams(instance.config.startCommand, true);
     if (os.platform() === "win32") {
       // windows: cmd.exe /c {{startCommand}}
       commandList = [tmpStarCmd];
@@ -233,6 +233,26 @@ export default class PtyStartCommand extends AbsStartCommand {
       // leading to an abnormal instance state.
       detached: false
     });
+
+    // The helper can disappear after the existence check, just like Java itself.
+    // Attach error handling before checking the PID to consume async spawn failures.
+    if (subProcess) {
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          subProcess.removeListener("spawn", onSpawn);
+          subProcess.removeListener("error", onError);
+        };
+        const onSpawn = () => { cleanup(); resolve(); };
+        const onError = (error: Error) => {
+          cleanup();
+          subProcess.stdout?.destroy();
+          subProcess.stderr?.destroy();
+          reject(new StartupError(`${$t("TXT_CODE_pty_start.instanceStartErr")}: ${error.message}`));
+        };
+        subProcess.once("spawn", onSpawn);
+        subProcess.once("error", onError);
+      });
+    }
 
     // pty child process creation result check
     if (!subProcess || !subProcess.pid) {

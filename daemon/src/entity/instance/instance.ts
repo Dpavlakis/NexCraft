@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 import { EventEmitter } from "events";
 import { t } from "i18next";
+import fs from "fs-extra";
 import iconv from "iconv-lite";
-import { configureEntityParams } from "mcsmanager-common";
+import { configureEntityParams, StorageSubsystem as StoragePaths } from "mcsmanager-common";
 import path from "path";
 import { CircularBuffer } from "../../common/string_cache";
 import StorageSubsystem from "../../common/system_storage";
@@ -349,6 +350,41 @@ export default class Instance extends EventEmitter {
     wakeListenerService.applyForInstance(this);
   }
 
+  // Java selection alone uses staged persistence; parameters() has broader side effects.
+  public saveJavaSelection(id: string, startCommand: string) {
+    const candidate = { ...this.config, java: { ...this.config.java, id }, startCommand };
+    const serialized = JSON.stringify(candidate, null, 4);
+    const temporaryId = `${this.instanceUuid}-${randomUUID()}`;
+    const temporary = path.join(StoragePaths.DATA_PATH, "JavaSelection", `${temporaryId}.json`);
+    const target = path.join(StoragePaths.DATA_PATH, "InstanceConfig", `${this.instanceUuid}.json`);
+    try {
+      // store() is synchronous. Staging avoids truncating the current config on a failed write.
+      StorageSubsystem.store("JavaSelection", temporaryId, candidate);
+      fs.mkdirsSync(path.dirname(target));
+      try {
+        fs.renameSync(temporary, target);
+      } catch (error) {
+        // A failed acknowledgement can follow a successful rename. Publish only after
+        // confirming the exact candidate; an unreadable outcome remains an error.
+        let confirmed = false;
+        try {
+          confirmed = fs.readFileSync(target, "utf8") === serialized;
+        } catch {
+          // Preserve the original storage error when the outcome cannot be read.
+        }
+        if (!confirmed) throw error;
+      }
+      this.config.java = candidate.java;
+      this.config.startCommand = candidate.startCommand;
+    } finally {
+      try {
+        fs.removeSync(temporary);
+      } catch {
+        // Best-effort staging cleanup.
+      }
+    }
+  }
+
   allocatePort(cfg: InstanceConfig) {
     const globalCfg = globalConfiguration.config;
     const [minPort, maxPort] = globalCfg.allocatablePortRange;
@@ -538,17 +574,7 @@ export default class Instance extends EventEmitter {
         this.println("ERROR", $t("TXT_CODE_autojava.failed", { major }));
         return;
       }
-      this.config.java.id = id;
-      // Make sure the start command runs through the managed Java ({mcsm_java}).
-      const cmd = (this.config.startCommand || "").trim();
-      if (cmd && !cmd.startsWith("{mcsm_java}")) {
-        const replaced = cmd.replace(
-          /^("[^"]*?java(?:\.exe)?"|[^\s"]*java(?:\.exe)?)(?=\s|$)/i,
-          "{mcsm_java}"
-        );
-        if (replaced !== cmd) this.config.startCommand = replaced;
-      }
-      StorageSubsystem.store("InstanceConfig", this.instanceUuid, this.config);
+      await javaManager.selectJava(this.instanceUuid, id);
       this.println("INFO", $t("TXT_CODE_autojava.retry", { major }));
       await this.execPreset("start");
     } catch (err: any) {
@@ -668,6 +694,7 @@ export default class Instance extends EventEmitter {
 
   // Release resources (mainly release process-related resources)
   releaseResources() {
+    javaManager.releaseRuntimeUsage(this.instanceUuid);
     if (this.mcReadinessTimer) {
       clearTimeout(this.mcReadinessTimer);
       this.mcReadinessTimer = undefined;
@@ -766,7 +793,7 @@ export default class Instance extends EventEmitter {
     this.info.latency = 0;
   }
 
-  public async parseTextParams(text: string) {
+  public async parseTextParams(text: string, reserveJava = false) {
     if (typeof text !== "string") return "";
     text = text.replace(/\{mcsm_workspace\}/gim, this.absoluteCwdPath());
     text = text.replace(/\{mcsm_cwd\}/gim, this.absoluteCwdPath());
@@ -779,8 +806,12 @@ export default class Instance extends EventEmitter {
     text = text.replace(/\{mcsm_instance_base_port\}/gim, String(this.config.basePort));
 
     const javaId = this.config.java.id;
-    if (javaId) {
-      text = text.replace(/\{mcsm_java\}/gim, await javaManager.getJavaRuntimeCommand(javaId));
+    if (javaId && /\{mcsm_java\}/i.test(text)) {
+      const runtime = await javaManager.getJavaRuntimeCommand(
+        javaId,
+        reserveJava ? this.instanceUuid : undefined
+      );
+      text = text.replace(/\{mcsm_java\}/gim, () => runtime);
     }
 
     const ports = Array.from(
