@@ -94,7 +94,7 @@ const selectImage = (row: DefaultOptionType) => {
       :loading="loading"
       @focus="loadImages"
       @update:value="(v: any) => emit('update:modelValue', v)"
-      @change="(_e, option: DefaultOptionType) => selectImage(option)"
+      @change="(_e: unknown, option: DefaultOptionType) => selectImage(option)"
     >
       <a-select-option v-for="item in dockerImages" :key="item.value" :value="item.value">
         {{ item.label }}

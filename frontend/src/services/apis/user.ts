@@ -1,45 +1,56 @@
 import { useDefineApi } from "@/stores/useDefineApi";
 
-export const setUserApiKey = useDefineApi<
-  {
-    data: {
-      enable: boolean;
-    };
-  },
-  string
->({
+export interface SecurityProof {
+  currentPassword?: string;
+  currentTOTP?: string;
+}
+
+export interface TwoFactorSetup {
+  setupId: string;
+  qrcode: string;
+  expiresAt: number;
+  replacing: boolean;
+}
+
+export type ConfirmTwoFactorRequest =
+  | { enable: true; setupId: string; TOTPCode: string }
+  | { enable: false; currentPassword?: string; currentTOTP: string };
+
+export interface TwoFactorResult {
+  enabled: boolean;
+  reloginRequired: true;
+}
+
+// The force branch bypasses responseMap; it needs its own bounded timeout.
+const securityRequest = { forceRequest: true, timeout: 15000 };
+
+export const setUserApiKey = useDefineApi<{ data: SecurityProof & { enable: boolean } }, string>({
   url: "/api/auth/api",
-  method: "PUT"
+  method: "PUT",
+  ...securityRequest
 });
 
 export const updatePassword = useDefineApi<
-  {
-    data: {
-      passWord: string;
-    };
-  },
-  boolean
->({
-  url: "/api/auth/update",
-  method: "PUT"
-});
+  { data: { passWord: string; currentPassword: string; currentTOTP?: string; isInit?: boolean } },
+  true
+>({ url: "/api/auth/update", method: "PUT", ...securityRequest });
 
-export const bind2FA = useDefineApi<any, string>({
+export const bind2FA = useDefineApi<{ data: SecurityProof }, TwoFactorSetup>({
   url: "/api/auth/bind2fa",
-  method: "POST"
+  method: "POST",
+  ...securityRequest
 });
 
-export const confirm2FA = useDefineApi<
-  {
-    data: {
-      enable: boolean;
-      TOTPCode: string;
-    };
-  },
-  undefined
->({
+export const confirm2FA = useDefineApi<{ data: ConfirmTwoFactorRequest }, TwoFactorResult>({
   url: "/api/auth/confirm2fa",
-  method: "POST"
+  method: "POST",
+  ...securityRequest
+});
+
+export const cancel2FA = useDefineApi<{ data: { setupId: string } }, true>({
+  url: "/api/auth/bind2fa",
+  method: "DELETE",
+  ...securityRequest
 });
 
 export const queryUsername = useDefineApi<

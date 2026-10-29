@@ -166,7 +166,7 @@ router.delete(
       const instanceIds = instanceUuids.map((uuid: string) => {
         return { instanceUuid: uuid, daemonId };
       });
-      userSystem.deleteUserInstances(null, instanceIds, true);
+      await userSystem.deleteUserInstances(null, instanceIds, true);
       const result = await new RemoteRequest(remoteService).request("instance/delete", {
         instanceUuids,
         deleteFile

@@ -206,7 +206,7 @@ const downloadProgress = (dTask: any) => {
   return dTask.total > 0 ? Number(((dTask.current / dTask.total) * 100).toFixed(2)) : 0;
 };
 
-let task: NodeJS.Timer | undefined;
+let task: ReturnType<typeof setInterval> | undefined;
 task = setInterval(async () => {
   await getFileStatus();
 }, 3000);
@@ -740,7 +740,7 @@ onUnmounted(() => {
               v-model:activeKey="activeTab"
               type="editable-card"
               @edit="onEditTabs"
-              @change="(key) => handleChangeTab(key as string)"
+              @change="(key: string | number) => handleChangeTab(key as string)"
             >
               <a-tab-pane v-for="b in currentTabs" :key="b.key" :tab="b.name" :closable="true">
               </a-tab-pane>

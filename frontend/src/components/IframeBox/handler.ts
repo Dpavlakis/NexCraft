@@ -1,7 +1,9 @@
 import { useRemoteNode } from "@/hooks/useRemoteNode";
 import { setSettingInfo, settingInfo } from "@/services/apis";
 import { requestBuyInstance } from "@/services/apis/redeem";
-import { setUserApiKey } from "@/services/apis/user";
+import { t } from "@/lang/i18n";
+import { useAppToolsStore } from "@/stores/useAppToolsStore";
+import { message } from "ant-design-vue";
 import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import { openIframeModal } from "../IframeModal/useIframeModal";
@@ -29,24 +31,15 @@ export type IframeRouterHandler<T = any> = (
 ) => Promise<any>;
 
 export async function autoOpenUserApiKey() {
-  const { execute } = setUserApiKey();
-  const { state, updateUserInfo } = useAppStateStore();
+  const { state } = useAppStateStore();
   if (state.userInfo?.apiKey) {
-    return {
-      apiKey: state.userInfo?.apiKey
-    };
+    return { apiKey: state.userInfo.apiKey };
   }
-  await execute({
-    data: {
-      enable: true
-    },
-    forceRequest: true,
-    errorAlert: true
-  });
-  await updateUserInfo();
-  return {
-    apiKey: state.userInfo?.apiKey
-  };
+  const { state: tools } = useAppToolsStore();
+  tools.showUserInfoDialog = true;
+  const instruction = t("TXT_CODE_auth_integration_key_required");
+  message.warning({ content: instruction, duration: 10, key: "account-api-required" });
+  throw new Error(instruction);
 }
 
 export async function getUserInfo() {

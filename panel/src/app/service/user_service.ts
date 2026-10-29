@@ -1,3 +1,4 @@
+import { IStorage } from "../common/storage/storage_interface";
 import bcrypt from "bcryptjs";
 import { t } from "i18next";
 import { LocalFileSource, QueryWrapper } from "mcsmanager-common";
@@ -9,6 +10,9 @@ import { IUser } from "../entity/entity_interface";
 import { IUserApp, User, UserPassWordType } from "../entity/user";
 import { $t } from "../i18n";
 import { logger } from "./log";
+import { credentialFingerprint } from "./security_fingerprint";
+import { SecurityError, UserWriteError } from "./security_error";
+import { userOperation } from "./user_operations";
 
 // Avatars are stored as small base64 data URLs on the user record. Reject
 // anything that is not an image data URL or exceeds the size cap (~256 KB
@@ -17,7 +21,11 @@ const AVATAR_DATA_URL_RE = /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$
 const AVATAR_MAX_LEN = 400_000;
 export function validateAvatarString(avatar: string): void {
   if (avatar === "") return;
-  if (typeof avatar !== "string" || avatar.length > AVATAR_MAX_LEN || !AVATAR_DATA_URL_RE.test(avatar)) {
+  if (
+    typeof avatar !== "string" ||
+    avatar.length > AVATAR_MAX_LEN ||
+    !AVATAR_DATA_URL_RE.test(avatar)
+  ) {
     throw new Error($t("TXT_CODE_avatar.invalid"));
   }
 }
@@ -35,9 +43,14 @@ export class TwoFactorError extends Error {}
 class UserSubsystem {
   public readonly objects: Map<string, User> = new Map();
 
+  public onSecurityChange: (uuid: string) => void = () => {};
+  private readonly quarantined = new Map<string, IStorage>();
+
   async initialize() {
     for (const uuid of await Storage.getStorage().list("User")) {
       const user = (await Storage.getStorage().load("User", User, uuid)) as User;
+      if (!user || user.uuid !== uuid || !user.passWord || (user.open2FA && !user.secret))
+        throw new Error("Invalid committed user record");
       this.objects.set(uuid, user);
     }
     logger.info($t("TXT_CODE_systemUser.userCount", { n: this.objects.size }));
@@ -51,16 +64,55 @@ class UserSubsystem {
     instance.registerTime = new Date().toLocaleString();
     // add to the user system
     this.setInstance(newUuid, instance);
-    await this.edit(instance.uuid, config);
+    try {
+      await this.edit(instance.uuid, config);
+    } catch (error) {
+      this.objects.delete(newUuid);
+      throw error;
+    }
     // Persistently save user information
-    await Storage.getStorage().store("User", instance.uuid, instance);
-    return instance;
+    return this.getInstance(newUuid)!;
   }
 
-  // Update user detail
+  // All persistent User writers share this narrow operation boundary.
+  async withUser<T>(
+    uuid: string,
+    work: (user: User, save: (config: any) => Promise<void>) => Promise<T>
+  ): Promise<T> {
+    return userOperation(uuid, async () => {
+      const backend = this.quarantined.get(uuid) || Storage.getStorage();
+      if (this.quarantined.has(uuid)) {
+        try {
+          const loaded = await backend.load("User", User, uuid);
+          if (loaded == null) {
+            // A successful authoritative read can confirm an uncertain deletion.
+            this.objects.delete(uuid);
+            this.quarantined.delete(uuid);
+          } else if (loaded.uuid !== uuid || !loaded.passWord || (loaded.open2FA && !loaded.secret))
+            throw new Error("Invalid user record");
+          else {
+            this.objects.set(uuid, loaded);
+            this.quarantined.delete(uuid);
+          }
+        } catch {
+          throw new SecurityError(503, "Account persistence unavailable");
+        }
+      }
+      const current = this.getInstance(uuid);
+      if (!current) throw new SecurityError(403, "Account unavailable");
+      return work(current, (config) => this.persistEdit(uuid, config, backend));
+    });
+  }
+  async recoverAuthentication(uuid: string): Promise<void> {
+    if (this.quarantined.has(uuid)) await this.withUser(uuid, async () => {});
+  }
   async edit(uuid: string, config: any) {
-    const instance = this.getInstance(uuid);
-    if (!instance) return;
+    if (!this.objects.has(uuid)) return;
+    return this.withUser(uuid, async (_user, save) => save(config));
+  }
+  private async persistEdit(uuid: string, config: any, backend: IStorage) {
+    const original = this.getInstance(uuid)!;
+    const instance: User = Object.assign(new User(), JSON.parse(JSON.stringify(original)));
     if (config.userName) instance.userName = config.userName;
     if (config.isInit != null) instance.isInit = Boolean(config.isInit);
     if (config.permission) instance.permission = config.permission;
@@ -79,12 +131,32 @@ class UserSubsystem {
       const themeId = String(config.theme);
       if (themeId === "" || isValidThemeId(themeId)) instance.theme = themeId;
     }
-    if (config.instances) this.setUserInstances(uuid, config.instances);
+    if (config.instances) {
+      config.instances.forEach((value: IUserApp) => {
+        if (!value.daemonId || !value.instanceUuid) throw new Error("Invalid user instance");
+      });
+      instance.instances = config.instances.map((value: IUserApp) => ({
+        instanceUuid: String(value.instanceUuid),
+        daemonId: String(value.daemonId)
+      }));
+    }
     if (config.passWord) {
       instance.passWordType = UserPassWordType.bcrypt;
       instance.passWord = bcrypt.hashSync(config.passWord, 10);
     }
-    await Storage.getStorage().store("User", uuid, instance);
+
+    try {
+      await backend.store("User", uuid, instance);
+    } catch (error) {
+      if (!(error instanceof UserWriteError && error.definite)) {
+        this.quarantined.set(uuid, backend);
+        this.onSecurityChange(uuid);
+      }
+      throw new SecurityError(503, "Account persistence unavailable");
+    }
+    this.objects.set(uuid, instance);
+    if (credentialFingerprint(original) !== credentialFingerprint(instance))
+      this.onSecurityChange(uuid);
   }
 
   validatePassword(password = "") {
@@ -96,8 +168,8 @@ class UserSubsystem {
   check2FA(code: string, user: IUser, totpDriftToleranceSteps: number = 0) {
     if (!user.secret)
       throw new Error("Please contact the administrator to reset the account password");
-    authenticator.options = { window: totpDriftToleranceSteps };
-    const delta = authenticator.checkDelta(code, user?.secret);
+    const isolated = authenticator.clone({ window: totpDriftToleranceSteps });
+    const delta = isolated.checkDelta(code, user.secret);
     return delta != null;
   }
 
@@ -129,57 +201,45 @@ class UserSubsystem {
     return flag;
   }
 
-  setUserInstances(uuid: string, instanceIds: IUserApp[]) {
-    const user = this.getInstance(uuid);
-    if (!user) return;
-    instanceIds.forEach((value) => {
-      if (!value.daemonId || !value.instanceUuid)
-        throw new Error("Type error, The instances of user must be IUserHaveInstance array.");
-    });
-    user.instances = [];
-    instanceIds.forEach((value) => {
-      user.instances.push({
-        instanceUuid: String(value.instanceUuid),
-        daemonId: String(value.daemonId)
-      });
-    });
+  async setUserInstances(uuid: string, instanceIds: IUserApp[]) {
+    await this.edit(uuid, { instances: instanceIds });
   }
-  deleteUserInstances(uuid: string | null, instanceIds: IUserApp[], allUsers = false) {
-    if (uuid && allUsers) {
-      throw new Error("Type error, The uuid and allUsers cannot be true at the same time.");
-    }
-    const users = allUsers ? Array.from(this.objects.values()) : [this.getInstance(uuid!)];
-    if (!users || users.length === 0) return;
-    instanceIds.forEach((value) => {
-      if (!value.daemonId || !value.instanceUuid)
-        throw new Error("Type error, The instances of user must be IUserHaveInstance array.");
-    });
-    users.forEach((user) => {
-      if (!user) return;
-      user.instances = user.instances.filter((value) => {
-        for (const instance of instanceIds) {
-          if (instance.daemonId === value.daemonId && instance.instanceUuid === value.instanceUuid)
-            return false;
-        }
-        return true;
+  async deleteUserInstances(uuid: string | null, instanceIds: IUserApp[], allUsers = false) {
+    if (uuid && allUsers) throw new Error("The uuid and allUsers cannot both be set");
+    const uuids = allUsers ? Array.from(this.objects.keys()) : uuid ? [uuid] : [];
+    for (const userUuid of uuids) {
+      await this.withUser(userUuid, async (user, save) => {
+        instanceIds.forEach((value) => {
+          if (!value.daemonId || !value.instanceUuid) throw new Error("Invalid user instance");
+        });
+        await save({
+          instances: user.instances.filter(
+            (value) =>
+              !instanceIds.some(
+                (instance) =>
+                  instance.daemonId === value.daemonId &&
+                  instance.instanceUuid === value.instanceUuid
+              )
+          )
+        });
       });
-    });
+    }
   }
 
   getUserByUserName(userName: string) {
     for (const map of this.objects) {
       const user = map[1];
-      if (user.userName === userName) return user;
+      if (user.userName === userName && !this.quarantined.has(user.uuid)) return user;
     }
     return null;
   }
 
   getUserByUuid(uuid: string) {
-    return this.objects.get(uuid) || null;
+    return this.getInstance(uuid) || null;
   }
 
   getInstance(uuid: string) {
-    return this.objects.get(uuid);
+    return this.quarantined.has(uuid) ? undefined : this.objects.get(uuid);
   }
 
   setInstance(uuid: string, object: User) {
@@ -191,50 +251,54 @@ class UserSubsystem {
   }
 
   async deleteInstance(uuid: string) {
-    if (this.hasInstance(uuid)) {
+    return userOperation(uuid, async () => {
+      const wasQuarantined = this.quarantined.has(uuid);
+      const backend = this.quarantined.get(uuid) || Storage.getStorage();
+      this.onSecurityChange(uuid);
+      // Fence new authentication while deletion is in flight, as well as on lost ack.
+      this.quarantined.set(uuid, backend);
+      try {
+        await backend.delete("User", uuid);
+      } catch (error) {
+        if (error instanceof UserWriteError && error.definite && !wasQuarantined)
+          this.quarantined.delete(uuid);
+        throw new SecurityError(503, "Account deletion could not be confirmed");
+      }
       this.objects.delete(uuid);
-      await Storage.getStorage().delete("User", uuid);
-    }
+      this.quarantined.delete(uuid);
+    });
   }
 
   getUserBySsoSub(ssoSub: string): User | null {
     for (const [, user] of this.objects) {
-      if (user.ssoSub && user.ssoSub === ssoSub) return user;
+      if (user.ssoSub && user.ssoSub === ssoSub && !this.quarantined.has(user.uuid)) return user;
     }
     return null;
   }
 
   async unbindSso(uuid: string) {
-    const instance = this.getInstance(uuid);
-    if (!instance) return;
-    instance.ssoSub = "";
-    instance.ssoBound = false;
-    await Storage.getStorage().store("User", uuid, instance);
+    await this.edit(uuid, { ssoSub: "", ssoBound: false });
   }
-
   async unbindAllSso(): Promise<number> {
     let count = 0;
     for (const [uuid, user] of this.objects) {
       if (user.ssoBound || user.ssoSub) {
-        user.ssoSub = "";
-        user.ssoBound = false;
-        await Storage.getStorage().store("User", uuid, user);
+        await this.unbindSso(uuid);
         count++;
       }
     }
     return count;
   }
-
   async bindSso(uuid: string, ssoSub: string) {
-    const instance = this.getInstance(uuid);
-    if (!instance) throw new Error("User not found");
-    instance.ssoSub = ssoSub;
-    instance.ssoBound = true;
-    await Storage.getStorage().store("User", uuid, instance);
+    await this.edit(uuid, { ssoSub, ssoBound: true });
   }
 
   getQueryWrapper() {
-    return new QueryWrapper(new LocalFileSource<User>(this.objects));
+    return new QueryWrapper(
+      new LocalFileSource<User>(
+        new Map(Array.from(this.objects).filter(([uuid]) => !this.quarantined.has(uuid)))
+      )
+    );
   }
 }
 

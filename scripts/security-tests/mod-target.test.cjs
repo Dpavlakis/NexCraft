@@ -70,6 +70,7 @@ const routerMocks = {
   "../utils/url": { checkSafeUrl: () => true }
 };
 const middlewareMocks = {
+  "../service/session_store": { browserRequestAdmission: () => undefined, liveBrowserUser: currentUser },
   "../i18n": routerMocks["../i18n"],
   "../service/passport_service": passport,
   "../service/user_service": { __esModule: true, default: {

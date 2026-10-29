@@ -72,7 +72,7 @@ router.get(
       ctx.request.query.instanceId
     }&from=sso`;
     if (UserSSOService.verifySSOToken(userName, token)) {
-      logger.warn("SSO login: username: %s, token: %s, redirect: %s", userName, token, redirect);
+      logger.warn("SSO login: username: %s", userName);
       loginSuccess(ctx, userName);
       return ctx.redirect(redirect);
     } else {

@@ -5,108 +5,298 @@ import { PERMISSION_MAP } from "@/config/const";
 import { t } from "@/lang/i18n";
 import { THEMES } from "@/config/themes";
 import {
+  bind2FA,
+  cancel2FA,
   confirm2FA,
   setUserApiKey,
   updateMyAvatar,
   updateMyTheme,
-  updatePassword
+  updatePassword,
+  type SecurityProof,
+  type TwoFactorSetup
 } from "@/services/apis/user";
 import { useAppConfigStore } from "@/stores/useAppConfigStore";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 import { useAppToolsStore } from "@/stores/useAppToolsStore";
 import { fileToAvatarDataUrl } from "@/tools/avatar";
 import { reportErrorMsg } from "@/tools/validator";
-import type { FormInstance } from "ant-design-vue";
 import { message } from "ant-design-vue";
-import { reactive, ref } from "vue";
-import { bind2FA } from "../services/apis/user";
+import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
 const { state, updateUserInfo } = useAppStateStore();
 const { state: tools } = useAppToolsStore();
 
-const { execute, isLoading: setUserApiKeyLoading } = setUserApiKey();
-const { execute: executeUpdatePassword, isLoading: updatePasswordLoading } = updatePassword();
-
-const formState = reactive({
-  resetPassword: false,
-  TOTPCode: "",
-  password1: "",
-  password2: "",
-  qrcode: ""
+const securityRequest = { forceRequest: true, timeout: 15000 };
+const password = reactive({
+  open: false,
+  current: "",
+  next: "",
+  confirm: "",
+  totp: "",
+  busy: false,
+  error: "",
+  version: 0
 });
+const api = reactive({
+  action: undefined as boolean | undefined,
+  current: "",
+  totp: "",
+  sso: false,
+  busy: false,
+  error: "",
+  version: 0
+});
+const factor = reactive({
+  action: "" as "" | "setup" | "disable",
+  current: "",
+  totp: "",
+  code: "",
+  sso: false,
+  busy: false,
+  error: "",
+  notice: "",
+  version: 0
+});
+const setup = ref<TwoFactorSetup>();
+const remaining = ref(0);
+const expiryText = computed(
+  () => Math.floor(remaining.value / 60) + ":" + String(remaining.value % 60).padStart(2, "0")
+);
+let epoch = 0;
+let expiryTimer: ReturnType<typeof setInterval> | undefined;
 
-const formRef = ref<FormInstance>();
-
-const handleGenerateApiKey = async (enable: boolean) => {
-  await execute({
-    data: {
-      enable
-    },
-    forceRequest: true,
-    errorAlert: true
-  });
-  updateUserInfo();
-  return message.success(t("TXT_CODE_d3de39b4"));
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const invalidResponse = () => new Error(t("TXT_CODE_auth_invalid_response"));
+const validCode = (code: string) => /^\d{6}$/.test(code);
+const isCurrent = (section: { version: number }, request: { epoch: number; version: number }) =>
+  tools.showUserInfoDialog && epoch === request.epoch && section.version === request.version;
+const begin = (section: { busy: boolean; error: string; version: number }) => {
+  section.busy = true;
+  section.error = "";
+  return { epoch, version: ++section.version };
 };
-
-const handleChangePassword = async () => {
-  formRef.value?.validateFields().then(async () => {
-    if (formState.password1 !== formState.password2) return reportErrorMsg(t("TXT_CODE_d51f5d6"));
-    if (formState.password1.length < 9 || formState.password1.length > 36)
-      return reportErrorMsg(t("TXT_CODE_cc5a3aea"));
-    try {
-      await executeUpdatePassword({
-        data: {
-          passWord: formState.password1
-        }
-      });
-      message.success(t("TXT_CODE_d3de39b4"));
-      setTimeout(() => {
-        window.location.reload();
-      }, 600);
-    } catch (error: any) {
-      return reportErrorMsg(error.message);
-    }
+const clearPassword = () => {
+  password.version++;
+  Object.assign(password, {
+    open: false,
+    current: "",
+    next: "",
+    confirm: "",
+    totp: "",
+    busy: false,
+    error: ""
   });
 };
-
-const handleBind2FA = async () => {
-  const qrcode = await bind2FA().execute({
-    data: {}
+const clearApi = () => {
+  api.version++;
+  Object.assign(api, {
+    action: undefined,
+    current: "",
+    totp: "",
+    sso: false,
+    busy: false,
+    error: ""
   });
-  if (qrcode.value) {
-    formState.qrcode = String(qrcode.value);
-    await updateUserInfo();
-  }
 };
-
-const confirm2FACode = async () => {
-  const TOTPCode = formState.TOTPCode;
-  try {
-    await confirm2FA().execute({
-      data: {
-        enable: true,
-        TOTPCode
-      }
+const clearFactor = () => {
+  factor.version++;
+  if (expiryTimer) clearInterval(expiryTimer);
+  expiryTimer = undefined;
+  setup.value = undefined;
+  remaining.value = 0;
+  Object.assign(factor, {
+    action: "",
+    current: "",
+    totp: "",
+    code: "",
+    sso: false,
+    busy: false,
+    error: "",
+    notice: ""
+  });
+};
+const cancelSetup = async (setupId: string) => {
+  const result = await cancel2FA().execute({ data: { setupId }, ...securityRequest });
+  if (result.value !== true) throw invalidResponse();
+};
+const discardSetup = (setupId?: string) => {
+  if (setupId)
+    void cancelSetup(setupId).catch(() => {
+      // Local secrets are already cleared; abandoned server setups also expire.
     });
-  } catch {
-    return message.error(t("TXT_CODE_3d68e43b"));
-  }
-  message.success(t("TXT_CODE_d3de39b4"));
-  await updateUserInfo();
-  formState.TOTPCode = "";
-  formState.qrcode = "";
 };
+const clearSecurity = () => {
+  const setupId = setup.value?.setupId;
+  epoch++;
+  clearPassword();
+  clearApi();
+  clearFactor();
+  discardSetup(setupId);
+};
+watch(() => tools.showUserInfoDialog, clearSecurity, { flush: "sync" });
+watch(() => state.userInfo?.token, clearSecurity, { flush: "sync" });
+onBeforeUnmount(clearSecurity);
 
-const disable2FACode = async () => {
-  await confirm2FA().execute({
-    data: {
-      enable: false,
-      TOTPCode: "000000"
+const proof = (section: { current: string; totp: string; sso: boolean }): SecurityProof => {
+  const useSSO = state.settings.ssoEnabled && section.sso;
+  if (!useSSO && !section.current) throw new Error(t("TXT_CODE_auth_password_required"));
+  if (state.userInfo?.open2FA && !validCode(section.totp))
+    throw new Error(t("TXT_CODE_auth_current_code_required"));
+  return {
+    ...(!useSSO ? { currentPassword: section.current } : {}),
+    ...(state.userInfo?.open2FA ? { currentTOTP: section.totp } : {})
+  };
+};
+const securityUpdated = () => {
+  clearSecurity();
+  tools.showUserInfoDialog = false;
+  state.userInfo = null;
+  message.success(t("TXT_CODE_auth_relogin"));
+  // Match the existing password-change flow; routing then offers password/SSO login.
+  setTimeout(() => window.location.reload(), 600);
+};
+const handleChangePassword = async () => {
+  if (password.busy) return;
+  const request = begin(password);
+  try {
+    const credentials = proof({ current: password.current, totp: password.totp, sso: false });
+    if (password.next !== password.confirm) throw new Error(t("TXT_CODE_d51f5d6"));
+    if (password.next.length < 9 || password.next.length > 36)
+      throw new Error(t("TXT_CODE_cc5a3aea"));
+    const result = await updatePassword().execute({
+      data: {
+        passWord: password.next,
+        currentPassword: credentials.currentPassword!,
+        ...(credentials.currentTOTP ? { currentTOTP: credentials.currentTOTP } : {})
+      },
+      ...securityRequest
+    });
+    if (!isCurrent(password, request)) return;
+    if (result.value !== true) throw invalidResponse();
+    securityUpdated();
+  } catch (error) {
+    if (isCurrent(password, request)) password.error = errorText(error);
+  } finally {
+    if (isCurrent(password, request)) password.busy = false;
+  }
+};
+const handleGenerateApiKey = async () => {
+  if (api.busy || api.action === undefined) return;
+  const request = begin(api);
+  const enable = api.action;
+  try {
+    const result = await setUserApiKey().execute({
+      data: { enable, ...proof(api) },
+      ...securityRequest
+    });
+    if (!isCurrent(api, request)) return;
+    const key = result.value;
+    if (typeof key !== "string" || (enable ? key.length === 0 : key !== ""))
+      throw invalidResponse();
+    if (state.userInfo) state.userInfo.apiKey = key;
+    clearApi();
+    message.success(t("TXT_CODE_d3de39b4"));
+  } catch (error) {
+    if (isCurrent(api, request)) api.error = errorText(error);
+  } finally {
+    if (isCurrent(api, request)) api.busy = false;
+  }
+};
+const expireSetup = () => {
+  const setupId = setup.value?.setupId;
+  clearFactor();
+  factor.notice = t("TXT_CODE_auth_setup_expired");
+  discardSetup(setupId);
+};
+const handleBind2FA = async () => {
+  if (factor.busy || setup.value) return;
+  const request = begin(factor);
+  try {
+    const result = await bind2FA().execute({ data: proof(factor), ...securityRequest });
+    if (!isCurrent(factor, request)) {
+      if (typeof result.value?.setupId === "string") discardSetup(result.value.setupId);
+      return;
     }
-  });
-  message.success(t("TXT_CODE_d3de39b4"));
-  await updateUserInfo();
-  formState.qrcode = "";
+    const pending = result.value;
+    if (
+      !pending ||
+      typeof pending.setupId !== "string" ||
+      !pending.setupId ||
+      typeof pending.qrcode !== "string" ||
+      !pending.qrcode.startsWith("data:image/png;base64,") ||
+      typeof pending.expiresAt !== "number" ||
+      !Number.isFinite(pending.expiresAt) ||
+      typeof pending.replacing !== "boolean"
+    )
+      throw invalidResponse();
+    factor.current = factor.totp = factor.code = "";
+    factor.sso = false;
+    setup.value = {
+      ...pending,
+      expiresAt: Math.min(pending.expiresAt, Date.now() + 5 * 60 * 1000)
+    };
+    const tick = () => {
+      remaining.value = Math.max(0, Math.ceil((setup.value!.expiresAt - Date.now()) / 1000));
+      if (!remaining.value) expireSetup();
+    };
+    tick();
+    if (setup.value) expiryTimer = setInterval(tick, 1000);
+  } catch (error) {
+    if (isCurrent(factor, request)) factor.error = errorText(error);
+  } finally {
+    if (isCurrent(factor, request)) factor.busy = false;
+  }
+};
+const confirm2FACode = async () => {
+  if (factor.busy || !setup.value) return;
+  if (setup.value.expiresAt <= Date.now()) return expireSetup();
+  const request = begin(factor);
+  try {
+    if (!validCode(factor.code)) throw new Error(t("TXT_CODE_auth_new_code_required"));
+    const result = await confirm2FA().execute({
+      data: { enable: true as const, setupId: setup.value.setupId, TOTPCode: factor.code },
+      ...securityRequest
+    });
+    if (!isCurrent(factor, request)) return;
+    if (result.value?.enabled !== true || result.value.reloginRequired !== true)
+      throw invalidResponse();
+    setup.value = undefined; // Committed setup is consumed; do not send cancellation.
+    securityUpdated();
+  } catch (error) {
+    if (isCurrent(factor, request)) factor.error = errorText(error);
+  } finally {
+    if (isCurrent(factor, request)) factor.busy = false;
+  }
+};
+const disable2FACode = async () => {
+  if (factor.busy) return;
+  const request = begin(factor);
+  try {
+    const credentials = proof(factor);
+    if (!validCode(factor.totp)) throw new Error(t("TXT_CODE_auth_current_code_required"));
+    const result = await confirm2FA().execute({
+      data: { enable: false as const, ...credentials, currentTOTP: factor.totp },
+      ...securityRequest
+    });
+    if (!isCurrent(factor, request)) return;
+    if (result.value?.enabled !== false || result.value.reloginRequired !== true)
+      throw invalidResponse();
+    securityUpdated();
+  } catch (error) {
+    if (isCurrent(factor, request)) factor.error = errorText(error);
+  } finally {
+    if (isCurrent(factor, request)) factor.busy = false;
+  }
+};
+const cancelFactor = async () => {
+  const setupId = setup.value?.setupId;
+  clearFactor();
+  const request = { epoch, version: factor.version };
+  if (!setupId) return;
+  try {
+    await cancelSetup(setupId);
+  } catch (error) {
+    if (isCurrent(factor, request)) factor.error = errorText(error);
+  }
 };
 
 const avatarUploading = ref(false);
@@ -175,7 +365,7 @@ const chooseTheme = async (id: string) => {
     @ok="tools.showUserInfoDialog = false"
   >
     <div>
-      <a-form ref="formRef" :model="formState" layout="vertical">
+      <a-form layout="vertical">
         <a-form-item :label="t('TXT_CODE_avatar.label')">
           <div style="display: flex; align-items: center; gap: 12px">
             <UserAvatar
@@ -253,82 +443,234 @@ const chooseTheme = async (id: string) => {
         </a-form-item>
 
         <a-form-item :label="t('TXT_CODE_551b0348')">
-          <a-button v-if="!formState.resetPassword" danger @click="formState.resetPassword = true">
+          <a-button v-if="!password.open" danger @click="password.open = true">
             {{ t("TXT_CODE_50d471b2") }}
           </a-button>
-          <div v-if="formState.resetPassword">
-            <a-input
-              v-model:value="formState.password1"
-              class="mb-12"
-              :placeholder="t('TXT_CODE_4f6c39d3')"
+          <section
+            v-else
+            class="security-action"
+            data-security="password"
+            :aria-busy="password.busy"
+          >
+            <p v-if="state.settings.ssoEnabled">{{ t("TXT_CODE_auth_password_sso_help") }}</p>
+            <label for="security-password-current">{{ t("TXT_CODE_auth_current_password") }}</label>
+            <a-input-password
+              id="security-password-current"
+              v-model:value="password.current"
+              autocomplete="current-password"
+              :disabled="password.busy"
             />
+            <label v-if="state.userInfo?.open2FA" for="security-password-totp">{{
+              t("TXT_CODE_auth_current_authenticator")
+            }}</label>
             <a-input
-              v-model:value="formState.password2"
-              class="mb-12"
-              :placeholder="t('TXT_CODE_37924654')"
+              v-if="state.userInfo?.open2FA"
+              id="security-password-totp"
+              v-model:value="password.totp"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              :maxlength="6"
+              :disabled="password.busy"
             />
-            <div>
-              <a-button :loading="updatePasswordLoading" @click="handleChangePassword">
-                {{ t("TXT_CODE_d507abff") }}
-              </a-button>
+            <label for="security-password-new">{{ t("TXT_CODE_auth_new_password") }}</label>
+            <a-input-password
+              id="security-password-new"
+              v-model:value="password.next"
+              autocomplete="new-password"
+              :disabled="password.busy"
+            />
+            <label for="security-password-confirm">{{ t("TXT_CODE_auth_confirm_password") }}</label>
+            <a-input-password
+              id="security-password-confirm"
+              v-model:value="password.confirm"
+              autocomplete="new-password"
+              :disabled="password.busy"
+              @pressEnter="handleChangePassword"
+            />
+            <div class="security-buttons">
+              <a-button :loading="password.busy" @click="handleChangePassword">{{
+                t("TXT_CODE_d507abff")
+              }}</a-button>
+              <a-button @click="clearPassword">{{ t("TXT_CODE_auth_cancel") }}</a-button>
             </div>
-          </div>
+            <p v-if="password.error" role="alert">{{ password.error }}</p>
+          </section>
         </a-form-item>
 
         <a-form-item :label="t('TXT_CODE_61eae8a6')">
-          <div v-if="!formState?.qrcode">
-            <a-button class="mr-8" @click="handleBind2FA">
-              {{ state.userInfo?.open2FA ? t("TXT_CODE_85a33a84") : t("TXT_CODE_a492ae63") }}
+          <div v-if="!factor.action" class="security-buttons">
+            <a-button
+              @click="
+                factor.action = 'setup';
+                factor.notice = '';
+                factor.error = '';
+              "
+            >
+              {{
+                factor.notice
+                  ? t("TXT_CODE_auth_restart_setup")
+                  : state.userInfo?.open2FA
+                  ? t("TXT_CODE_85a33a84")
+                  : t("TXT_CODE_a492ae63")
+              }}
             </a-button>
-            <a-button v-if="state.userInfo?.open2FA" danger @click="disable2FACode">
-              {{ t("TXT_CODE_edd64e4d") }}
-            </a-button>
+            <a-button
+              v-if="state.userInfo?.open2FA"
+              danger
+              @click="
+                factor.action = 'disable';
+                factor.notice = '';
+                factor.error = '';
+              "
+              >{{ t("TXT_CODE_edd64e4d") }}</a-button
+            >
           </div>
-          <div v-if="formState?.qrcode">
-            <p>
-              1. {{ t("TXT_CODE_cc561947") }}<br />
-              2. {{ t("TXT_CODE_fffce4a8") }}<br />
-              3. {{ t("TXT_CODE_af2a6972") }}<br />
+          <p v-if="factor.notice" role="status">{{ factor.notice }}</p>
+          <section
+            v-if="factor.action"
+            class="security-action"
+            data-security="factor"
+            :aria-busy="factor.busy"
+          >
+            <p v-if="state.userInfo?.open2FA && factor.action === 'setup'">
+              {{ t("TXT_CODE_auth_factor_preserved") }}
             </p>
-            <div class="mb-20">
-              <img :src="formState.qrcode" style="height: 180px; border-radius: 6px" />
-            </div>
-            <a-input
-              v-model:value="formState.TOTPCode"
-              class="mb-12"
-              :placeholder="t('TXT_CODE_7ac8b1d3')"
-            />
-            <a-button :loading="setUserApiKeyLoading" @click="confirm2FACode">
-              {{ t("TXT_CODE_b0a18c20") }}
-            </a-button>
-          </div>
+            <template v-if="!setup">
+              <template v-if="state.settings.ssoEnabled">
+                <p>{{ t("TXT_CODE_auth_sso_help") }}</p>
+                <a-checkbox
+                  v-model:checked="factor.sso"
+                  :disabled="factor.busy"
+                  @change="factor.current = ''"
+                  >{{ t("TXT_CODE_auth_use_sso") }}</a-checkbox
+                >
+              </template>
+              <label
+                v-if="!factor.sso || !state.settings.ssoEnabled"
+                for="security-factor-current"
+                >{{ t("TXT_CODE_auth_current_password") }}</label
+              >
+              <a-input-password
+                v-if="!factor.sso || !state.settings.ssoEnabled"
+                id="security-factor-current"
+                v-model:value="factor.current"
+                autocomplete="current-password"
+                :disabled="factor.busy"
+                @pressEnter="factor.action === 'setup' ? handleBind2FA() : disable2FACode()"
+              />
+              <label v-if="state.userInfo?.open2FA" for="security-factor-totp">{{
+                t("TXT_CODE_auth_current_authenticator")
+              }}</label>
+              <a-input
+                v-if="state.userInfo?.open2FA"
+                id="security-factor-totp"
+                v-model:value="factor.totp"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                :maxlength="6"
+                :disabled="factor.busy"
+                @pressEnter="factor.action === 'setup' ? handleBind2FA() : disable2FACode()"
+              />
+              <div class="security-buttons">
+                <a-button
+                  v-if="factor.action === 'setup'"
+                  :loading="factor.busy"
+                  @click="handleBind2FA"
+                  >{{ t("TXT_CODE_auth_start_setup") }}</a-button
+                >
+                <a-button v-else danger :loading="factor.busy" @click="disable2FACode">{{
+                  t("TXT_CODE_edd64e4d")
+                }}</a-button>
+                <a-button @click="cancelFactor">{{ t("TXT_CODE_auth_cancel") }}</a-button>
+              </div>
+            </template>
+            <template v-else>
+              <p>{{ t("TXT_CODE_auth_scan_new") }}</p>
+              <p role="timer" aria-live="off">
+                {{ t("TXT_CODE_auth_setup_expiry", { time: expiryText }) }}
+              </p>
+              <img :src="setup.qrcode" class="security-qr" :alt="t('TXT_CODE_auth_qr_alt')" />
+              <label for="security-factor-new">{{ t("TXT_CODE_auth_new_authenticator") }}</label>
+              <a-input
+                id="security-factor-new"
+                v-model:value="factor.code"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                :maxlength="6"
+                :disabled="factor.busy"
+                @pressEnter="confirm2FACode"
+              />
+              <div class="security-buttons">
+                <a-button :loading="factor.busy" @click="confirm2FACode">{{
+                  t("TXT_CODE_auth_confirm_factor")
+                }}</a-button>
+                <a-button @click="cancelFactor">{{ t("TXT_CODE_auth_cancel") }}</a-button>
+              </div>
+            </template>
+          </section>
+          <p v-if="factor.error" role="alert">{{ factor.error }}</p>
         </a-form-item>
         <a-form-item label="APIKEY">
-          <a-typography-paragraph>
-            {{ t("TXT_CODE_b2dbf778") }}
-          </a-typography-paragraph>
+          <a-typography-paragraph>{{ t("TXT_CODE_b2dbf778") }}</a-typography-paragraph>
           <a-typography-paragraph v-if="state.userInfo?.apiKey">
             <pre
-              class="flex flex-between align-center"
-            >{{ state.userInfo.apiKey }}<CopyButton size="small" type="text" :value="state.userInfo.apiKey" /></pre>
+              class="security-key">{{ state.userInfo.apiKey }}<CopyButton size="small" type="text" :value="state.userInfo.apiKey" /></pre>
           </a-typography-paragraph>
           <a-typography-paragraph v-else>
             <pre>{{ t("TXT_CODE_d7dbc7c2") }}</pre>
           </a-typography-paragraph>
-          <a-button
-            class="mr-10"
-            :loading="setUserApiKeyLoading"
-            @click="handleGenerateApiKey(true)"
-          >
-            {{ t("TXT_CODE_d51cd7ae") }}
-          </a-button>
-          <a-popconfirm
-            v-if="state.userInfo?.apiKey"
-            :title="t('TXT_CODE_6819de18')"
-            @confirm="handleGenerateApiKey(false)"
-          >
-            <a-button danger> {{ t("TXT_CODE_718c9310") }} </a-button>
-          </a-popconfirm>
+          <div v-if="api.action === undefined" class="security-buttons">
+            <a-button @click="api.action = true">{{ t("TXT_CODE_d51cd7ae") }}</a-button>
+            <a-button v-if="state.userInfo?.apiKey" danger @click="api.action = false">{{
+              t("TXT_CODE_718c9310")
+            }}</a-button>
+          </div>
+          <section v-else class="security-action" data-security="api" :aria-busy="api.busy">
+            <p>{{ api.action ? t("TXT_CODE_d51cd7ae") : t("TXT_CODE_6819de18") }}</p>
+            <template v-if="state.settings.ssoEnabled">
+              <p>{{ t("TXT_CODE_auth_sso_help") }}</p>
+              <a-checkbox
+                v-model:checked="api.sso"
+                :disabled="api.busy"
+                @change="api.current = ''"
+                >{{ t("TXT_CODE_auth_use_sso") }}</a-checkbox
+              >
+            </template>
+            <label v-if="!api.sso || !state.settings.ssoEnabled" for="security-api-current">{{
+              t("TXT_CODE_auth_current_password")
+            }}</label>
+            <a-input-password
+              v-if="!api.sso || !state.settings.ssoEnabled"
+              id="security-api-current"
+              v-model:value="api.current"
+              autocomplete="current-password"
+              :disabled="api.busy"
+              @pressEnter="handleGenerateApiKey"
+            />
+            <label v-if="state.userInfo?.open2FA" for="security-api-totp">{{
+              t("TXT_CODE_auth_current_authenticator")
+            }}</label>
+            <a-input
+              v-if="state.userInfo?.open2FA"
+              id="security-api-totp"
+              v-model:value="api.totp"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              :maxlength="6"
+              :disabled="api.busy"
+              @pressEnter="handleGenerateApiKey"
+            />
+            <div class="security-buttons">
+              <a-button
+                :danger="api.action === false"
+                :loading="api.busy"
+                @click="handleGenerateApiKey"
+                >{{ api.action ? t("TXT_CODE_d51cd7ae") : t("TXT_CODE_718c9310") }}</a-button
+              >
+              <a-button @click="clearApi">{{ t("TXT_CODE_auth_cancel") }}</a-button>
+            </div>
+            <p v-if="api.error" role="alert">{{ api.error }}</p>
+          </section>
         </a-form-item>
       </a-form>
     </div>
@@ -336,6 +678,31 @@ const chooseTheme = async (id: string) => {
 </template>
 
 <style lang="scss" scoped>
+.security-action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.security-action p {
+  margin: 0;
+}
+.security-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.security-qr {
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.security-key {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

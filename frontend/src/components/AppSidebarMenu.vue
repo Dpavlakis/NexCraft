@@ -97,7 +97,7 @@ const onAppDropdownClick = (item: SidebarAppDropdownEntry, info: { key: Key }) =
             <span class="sidebar-item-text">{{ entry.title }}</span>
           </a>
           <template #overlay>
-            <a-menu @click="(info) => onAppDropdownClick(entry, info)">
+            <a-menu @click="(info: { key: Key }) => onAppDropdownClick(entry, info)">
               <a-menu-item v-for="m in entry.menus" :key="String(m.value)">
                 {{ m.title }}
               </a-menu-item>

@@ -15,16 +15,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(path) {
-          if (path.includes("node_modules/ant-design-vue/es")) {
-            return "ant-es";
-          }
-          if (path.includes("node_modules/ant-design-vue")) {
+          // Keep Ant Design's palettes and icon initialization in one evaluation graph,
+          // including both root and nested copies of its scoped packages.
+          if (
+            path.includes("node_modules/ant-design-vue/") ||
+            path.includes("node_modules/@ant-design/")
+          ) {
             return "ant";
           }
-          if (path.includes("node_modules/zrender")) {
-            return "zrender";
-          }
-          if (path.includes("node_modules/echarts")) {
+          // ECharts and its renderer also share initialization dependencies.
+          if (path.includes("node_modules/echarts/") || path.includes("node_modules/zrender/")) {
             return "echart";
           }
           if (path.includes("node_modules/lodash")) {

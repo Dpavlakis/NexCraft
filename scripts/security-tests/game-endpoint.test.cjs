@@ -403,6 +403,7 @@ test("role-1 instance detail and assigned overview expose only the owned node's 
   const original = Module._load;
   Module._load = function(request, parent, main) {
     if (request === "@koa/router") return Router;
+    if (request === "../service/session_store") return { browserRequestAdmission: () => undefined, liveBrowserUser: () => user };
     if (/^(?:\.\.\/service\/|\.\/)(?:user_service)$/.test(request)) return users;
     if (request === "../service/remote_service" || request === "./remote_service") return subsystem;
     if (request === "../service/remote_command" || request === "./remote_command") return class {

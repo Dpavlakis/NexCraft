@@ -2,12 +2,14 @@ import Koa from "koa";
 import { GlobalVariable } from "mcsmanager-common";
 import { $t } from "../i18n";
 import { getUuidByApiKey, ILLEGAL_ACCESS_KEY, isAjax, logout } from "../service/passport_service";
-import userSystem from "../service/user_service";
+import { browserRequestAdmission, liveBrowserUser } from "../service/session_store";
 
 /**
  * @description Request speed limit, 8 requests per second
  */
 function requestSpeedLimit(ctx: Koa.ParameterizedContext) {
+  const admission = browserRequestAdmission(ctx);
+  if (admission !== undefined) return admission;
   const SESSION_REQ_TIMES = "SESSION_REQ_TIMES";
   const MAX_REQUESTS_PER_SECOND = 8;
   const WINDOW_SIZE = 1000;
@@ -94,7 +96,7 @@ export default (parameter: IPermissionCfg) => {
     if (!isNaN(parseInt(String(parameter.level)))) {
       // The most basic authentication decision
       if (ctx.session?.["login"] === true && ctx.session["uuid"] && ctx.session["userName"]) {
-        const user = userSystem.getInstance(ctx.session["uuid"]);
+        const user = liveBrowserUser(ctx);
 
         // ban check
         if (user && user.permission < 0) {

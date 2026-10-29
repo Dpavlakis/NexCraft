@@ -1,7 +1,7 @@
 ARG EMBEDDED_JAVA_VERSION=21
 ARG BUILDPLATFORM=linux/amd64
 
-FROM --platform=${BUILDPLATFORM} node:lts-alpine AS builder
+FROM --platform=${BUILDPLATFORM} node:24.22.2-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS builder
 
 WORKDIR /src
 RUN apk add --no-cache wget
@@ -12,8 +12,8 @@ RUN apk add --no-cache wget
 #    image (panel/frontend belong to the web image).
 COPY common/package*.json ./common/
 COPY daemon/package*.json ./daemon/
-RUN npm install --prefix common --no-audit --no-fund &&\
-    npm install --prefix daemon --no-audit --no-fund
+RUN npm ci --prefix common --ignore-scripts --no-audit --no-fund &&\
+    npm ci --prefix daemon --ignore-scripts --no-audit --no-fund
 
 # 2) Source. node_modules is excluded via .dockerignore, so the cached installs
 #    above are preserved (COPY merges, it doesn't delete existing files).
@@ -38,16 +38,39 @@ RUN mkdir -p production-code/daemon/lib &&\
 FROM eclipse-temurin:${EMBEDDED_JAVA_VERSION}-jdk
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y curl &&\
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash &&\
-    apt-get update && apt-get install -y nodejs && apt-get clean
+# Official glibc build; match the Temurin runtime platform.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl xz-utils libstdc++6 libatomic1; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) node_arch=x64; node_sha=48cc0e21e048790e54c0cf5749c2725005313d652651c40b7a21feb9697aaf75 ;; \
+      arm64) node_arch=arm64; node_sha=eb187837a2230d4047161ac0be008584e16b46f726e9c9490ee35dc6b17d9ba8 ;; \
+      *) echo "Unsupported Node architecture" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /tmp/node.tar.xz "https://nodejs.org/download/release/v24.22.2/node-v24.22.2-linux-$node_arch.tar.xz"; \
+    echo "$node_sha  /tmp/node.tar.xz" | sha256sum -c -; \
+    tar -xJf /tmp/node.tar.xz --strip-components=1 -C /usr/local; \
+    rm /tmp/node.tar.xz; \
+    test "$(node --version)" = v24.22.2; \
+    test "$(npm --version)" = 11.19.1; \
+    java -version; \
+    if ldd /usr/local/bin/node | grep -q "not found"; then exit 1; fi; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/mcsmanager/daemon
 
 # Install runtime deps first (cached unless package*.json changes) so a code-only
-# change doesn't re-run the production npm install.
+# change doesn't re-run the production npm ci.
+# Preserve the actual target of the file:../common dependency.
+COPY --from=builder /src/common/package*.json /opt/mcsmanager/common/
+COPY --from=builder /src/common/src/ /opt/mcsmanager/common/src/
+COPY --from=builder /src/common/global.d.ts /opt/mcsmanager/common/
+COPY --from=builder /src/common/tsconfig.json /opt/mcsmanager/common/
 COPY --from=builder /src/production-code/daemon/package*.json ./
-RUN npm install --production
+RUN npm ci --prefix /opt/mcsmanager/common --omit=dev --ignore-scripts --no-audit --no-fund &&\
+    npm ci --omit=dev --ignore-scripts --no-audit --no-fund &&\
+    test "$(readlink -f node_modules/mcsmanager-common)" = /opt/mcsmanager/common
 
 COPY --from=builder /src/production-code/daemon/ /opt/mcsmanager/daemon/
 
@@ -57,4 +80,4 @@ ENV MCSM_INSTANCES_BASE_PATH=/opt/mcsmanager/daemon/data/InstanceData
 
 VOLUME ["/opt/mcsmanager/daemon/data", "/opt/mcsmanager/daemon/logs"]
 
-CMD [ "node", "app.js", "--max-old-space-size=8192" ]
+CMD [ "node", "--max-old-space-size=8192", "app.js" ]
