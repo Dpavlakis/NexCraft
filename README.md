@@ -191,12 +191,6 @@ If you want a general-purpose, commercially-oriented game-server panel (includin
 - Docs: https://docs.mcsmanager.com/
 - Repo: https://github.com/MCSManager/MCSManager
 
-### Contributors (MCSManager)
-
-<a href="https://openomy.com/MCSManager/MCSManager" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=MCSManager/MCSManager&chart=bubble&latestMonth=12" target="_blank" alt="MCSManager Contribution Leaderboard" style="display: block; width: 100%;" />
-</a>
-
 <br />
 
 ## License
