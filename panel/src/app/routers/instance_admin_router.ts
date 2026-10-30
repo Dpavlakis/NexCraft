@@ -7,6 +7,7 @@ import { ROLE } from "../entity/user";
 import { $t } from "../i18n";
 import permission from "../middleware/permission";
 import validator from "../middleware/validator";
+import { withPlayerGameEndpoint } from "../service/game_endpoint";
 import { multiOperationForwarding } from "../service/instance_service";
 import { logger } from "../service/log";
 import { operationLogger } from "../service/operation_logger";
@@ -33,10 +34,11 @@ router.get(
       if (!isHaveInstanceByUuid(getUserUuid(ctx), daemonId, instanceUuid))
         throw new Error($t("TXT_CODE_permission.forbidden"));
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+      if (!remoteService) throw new Error($t("TXT_CODE_dd559000"));
       const result = await new RemoteRequest(remoteService).request("instance/detail", {
         instanceUuid
       });
-      ctx.body = result;
+      ctx.body = withPlayerGameEndpoint(result, remoteService.config);
     } catch (err) {
       ctx.body = err;
     }
@@ -161,15 +163,30 @@ router.delete(
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       if (!instanceUuids || !Array.isArray(instanceUuids))
         throw new Error("Type error, invalid uuids or daemonId");
-      const instanceIds = instanceUuids.map((uuid: string) => {
-        return { instanceUuid: uuid, daemonId };
-      });
-      userSystem.deleteUserInstances(null, instanceIds, true);
+      const requested = new Set(instanceUuids);
       const result = await new RemoteRequest(remoteService).request("instance/delete", {
         instanceUuids,
         deleteFile
       });
-      result.instances.forEach((e: { instanceUuid: string; nickname: string }) => {
+      // The echoed instanceUuids are requests, not acknowledgements. Per-instance
+      // daemon failures are omitted from instances, so retain those users' access.
+      const confirmed = new Map<string, { instanceUuid: string; nickname: string }>();
+      for (const instance of Array.isArray(result?.instances) ? result.instances : []) {
+        if (
+          typeof instance?.instanceUuid === "string" &&
+          requested.has(instance.instanceUuid)
+        ) {
+          if (!confirmed.has(instance.instanceUuid)) confirmed.set(instance.instanceUuid, instance);
+        }
+      }
+      if (confirmed.size > 0) {
+        await userSystem.deleteUserInstances(
+          null,
+          [...confirmed.keys()].map((instanceUuid) => ({ instanceUuid, daemonId })),
+          true
+        );
+      }
+      confirmed.forEach((e) => {
         operationLogger.log(
           "instance_delete",
           {

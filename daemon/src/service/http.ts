@@ -1,5 +1,23 @@
+// koa-body 8 ships Koa 3 declarations; retain the Koa 2 request contract.
+declare module "koa" {
+  interface Request {
+    body?: any;
+    rawBody?: string;
+    files?: Record<string, import("formidable").File | import("formidable").File[]>;
+  }
+}
+
 import Koa from "koa";
-import koaBody from "koa-body";
+// The package's declarations augment Koa 3 and IncomingMessage.body, which
+// conflicts with Koa 2/Express declarations. Keep this compatibility boundary local.
+const { koaBody } = require("koa-body") as {
+  koaBody(options: {
+    multipart: boolean;
+    formidable: { maxFileSize: number; maxFiles: number };
+    jsonLimit: string;
+    onError(error: Error, ctx: Koa.Context): void;
+  }): Koa.Middleware;
+};
 import { removeTrail } from "mcsmanager-common";
 import { globalConfiguration } from "../entity/config";
 import { uploadFileCheckMiddleware, uploadSpeedLimitMiddleware } from "../middlewares/precheck";
@@ -20,7 +38,13 @@ export function initKoa() {
       },
       jsonLimit: "10mb",
       onError(err, ctx) {
-        logger.error("koaBody Lib Error:", err);
+        // Parser errors may contain the raw request body; never log or expose it.
+        logger.error("koaBody Lib Error");
+        const parserError = err as Error & { status?: number; httpCode?: number };
+        const status = parserError.status || parserError.httpCode;
+        if (status === 413) ctx.throw(413, "Request body too large");
+        if (status === 400) ctx.throw(400, "Invalid request body");
+        throw err;
       }
     })
   );

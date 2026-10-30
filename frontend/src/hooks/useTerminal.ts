@@ -66,9 +66,13 @@ export function useTerminal() {
   const state = ref<InstanceDetail>();
   const isReady = ref<boolean>(false);
   const terminal = ref<Terminal>();
+  let terminalElement: HTMLElement | undefined;
   const isConnect = ref<boolean>(false);
   const socketAddress = ref("");
   let isManualDisconnect = false;
+  let disposed = false;
+  let setupGeneration = 0;
+  let socketTarget: string | undefined;
 
   const isGlobalTerminal = computed(() => {
     return state.value?.config.nickname === GLOBAL_INSTANCE_NAME;
@@ -78,26 +82,37 @@ export function useTerminal() {
     return state.value?.config.processType === "docker";
   });
 
-  let fitAddonTask: NodeJS.Timer;
+  let fitAddonTask: ReturnType<typeof setInterval>;
   let cachedSize = {
     w: 160,
     h: 40
   };
 
   const execute = async (config: UseTerminalParams) => {
+    if (disposed) return;
+    const { daemonId, instanceId } = config;
+    const target = JSON.stringify([daemonId, instanceId]);
+    if (socket && socketTarget === target) return socket;
+
+    const generation = ++setupGeneration;
+    const stillCurrent = () => !disposed && setupGeneration === generation;
     isReady.value = false;
+    isConnect.value = false;
     isManualDisconnect = false;
+    socket?.removeAllListeners();
+    socket?.disconnect();
+    socket = undefined;
 
-    if (socket) {
-      return socket;
+    let res;
+    try {
+      res = await setUpTerminalStreamChannel().execute({
+        params: { daemonId, uuid: instanceId }
+      });
+    } catch (error) {
+      if (!stillCurrent()) return;
+      throw error;
     }
-
-    const res = await setUpTerminalStreamChannel().execute({
-      params: {
-        daemonId: config.daemonId,
-        uuid: config.instanceId
-      }
-    });
+    if (!stillCurrent()) return;
     const remoteInfo = unref(res.value);
     if (!remoteInfo) throw new Error(t("TXT_CODE_181f2f08"));
 
@@ -113,34 +128,42 @@ export function useTerminal() {
     socketAddress.value = parseForwardAddress(addr, "ws");
     const password = remoteInfo.password;
 
-    socket = makeSocketIo(addr, prefix);
+    const ownedSocket = makeSocketIo(addr, prefix);
+    socket = ownedSocket;
+    socketTarget = target;
+    const ownsSocket = () => stillCurrent() && socket === ownedSocket;
 
-    socket.on("connect", () => {
+    ownedSocket.on("connect", () => {
+      if (!ownsSocket()) return;
       console.log("[Socket.io] connect:", addr);
-      socket?.emit("stream/auth", {
+      ownedSocket.emit("stream/auth", {
         data: { password }
       });
       isConnect.value = true;
     });
 
-    socket.on("connect_error", (error) => {
+    ownedSocket.on("connect_error", (error) => {
+      if (!ownsSocket()) return;
       console.error("[Socket.io] Connect error: ", addr, error);
       isConnect.value = false;
       events.emit("error", error);
     });
 
-    socket.on("instance/stopped", () => {
+    ownedSocket.on("instance/stopped", () => {
+      if (!ownsSocket()) return;
       events.emit("stopped");
     });
 
-    socket.on("instance/opened", () => {
+    ownedSocket.on("instance/opened", () => {
+      if (!ownsSocket()) return;
       events.emit("opened");
     });
 
-    socket.on("stream/auth", (packet) => {
+    ownedSocket.on("stream/auth", (packet) => {
+      if (!ownsSocket()) return;
       const data = packet.data;
       if (data === true) {
-        socket?.emit("stream/detail", {});
+        ownedSocket.emit("stream/detail", {});
         events.emit("connect");
         isReady.value = true;
       } else {
@@ -148,15 +171,17 @@ export function useTerminal() {
       }
     });
 
-    socket.on("reconnect", () => {
+    ownedSocket.on("reconnect", () => {
+      if (!ownsSocket()) return;
       console.warn("[Socket.io] reconnect:", addr);
       isConnect.value = true;
-      socket?.emit("stream/auth", {
+      ownedSocket.emit("stream/auth", {
         data: { password }
       });
     });
 
-    socket.on("disconnect", () => {
+    ownedSocket.on("disconnect", () => {
+      if (!ownsSocket()) return;
       if (!isManualDisconnect) {
         console.warn("[Socket.io] disconnect:", addr);
       }
@@ -164,15 +189,18 @@ export function useTerminal() {
       events.emit("disconnect");
     });
 
-    socket.on("instance/stdout", (packet) => events.emit("stdout", packet?.data));
-    socket.on("stream/detail", (packet) => {
+    ownedSocket.on("instance/stdout", (packet) => {
+      if (ownsSocket()) events.emit("stdout", packet?.data);
+    });
+    ownedSocket.on("stream/detail", (packet) => {
+      if (!ownsSocket()) return;
       const v = packet?.data as InstanceDetail | undefined;
       state.value = v;
       events.emit("detail", v);
     });
 
-    socket.connect();
-    return socket;
+    ownedSocket.connect();
+    return ownedSocket;
   };
 
   const refreshWindowSize = (w: number, h: number) => {
@@ -228,10 +256,12 @@ export function useTerminal() {
   };
 
   const initTerminalWindow = (element: HTMLElement) => {
+    if (disposed) return;
     if (terminal.value) {
       throw new Error("Terminal already initialized, Please refresh the page!");
     }
 
+    terminalElement = element;
     // init touch handler
     element.addEventListener("touchstart", touchHandler, true);
     element.addEventListener("touchmove", touchHandler, true);
@@ -298,6 +328,7 @@ export function useTerminal() {
     fitAddon.fit();
     refreshWindowSize(term.cols - 1, term.rows - 1);
     fitAddonTask = setInterval(() => {
+      if (disposed) return;
       fitAddon.fit();
       refreshWindowSize(term.cols - 1, term.rows - 1);
     }, 2000);
@@ -312,6 +343,7 @@ export function useTerminal() {
     }
 
     term.onData((data) => {
+      if (disposed) return;
       // If the PTY terminal is disabled, no input is sent.
       if (
         state.value?.config.terminalOption?.pty === false ||
@@ -363,17 +395,27 @@ export function useTerminal() {
   let statusQueryTask: NodeJS.Timeout;
   onMounted(() => {
     statusQueryTask = setInterval(() => {
-      if (socket?.connected) socket?.emit("stream/detail", {});
+      if (!disposed && socket?.connected) socket.emit("stream/detail", {});
     }, 1000);
   });
 
   onUnmounted(() => {
+    disposed = true;
+    ++setupGeneration;
     clearInterval(fitAddonTask);
     clearInterval(statusQueryTask);
+    terminalElement?.removeEventListener("touchstart", touchHandler, true);
+    terminalElement?.removeEventListener("touchmove", touchHandler, true);
+    terminalElement?.removeEventListener("touchend", touchHandler, true);
+    terminalElement?.removeEventListener("touchcancel", touchHandler, true);
+    terminalElement = undefined;
+    terminal.value?.dispose();
+    terminal.value = undefined;
     events.removeAllListeners();
     isManualDisconnect = true;
     socket?.disconnect();
     socket?.removeAllListeners();
+    socket = undefined;
   });
 
   const isStopped = computed(() => state?.value?.status === INSTANCE_STATUS_CODE.STOPPED);

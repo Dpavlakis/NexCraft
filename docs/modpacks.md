@@ -7,7 +7,7 @@ Once an instance is installed from a modpack (or built from the Custom builder),
 Use the **Update Modpack** card on a modpack instance (it appears in the manage grid only for instances installed from CurseForge/Modrinth/FTB, and is admin-only).
 
 1. Open **Update Modpack**. It shows the current pack — icon, name, loader, MC version, installed version and date.
-2. Pick a newer version from the **Version** dropdown (the current one is marked).
+2. Pick a newer version from the **Version** dropdown (the current one is marked). For CurseForge and Modrinth, review **What changed** below the picker: it shows the publisher's release notes for that selected version. If notes are unavailable, you can retry. These are individual release notes, so check intervening releases too when skipping versions.
 3. Click **Update** and confirm.
 
 What it does:

@@ -106,7 +106,7 @@ const handleOpenDetailDialog = async () => {
               :total="operationForm.total"
               :page-size="operationForm.pageSize"
               show-size-changer
-              @show-size-change="(current, size) => (operationForm.pageSize = size)"
+              @show-size-change="(current: number, size: number) => (operationForm.pageSize = size)"
               @change="operationForm.current = $event"
             ></a-pagination>
           </div>

@@ -59,3 +59,13 @@ export function commandStringToArray(cmd: string) {
 
   return cmdArray;
 }
+
+// Change the launcher source span only: parsing/rejoining would lose argument quotes.
+export function replaceJavaLauncher(command: string): string {
+  const match = /^(\s*)("[^"]*"|[^\s"]+)(?=\s|$)/.exec(command);
+  const first = match?.[2].replace(/^"|"$/g, "") || "";
+  if (first !== "{mcsm_java}" && !/(^|[/\\])java(\.exe)?$/i.test(first)) {
+    throw new Error($t("TXT_CODE_java_selection.scriptLauncher"));
+  }
+  return match![1] + "{mcsm_java}" + command.slice(match![0].length);
+}

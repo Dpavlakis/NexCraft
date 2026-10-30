@@ -1,3 +1,4 @@
+import type { OperationProgress } from "@/tools/operationProgress";
 import { useDefineApi } from "@/stores/useDefineApi";
 
 export interface ModpackHit {
@@ -75,6 +76,20 @@ export const modpackDetail = useDefineApi<
   method: "GET"
 });
 
+export interface ModpackChangelog {
+  content: string;
+  format: "html" | "markdown";
+}
+
+// Publisher release notes for the selected version (not a generated diff).
+export const modpackChangelog = useDefineApi<
+  { params: { source: string; projectId: string; versionId: string } },
+  ModpackChangelog
+>({
+  url: "/api/protected_modpack/changelog",
+  method: "GET"
+});
+
 // List installable versions of a modpack
 export const modpackVersions = useDefineApi<
   {
@@ -101,6 +116,7 @@ export const installModpack = useDefineApi<
       versionName?: string;
       iconUrl?: string;
       instanceName: string;
+      gamePort?: number;
       maxMemoryMB?: number;
       acceptEula?: boolean;
     };
@@ -185,10 +201,7 @@ export const mcVersionsGet = useDefineApi<Record<string, never>, McVersion[]>({
 });
 
 // Server-software (Paper/Purpur/Folia) version list from their official APIs
-export const serverVersionsGet = useDefineApi<
-  { params: { software: string } },
-  McVersion[]
->({
+export const serverVersionsGet = useDefineApi<{ params: { software: string } }, McVersion[]>({
   url: "/api/protected_modpack/server_versions",
   method: "GET"
 });
@@ -210,6 +223,7 @@ export const installServer = useDefineApi<
       mcVersion: string;
       loader: string; // vanilla | fabric | forge | neoforge | quilt
       instanceName: string;
+      gamePort?: number;
       maxMemoryMB?: number;
       acceptEula?: boolean;
       loaderVersion?: string;
@@ -232,6 +246,7 @@ export const modpackTaskStatus = useDefineApi<
     instanceUuid?: string;
     phase?: string;
     downloadProgress?: { percentage: number };
+    progress?: OperationProgress;
   } | null
 >({
   url: "/api/protected_modpack/task_status",

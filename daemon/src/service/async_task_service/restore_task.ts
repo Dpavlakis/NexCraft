@@ -1,5 +1,6 @@
 import fs from "fs-extra";
-import StreamZip from "node-stream-zip";
+import { prepareRestore, applyRestore } from "../restore_service";
+import { acquireInstanceOperation } from "../instance_operation_lock";
 import { v4 } from "uuid";
 import Instance from "../../entity/instance/instance";
 import { $t } from "../../i18n";
@@ -25,51 +26,45 @@ export class RestoreTask extends AsyncTask {
   }
 
   async onStart() {
-    const status = this.instance.status();
-    if (status === Instance.STATUS_BUSY || status === Instance.STATUS_STARTING) {
-      this.error(new Error($t("TXT_CODE_backup.busy")));
-      return;
-    }
-    const wasRunning = status === Instance.STATUS_RUNNING;
+    const release = acquireInstanceOperation(this.instance.instanceUuid);
+    let stage: string | undefined;
+    let stopped = false;
     try {
-      this.instance.println("INFO", $t("TXT_CODE_backup.restoreStart"));
-      // Restoring over a live server is unsafe: always stop first.
+      const status = this.instance.status();
+      if (status === Instance.STATUS_BUSY || status === Instance.STATUS_STARTING)
+        throw new Error($t("TXT_CODE_backup.busy"));
+      const wasRunning = status === Instance.STATUS_RUNNING;
+      const cwd = this.instance.absoluteCwdPath();
+      const prepared = await prepareRestore(this.backupFile, cwd);
+      stage = prepared.stage;
       if (wasRunning) {
-        this.instance.println("INFO", $t("TXT_CODE_backup.restoreStopping"));
         await this.instance.execPreset("stop");
         await this.waitForStop();
       }
-      this.instance.println("INFO", $t("TXT_CODE_backup.restoreExtracting"));
+      stopped = true;
       this.instance.status(Instance.STATUS_BUSY);
-      // Extract with guaranteed overwrite of existing files. The daemon's shared
-      // decompress() prefers the Go zip tool which does NOT overwrite existing files,
-      // so a restore would silently no-op over the live world. node-stream-zip writes
-      // each entry via a truncating write stream, so existing files are replaced.
-      const dest = this.instance.absoluteCwdPath();
-      await fs.ensureDir(dest);
-      const zip = new StreamZip.async({ file: this.backupFile });
-      try {
-        await zip.extract(null, dest);
-      } finally {
-        await zip.close();
-      }
+      await applyRestore(prepared.stage, cwd, prepared.units);
+      await fs.remove(stage);
+      stage = undefined;
+      this.instance.status(Instance.STATUS_STOP);
+      if (wasRunning) await this.instance.execPreset("start");
       this.instance.println("INFO", $t("TXT_CODE_backup.restoreSuccess"));
     } catch (error: any) {
-      this.instance.status(Instance.STATUS_STOP);
-      this.error(error);
+      if (stopped) this.instance.status(Instance.STATUS_STOP);
+      // Cleanup belongs to the operation, before reporting completion. Preserve
+      // the primary failure if removing the remaining stage also fails.
+      if (stage) {
+        try { await fs.remove(stage); } catch (cleanupError) {
+          logger.error("Restore stage cleanup failed; retained at " + stage, cleanupError);
+        }
+        stage = undefined;
+      }
+      await this.error(error);
       return;
     } finally {
-      if (this.instance.status() === Instance.STATUS_BUSY)
-        this.instance.status(Instance.STATUS_STOP);
-      if (wasRunning) {
-        try {
-          await this.instance.execPreset("start");
-        } catch (e) {
-          // ignore restart failure
-        }
-      }
+      release();
     }
-    this.stop();
+    await this.stop();
   }
 
   async onStop() {

@@ -92,7 +92,8 @@ export function useInstanceMoreDetail(info: InstanceMoreDetail): InstanceMoreDet
 }
 
 export function useInstanceInfo(params: Params) {
-  let task: NodeJS.Timer | undefined;
+  let task: ReturnType<typeof setInterval> | undefined;
+  let disposed = false;
   const { daemonId, instanceId, instanceInfo, autoRefresh } = params;
 
   const { execute, state, isLoading, isReady } = getInstanceInfo();
@@ -127,8 +128,9 @@ export function useInstanceInfo(params: Params) {
         }
       });
 
-      if (autoRefresh) {
+      if (autoRefresh && !disposed) {
         task = setInterval(async () => {
+          if (disposed) return;
           await execute({
             params: {
               uuid: instanceId,
@@ -141,6 +143,7 @@ export function useInstanceInfo(params: Params) {
   });
 
   onUnmounted(() => {
+    disposed = true;
     if (task) clearInterval(task);
     task = undefined;
   });
@@ -186,7 +189,7 @@ export const INSTANCE_CONFIGS: InstanceConfigs[] = [
     fileName: t("TXT_CODE_9b36d5a2"),
     path: "server.properties",
     redirect: "common/server.properties",
-    type: "properties",
+    type: "properties_lossless",
     info: t("TXT_CODE_12e3afa9"),
     category: [
       TYPE_MINECRAFT_SPIGOT,
@@ -278,7 +281,7 @@ export const INSTANCE_CONFIGS: InstanceConfigs[] = [
     fileName: "[Bedrock] server.properties",
     path: "server.properties",
     redirect: "bds/server.properties",
-    type: "properties",
+    type: "properties_not_unicode_lossless",
     info: t("TXT_CODE_3a3f9a57"),
     category: [TYPE_MINECRAFT_BDS, TYPE_MINECRAFT_BEDROCK]
   },

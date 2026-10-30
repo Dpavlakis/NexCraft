@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { h, onBeforeUnmount, ref } from "vue";
 import { t } from "@/lang/i18n";
 import { Modal } from "ant-design-vue";
 
@@ -12,49 +12,71 @@ const props = defineProps<{
   destroyComponent: () => void;
   instanceId: string;
   daemonId: string;
+  nickname?: string;
 }>();
+
+const target = { instanceId: props.instanceId, daemonId: props.daemonId, nickname: props.nickname };
+let active = true;
+let settled = false;
+onBeforeUnmount(() => {
+  active = false;
+});
+const finish = (ok: boolean) => {
+  if (!active || settled) return;
+  settled = true;
+  isOpen.value = false;
+  props.emitResult(ok);
+  props.destroyComponent();
+};
 
 const deleteFiles = ref(false);
 const isOpen = ref(true);
 const submitBtnLoading = ref(false);
 
 const submit = async (deleteFile: boolean | null = deleteFiles.value) => {
+  if (!active || settled || submitBtnLoading.value) return;
   const { execute } = batchDelete();
   submitBtnLoading.value = true;
   try {
-    await execute({
+    const result = await execute({
       params: {
-        daemonId: props.daemonId || ""
+        daemonId: target.daemonId || ""
       },
       data: {
-        uuids: [props.instanceId || ""],
+        uuids: [target.instanceId || ""],
         deleteFile: deleteFile || false
       }
     });
-    props.emitResult(true);
+    if (
+      !Array.isArray(result.value?.instances) ||
+      !result.value.instances.some((instance) => instance?.instanceUuid === target.instanceId)
+    ) {
+      throw new Error(
+        t("TXT_CODE_server_delete_unconfirmed", { name: target.nickname || target.instanceId })
+      );
+    }
+    finish(true);
   } catch (error) {
-    reportErrorMsg(error);
-    props.emitResult(false);
+    if (active && !settled) reportErrorMsg(error);
+    finish(false);
   }
-  isOpen.value = false;
-  props.destroyComponent();
 };
 
 const onCancel = () => {
-  isOpen.value = false;
-  props.emitResult(false);
-  props.destroyComponent();
+  finish(false);
 };
 
 const onDelete = async () => {
   if (!deleteFiles.value) return await submit();
   Modal.confirm({
     title: t("TXT_CODE_584d786d"),
-    content: t("TXT_CODE_90508729"),
+    content: h("div", [
+      h("strong", target.nickname || target.instanceId),
+      h("p", t("TXT_CODE_90508729"))
+    ]),
     okText: t("TXT_CODE_10088738"),
     onOk: async () => {
-      await submit();
-      Modal.destroyAll();
+      await submit(true);
     },
     okType: "danger"
   });
@@ -63,6 +85,10 @@ const onDelete = async () => {
 
 <template>
   <a-modal :visible="isOpen" :title="t('TXT_CODE_a0e19f38')" @cancel="onCancel">
+    <p v-if="target.nickname" class="delete-target">
+      <strong>{{ target.nickname }}</strong
+      ><br />{{ target.instanceId }}
+    </p>
     <a-typography-paragraph>
       <a-typography-text>
         {{ t("TXT_CODE_1981470a") }}
@@ -89,3 +115,9 @@ const onDelete = async () => {
     </template>
   </a-modal>
 </template>
+
+<style scoped>
+.delete-target {
+  overflow-wrap: anywhere;
+}
+</style>

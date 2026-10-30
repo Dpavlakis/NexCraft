@@ -1,3 +1,4 @@
+import { validateGamePort } from "../service/mc_port";
 import { $t } from "../i18n";
 import { TaskCenter } from "../service/async_task_service/index";
 import { ModpackInstallTask } from "../service/async_task_service/modpack_install_task";
@@ -9,6 +10,10 @@ import InstanceSubsystem from "../service/system_instance";
 // Create a new instance and install a CurseForge/Modrinth modpack into it
 routerApp.on("modpack/install", (ctx, data) => {
   try {
+    data.descriptor.gamePort = validateGamePort(
+      data.descriptor.gamePort,
+      data.descriptor.source === "bedrock"
+    );
     const task = new ModpackInstallTask(String(data.instanceName), data.descriptor);
     TaskCenter.addTask(task);
     protocol.response(ctx, { taskId: task.taskId, instanceUuid: task.instance.instanceUuid });

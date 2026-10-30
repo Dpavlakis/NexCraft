@@ -1,3 +1,4 @@
+import { SecurityError } from "../service/security_error";
 import Koa from "koa";
 import Router from "@koa/router";
 import permission from "../middleware/permission";
@@ -52,6 +53,7 @@ router.del("/", permission({ level: ROLE.ADMIN }), async (ctx: Koa.Parameterized
     }
     ctx.body = true;
   } catch (error: any) {
+    if (error instanceof SecurityError) throw error;
     ctx.throw(500, $t("TXT_CODE_router.user.deleteFailure") as string);
   }
 });

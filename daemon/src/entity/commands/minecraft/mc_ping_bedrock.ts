@@ -1,4 +1,5 @@
 import dgram from "dgram";
+import { resolveMinecraftPingPort } from "../../../service/game_endpoint";
 import Instance from "../../instance/instance";
 import InstanceCommand from "../base/command";
 
@@ -58,12 +59,11 @@ export default class MinecraftBedrockGetPlayersCommand extends InstanceCommand {
   }
 
   async exec(instance: Instance) {
-    if (instance.config.pingConfig.ip && instance.config.pingConfig.port) {
+    const port = resolveMinecraftPingPort(instance);
+    const host = instance.config.pingConfig.ip || "127.0.0.1";
+    if (port) {
       try {
-        const info: any = await request(
-          instance.config.pingConfig.ip,
-          instance.config.pingConfig.port
-        );
+        const info: any = await request(host, port);
         return {
           version: info[3],
           motd: info[0],

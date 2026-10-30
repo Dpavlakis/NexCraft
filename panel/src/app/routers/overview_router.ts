@@ -32,6 +32,7 @@ router.get("/", permission({ level: ROLE.ADMIN, token: false }), async (ctx) => 
       // assign some identifier value
       remoteInfo.uuid = remoteService.uuid;
       remoteInfo.ip = remoteService.config.ip;
+      remoteInfo.gameHost = remoteService.gameHost;
       remoteInfo.port = remoteService.config.port;
       remoteInfo.prefix = remoteService.config.prefix;
       remoteInfo.available = remoteService.available;

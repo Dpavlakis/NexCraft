@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { t } from "@/lang/i18n";
 import { EditOutlined } from "@ant-design/icons-vue";
-import { computed, onMounted, ref } from "vue";
+import { computed, watch, ref } from "vue";
 
 const LONG_MAGIC_PREFIX = "<__long__>";
 const FLOAT_MAGIC_PREFIX = "<__float__>";
@@ -9,6 +9,7 @@ const props = defineProps<{
   optionValue?: Record<string, any>;
   optionKey?: any;
   custom?: boolean;
+  booleanSwitch?: boolean;
 }>();
 
 enum CONTROL {
@@ -48,7 +49,14 @@ const computedValue = computed({
       value.value[key.value] = v;
       return;
     }
-    value.value[key.value] = v;
+    value.value[key.value] =
+      props.booleanSwitch &&
+      typeof preValue === "number" &&
+      typeof v === "string" &&
+      v.trim() !== "" &&
+      Number.isFinite(Number(v))
+        ? Number(v)
+        : v;
   }
 });
 
@@ -64,12 +72,16 @@ const forceType = () => {
   type.value = type.value + 1;
 };
 
-onMounted(() => {
-  if (props.custom) return;
-  if (props.optionValue) value.value = props.optionValue;
-  if (props.optionKey) key.value = props.optionKey;
-  type.value = valueType.value;
-});
+watch(
+  () => [props.optionValue, props.optionKey],
+  () => {
+    if (props.custom) return;
+    value.value = props.optionValue ?? {};
+    key.value = props.optionKey;
+    type.value = valueType.value;
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -78,10 +90,10 @@ onMounted(() => {
       <div v-if="!custom">
         <a-row :gutter="[10, 10]" align="middle">
           <a-col :md="7" :span="24">
-            <slot name="title"></slot>
+            <span class="line-option-title"><slot name="title"></slot></span>
           </a-col>
           <a-col :md="11" :span="24">
-            <slot name="info"></slot>
+            <span class="line-option-info"><slot name="info"></slot></span>
           </a-col>
           <a-col :md="6" :span="24">
             <div v-if="$slots.optionInput">
@@ -89,8 +101,16 @@ onMounted(() => {
             </div>
             <div v-else class="flex">
               <a-input v-if="type == CONTROL.INPUT" v-model:value="computedValue" />
+              <div v-if="booleanSwitch && valueType === CONTROL.SELECT" class="config-boolean">
+                <a-switch
+                  v-model:checked="computedValue"
+                  :aria-label="String(optionKey)"
+                  class="config-boolean-switch"
+                />
+                <span>{{ computedValue ? t("TXT_CODE_addfcb6b") : t("TXT_CODE_1e9c479e") }}</span>
+              </div>
               <a-select
-                v-if="type == CONTROL.SELECT"
+                v-else-if="type == CONTROL.SELECT"
                 v-model:value="computedValue"
                 style="width: 100%"
                 :placeholder="t('TXT_CODE_fe3f34e6')"
@@ -98,7 +118,11 @@ onMounted(() => {
                 <a-select-option :value="true">{{ t("TXT_CODE_addfcb6b") }}</a-select-option>
                 <a-select-option :value="false">{{ t("TXT_CODE_1e9c479e") }}</a-select-option>
               </a-select>
-              <a-button v-if="type == CONTROL.SELECT" class="ml-8" @click="forceType">
+              <a-button
+                v-if="type == CONTROL.SELECT && !booleanSwitch"
+                class="ml-8"
+                @click="forceType"
+              >
                 <EditOutlined />
               </a-button>
             </div>
@@ -113,6 +137,24 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+.line-option-title {
+  overflow-wrap: anywhere;
+}
+.line-option-info {
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-height: 1.6;
+}
+.config-boolean {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+.config-boolean-switch {
+  min-width: 44px;
+  border-radius: 999px;
+}
 .line-option-wrapper {
   width: 100%;
   margin-bottom: 6px;

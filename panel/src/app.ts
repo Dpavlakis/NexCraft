@@ -2,20 +2,17 @@ import fs from "fs-extra";
 import http from "http";
 import https from "https";
 import Koa from "koa";
-import koaBody, { HttpMethodEnum } from "koa-body";
 import compress from "koa-compress";
-import session from "koa-session";
+import { installAuthentication } from "./app/service/authentication";
 import koaStatic from "koa-static";
 import { removeTrail } from "mcsmanager-common";
 import open from "open";
 import os from "os";
 import path from "path";
-import { v4 } from "uuid";
 import RedisStorage from "./app/common/storage/redis_storage";
 import Storage from "./app/common/storage/sys_storage";
 import { $t } from "./app/i18n";
 import { mountRouters } from "./app/index";
-import { preCheckMiddleware } from "./app/middleware/precheck";
 import { middleware as protocolMiddleware } from "./app/middleware/protocol";
 import { logger } from "./app/service/log";
 import SystemRemoteService from "./app/service/remote_service";
@@ -136,44 +133,7 @@ async function main() {
     // When Koa is attacked by a short connection flood, it is easy for error messages to swipe the screen, which may indirectly affect the operation of some applications
   });
 
-  app.use(preCheckMiddleware);
-  app.use(
-    koaBody({
-      multipart: true,
-      parsedMethods: [
-        HttpMethodEnum.GET,
-        HttpMethodEnum.PUT,
-        HttpMethodEnum.POST,
-        HttpMethodEnum.DELETE
-      ],
-      formidable: {
-        maxFileSize: 1024 * 1024 * 500,
-        maxFiles: 1
-      },
-      jsonLimit: "10mb",
-      onError(err, ctx) {
-        logger.error("koaBody Lib Error:", err);
-      }
-    })
-  );
-
-  app.keys = [v4()];
-  app.use(
-    session(
-      {
-        key: v4(),
-        maxAge: 86400000,
-        overwrite: true,
-        httpOnly: true,
-        signed: true,
-        rolling: false,
-        renew: false,
-        secure: false
-      },
-      app
-    )
-  );
-
+  installAuthentication(app);
   app.use(async (ctx, next) => {
     const ignoreUrls = ["/api/overview", "/api/files/status"];
     for (const iterator of ignoreUrls) {

@@ -217,8 +217,14 @@ export async function openInstanceTagsEditor(
     .openDialog();
 }
 
-export async function useDeleteInstanceDialog(instanceId: string, daemonId: string) {
-  return await useMountComponent({ instanceId, daemonId }).mount<boolean>(DeleteInstanceDialog);
+export async function useDeleteInstanceDialog(
+  instanceId: string,
+  daemonId: string,
+  nickname?: string
+) {
+  return await useMountComponent({ instanceId, daemonId, nickname }).mount<boolean>(
+    DeleteInstanceDialog
+  );
 }
 
 export async function useImageViewerDialog(

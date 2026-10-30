@@ -1,0 +1,133 @@
+name: Security validation
+
+on:
+  push:
+    branches: [test, main]
+    paths:
+      - "daemon/src/**"
+      - "panel/src/**"
+      - "common/src/**"
+      - "common/global.d.ts"
+      - "frontend/src/**"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - "frontend/*config*"
+      - "frontend/env.d.ts"
+      - "frontend/index.html"
+      - "languages/**"
+      - "dockerfile/**"
+      - "lib-urls.txt"
+      - "scripts/security-tests/**"
+      - "scripts/run-security-tests.cjs"
+      - "scripts/frontend-production-smoke.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "common/package.json"
+      - "common/package-lock.json"
+      - "daemon/package.json"
+      - "daemon/package-lock.json"
+      - "panel/package.json"
+      - "panel/package-lock.json"
+      - ".github/workflows/security-validation.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  security-validation:
+    name: Security validation (Node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [24.22.2]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install validation dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --prefix common --ignore-scripts --no-audit --no-fund
+          npm ci --prefix daemon --ignore-scripts --no-audit --no-fund
+          npm ci --prefix panel --ignore-scripts --no-audit --no-fund
+          npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
+      - name: Run security tests
+        run: npm run test:security
+      - name: Build daemon with isolated dependencies
+        run: |
+          set -euo pipefail
+          build_root="$(mktemp -d "${RUNNER_TEMP}/nexcraft-daemon-build.XXXXXX")"
+          trap 'rm -rf "$build_root"' EXIT
+          # Match the daemon Docker builder inputs; exclude checkout-root dependencies.
+          git archive HEAD common daemon languages lib-urls.txt | tar -x -C "$build_root"
+          # Preserve the relative mcsmanager-common link into ../common.
+          cp -a common/node_modules "$build_root/common/"
+          cp -a daemon/node_modules "$build_root/daemon/"
+          npm run build --prefix "$build_root/daemon"
+      - name: Build panel
+        run: npm run build --prefix panel
+      - name: Account and iframe behavior tests
+        working-directory: frontend
+        run: node node_modules/vitest/vitest.mjs run --config src/components/__tests__/account-security.config.ts
+      - name: Frontend reliability behavior tests
+        working-directory: frontend
+        run: node node_modules/vitest/vitest.mjs run --config src/reliability-tests/reliability.config.ts
+      - name: Frontend settings presentation tests
+        working-directory: frontend
+        run: node node_modules/vitest/vitest.mjs run --config src/settings-tests/group-backup.config.ts
+      - name: Type-check and build frontend
+        run: |
+          npm run type-check --prefix frontend
+          npm run build-only --prefix frontend
+      - name: Cold browser boot of production frontend
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          # Chrome is supplied by the hosted Ubuntu image; do not install another browser.
+          browser="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          test -n "$browser" || { echo "Hosted Chrome is required for production boot validation" >&2; exit 1; }
+          node scripts/frontend-production-smoke.mjs --dist frontend/dist --browser "$browser"
+
+  shipping-images:
+    name: Build and smoke shipping images (Node 24)
+    needs: security-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build final images
+        run: |
+          docker build -f dockerfile/web.dockerfile -t nexcraft-web:validation .
+          docker build -f dockerfile/daemon.dockerfile -t nexcraft-daemon:validation .
+      - name: Verify final runtimes and common links
+        run: |
+          for image in nexcraft-web:validation nexcraft-daemon:validation; do
+            docker run --rm --entrypoint sh "$image" -ec '
+              test "$(node --version)" = v24.22.2
+              test "$(npm --version)" = 11.19.1
+              test "$(readlink -f node_modules/mcsmanager-common)" = /opt/mcsmanager/common
+              node -e "require(\"koa\"); require(\"koa-body\").koaBody({}); require(\"uuid\").v4(); require(\"socket.io\")"
+            '
+          done
+          docker run --rm --entrypoint java nexcraft-daemon:validation -version
+          docker run --rm --entrypoint sh nexcraft-daemon:validation -ec '! ldd /usr/local/bin/node | grep "not found"'
+      - name: Start final images with fresh disposable data
+        run: |
+          set -euo pipefail
+          trap 'docker logs validation-web; docker logs validation-daemon; docker rm -f validation-web validation-daemon' EXIT
+          docker run -d --name validation-web -p 127.0.0.1:23333:23333 nexcraft-web:validation
+          docker run -d --name validation-daemon -p 127.0.0.1:24444:24444 nexcraft-daemon:validation
+          curl --fail --retry 30 --retry-connrefused --retry-all-errors --retry-max-time 60 --max-time 5 --retry-delay 1 http://127.0.0.1:23333/ -o /dev/null
+          curl --fail --retry 30 --retry-connrefused --retry-all-errors --retry-max-time 60 --max-time 5 --retry-delay 1 http://127.0.0.1:24444/ -o /dev/null
+          docker stop --time 15 validation-web validation-daemon
+          test "$(docker inspect -f '{{.State.ExitCode}}' validation-web)" = 0
+          test "$(docker inspect -f '{{.State.ExitCode}}' validation-daemon)" = 0

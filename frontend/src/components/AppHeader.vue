@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from "@/lang/i18n";
 import nexcraftLogo from "@/assets/nexcraft_logo.svg";
 import { useHeaderMenus } from "@/hooks/useHeaderMenus";
 import { useScreen } from "@/hooks/useScreen";
@@ -8,6 +9,7 @@ import { useScroll } from "@vueuse/core";
 import { computed, h } from "vue";
 import { useRoute } from "vue-router";
 import CardPanel from "./CardPanel.vue";
+import ColorModeSwitch from "./ColorModeSwitch.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { useAppStateStore } from "@/stores/useAppStateStore";
 
@@ -67,7 +69,10 @@ const openPhoneMenu = (b = false) => {
       </nav>
       <div class="btns">
         <div v-for="(item, index) in appMenus as any" :key="index">
-          <a-dropdown v-if="item.menus && item.conditions && !item.inUserDropdown" placement="bottom">
+          <a-dropdown
+            v-if="item.menus && item.conditions && !item.inUserDropdown"
+            placement="bottom"
+          >
             <div
               :class="item.customClass"
               class="nav-button right-nav-button flex-center"
@@ -100,6 +105,7 @@ const openPhoneMenu = (b = false) => {
             </div>
           </a-tooltip>
         </div>
+        <ColorModeSwitch />
         <a-dropdown v-if="isLogged" placement="bottomRight">
           <div class="nav-button right-nav-button user-chip flex-center" @click.prevent>
             <UserAvatar
@@ -131,46 +137,41 @@ const openPhoneMenu = (b = false) => {
   <header v-if="isPhone" class="app-header-content-for-phone">
     <CardPanel class="card-panel">
       <template #body>
-        <div style="display: flex; justify-content: space-between; align-items: center">
-          <div style="width: 100px" class="flex">
-            <a-button
-              type="text"
-              :icon="h(MenuUnfoldOutlined)"
-              size="small"
-              @click="openPhoneMenu(true)"
-            ></a-button>
-            <div v-for="(item, index) in appMenus" :key="index">
-              <a-dropdown
-                v-if="item.menus && item.conditions && !item.onlyPC"
-                class="phone-nav-button"
-                placement="bottom"
-              >
-                <a-button type="text" :icon="h(item.icon)" size="small" @click.prevent></a-button>
-                <template #overlay>
-                  <a-menu @click="(e: any) => item.click(String(e.key))">
-                    <a-menu-item v-for="m in item.menus" :key="m.value">
-                      {{ m.title }}
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </div>
-          </div>
-          <div class="brand-link">
+        <div class="phone-header-row">
+          <a-button
+            class="phone-menu-toggle"
+            type="text"
+            :icon="h(MenuUnfoldOutlined)"
+            :aria-label="t('TXT_CODE_navigation_open_menu')"
+            @click="openPhoneMenu(true)"
+          ></a-button>
+          <div class="brand-link phone-brand" @click="handleToPage('/')">
             <img :src="nexcraftLogo" class="brand-logo" alt="NexCraft" />
-            <span class="nexcraft-brand-text" style="font-size: 16px">NexCraft</span>
+            <span class="nexcraft-brand-text">NexCraft</span>
           </div>
-          <div style="width: 100px" class="justify-end">
-            <div v-for="(item, index) in appMenus" :key="index">
-              <a-button
-                v-if="item.conditions && !item.onlyPC && !item.menus"
-                class="phone-nav-button"
-                type="text"
-                :icon="h(item.icon)"
-                size="small"
-                @click="item.click"
-              ></a-button>
-            </div>
+          <div class="phone-header-actions">
+            <ColorModeSwitch />
+            <a-dropdown v-if="isLogged" :trigger="['click']" placement="bottomRight">
+              <button type="button" class="phone-profile" :aria-label="t('TXT_CODE_navigation_user_menu')">
+                <UserAvatar
+                  :avatar="appState.userInfo?.avatar"
+                  :name="appState.userInfo?.userName"
+                  :size="28"
+                />
+              </button>
+              <template #overlay>
+                <a-menu>
+                  <a-menu-item
+                    v-for="(item, i) in userMenuItems"
+                    :key="i"
+                    :class="item.customClass"
+                    @click="item.click()"
+                  >
+                    {{ item.title }}
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
           </div>
         </div>
       </template>
@@ -242,6 +243,7 @@ const openPhoneMenu = (b = false) => {
   // align-items: center;
   // margin: 0px;
   .card-panel {
+    padding: 4px 8px;
     background-color: var(--app-header-bg);
     margin-top: 8px;
 
@@ -256,6 +258,52 @@ const openPhoneMenu = (b = false) => {
   }
 }
 
+.phone-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.phone-menu-toggle {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 44px;
+  padding: 0;
+}
+.brand-link.phone-brand {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 6px;
+  white-space: nowrap;
+  .brand-logo {
+    height: 24px;
+  }
+  .nexcraft-brand-text {
+    font-size: 16px;
+  }
+}
+.phone-header-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+.phone-profile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  &:focus-visible {
+    outline: 2px solid var(--app-header-text-color, #fff);
+    outline-offset: -2px;
+  }
+}
 .brand-link {
   display: flex;
   align-items: center;

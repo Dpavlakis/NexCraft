@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { normalizeGameHost } from "@/hooks/useGameEndpoint";
 import NodeRemoteMappingEdit from "@/components/NodeRemoteMappingEdit.vue";
 import type { ComputedNodeInfo } from "@/hooks/useOverviewInfo";
 import { useRemoteNode } from "@/hooks/useRemoteNode";
@@ -17,6 +18,7 @@ const daemonInfo = ref<ComputedNodeInfo | null>(null);
 
 const DEFAULT_CONFIG = {
   ip: "",
+  gameHost: "",
   port: 24444,
   prefix: "",
   remarks: "Unnamed Node",
@@ -99,6 +101,7 @@ const openDialog = (data?: ComputedNodeInfo, uuid?: string) => {
     dialog.data = {
       ...data,
       ...data.config,
+      gameHost: data.gameHost ?? "",
       port: data.port, // connection port
       daemonPort: data.config?.port ?? 24444, // listen port
       apiKey: "",
@@ -142,6 +145,10 @@ const dialog = reactive({
   submit: async () => {
     try {
       await dialog.check();
+      const gameHost = normalizeGameHost(dialog.data.gameHost);
+      if (gameHost === null)
+        throw new Error(t("TXT_CODE_game_endpoint_host_validation"));
+      dialog.data.gameHost = gameHost;
       dialog.loading = true;
       if (editMode.value) {
         await updateNode(dialog.uuid, {
@@ -198,6 +205,18 @@ defineExpose({ openDialog });
             <a-input v-model:value="dialog.data.ip" />
             <a-typography-text v-if="ipNeedsMapping(dialog.data.ip)" type="secondary">
               {{ t("TXT_CODE_93c3cb78") }}
+            </a-typography-text>
+          </a-form-item>
+
+          <a-form-item :label="t('TXT_CODE_game_endpoint_host_optional')" name="gameHost">
+            <a-input
+              v-model:value="dialog.data.gameHost"
+              :placeholder="t('TXT_CODE_game_endpoint_host_placeholder')"
+              :status="normalizeGameHost(dialog.data.gameHost) === null ? 'error' : undefined"
+              aria-describedby="game-host-hint"
+            />
+            <a-typography-text id="game-host-hint" type="secondary">
+              {{ t("TXT_CODE_game_endpoint_host_help") }}
             </a-typography-text>
           </a-form-item>
 
@@ -293,7 +312,13 @@ defineExpose({ openDialog });
                   <a-tooltip :title="t('TXT_CODE_daemon_outputBufferSizeInfo')" trigger="click">
                     <a-typography-text
                       type="secondary"
-                      style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer"
+                      style="
+                        display: block;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        cursor: pointer;
+                      "
                     >
                       {{ t("TXT_CODE_daemon_outputBufferSizeInfo") }}
                     </a-typography-text>
@@ -303,7 +328,10 @@ defineExpose({ openDialog });
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item :label="t('TXT_CODE_daemon_enableSoftShutdown')" name="enableSoftShutdown">
+              <a-form-item
+                :label="t('TXT_CODE_daemon_enableSoftShutdown')"
+                name="enableSoftShutdown"
+              >
                 <a-typography-paragraph>
                   <a-typography-text type="secondary">
                     {{ t("TXT_CODE_daemon_enableSoftShutdownInfo") }}

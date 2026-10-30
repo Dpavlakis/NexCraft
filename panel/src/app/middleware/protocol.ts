@@ -1,3 +1,4 @@
+import { SecurityError } from "../service/security_error";
 import Koa from "koa";
 import { Stream } from "stream";
 import VisualDataSubsystem from "../service/visual_data";
@@ -22,6 +23,7 @@ export async function middleware(
   try {
     await next();
   } catch (error: any) {
+    if (error instanceof SecurityError) throw error;
     ctx.body = error;
   }
 
@@ -35,6 +37,8 @@ export async function middleware(
   }
   ctx.response.set("X-Powered-By", "MCSManager");
   ctx.response.set("X-Version", getVersion());
+
+  if (ctx.body instanceof SecurityError) throw ctx.body;
 
   // Serialize and display when sending Error class
   if (ctx.body instanceof Error) {

@@ -32,8 +32,9 @@ class IntervalRestartJob implements IRestartJob {
 
 class ScheduledRestartService {
   private jobs = new Map<string, IRestartJob>();
-  // Guards against overlapping runs (a long countdown still running when the next fires).
-  private running = new Set<string>();
+  private generations = new Map<string, symbol>();
+  // Each overlap marker belongs to the schedule that admitted the sequence.
+  private running = new Map<string, symbol>();
 
   // (Re)arm the scheduled restart for an instance from its current config.
   public applyForInstance(instance: Instance) {
@@ -42,8 +43,10 @@ class ScheduledRestartService {
     const cfg = instance.config?.scheduledRestart;
     if (!cfg || !cfg.enabled) return;
 
+    const generation = Symbol(uuid);
+    this.generations.set(uuid, generation);
     const run = () => {
-      this.runRestartSequence(instance).catch((e) =>
+      this.runRestartSequence(instance, generation).catch((e) =>
         logger.error(`[scheduledRestart] ${uuid} error: ${e?.message ?? e}`)
       );
     };
@@ -68,24 +71,35 @@ class ScheduledRestartService {
 
   public cancelForInstance(uuid: string) {
     const j = this.jobs.get(uuid);
+    // Invalidate first, even if a job is absent or its cancellation throws.
+    this.generations.delete(uuid);
+    this.running.delete(uuid);
+    this.jobs.delete(uuid);
     if (j) {
       try {
         j.cancel();
       } catch {}
-      this.jobs.delete(uuid);
     }
+  }
+
+  private isCurrent(instance: Instance, generation: symbol): boolean {
+    return (
+      this.generations.get(instance.instanceUuid) === generation &&
+      !!instance.config?.scheduledRestart?.enabled &&
+      instance.status() === Instance.STATUS_RUNNING
+    );
   }
 
   // Broadcast the countdown then restart. Skips if not running; aborts if the
   // instance leaves RUNNING mid-countdown (e.g. admin stopped it).
-  private async runRestartSequence(instance: Instance) {
+  private async runRestartSequence(instance: Instance, generation: symbol) {
     const uuid = instance.instanceUuid;
     if (this.running.has(uuid)) return;
-    if (instance.status() !== Instance.STATUS_RUNNING) {
+    if (!this.isCurrent(instance, generation)) {
       logger.info(`[scheduledRestart] ${uuid} skipped (not running)`);
       return;
     }
-    this.running.add(uuid);
+    this.running.set(uuid, generation);
     try {
       const cfg = instance.config.scheduledRestart;
       const tmpl = cfg.warningMessage || "Server restarting in {time}...";
@@ -95,7 +109,7 @@ class ScheduledRestartService {
         .sort((a, b) => b - a);
 
       for (let i = 0; i < points.length; i++) {
-        if (instance.status() !== Instance.STATUS_RUNNING) {
+        if (!this.isCurrent(instance, generation)) {
           logger.info(`[scheduledRestart] ${uuid} aborted mid-countdown (not running)`);
           return;
         }
@@ -106,19 +120,21 @@ class ScheduledRestartService {
         } catch (e: any) {
           logger.warn(`[scheduledRestart] ${uuid} say failed: ${e?.message ?? e}`);
         }
+        if (!this.isCurrent(instance, generation)) return;
         const next = i + 1 < points.length ? points[i + 1] : 0;
         const waitMs = (w - next) * 1000;
         if (waitMs > 0) await sleep(waitMs);
+        if (!this.isCurrent(instance, generation)) return;
       }
 
-      if (instance.status() !== Instance.STATUS_RUNNING) {
+      if (!this.isCurrent(instance, generation)) {
         logger.info(`[scheduledRestart] ${uuid} aborted before restart (not running)`);
         return;
       }
       logger.info(`[scheduledRestart] ${uuid} restarting now`);
       await instance.execPreset("restart");
     } finally {
-      this.running.delete(uuid);
+      if (this.running.get(uuid) === generation) this.running.delete(uuid);
     }
   }
 }

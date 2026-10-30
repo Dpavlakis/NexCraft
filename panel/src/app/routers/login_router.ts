@@ -32,7 +32,7 @@ router.post(
     if (!checkBanIp(ctx)) throw new Error($t("TXT_CODE_router.login.ban"));
     if (check(ctx)) return (ctx.body = "Logined");
     try {
-      ctx.body = login(ctx, userName, passWord, code);
+      ctx.body = await login(ctx, userName, passWord, code);
       operationLogger.info("user_login", {
         operator_ip: ctx.ip,
         operator_name: userName,
@@ -59,7 +59,7 @@ router.get(
   "/logout",
   permission({ token: false, level: null, speedLimit: false }),
   async (ctx: Koa.ParameterizedContext) => {
-    logout(ctx);
+    await logout(ctx);
     ctx.body = true;
   }
 );
@@ -127,7 +127,7 @@ router.all(
         operator_name: userName,
         target_user_name: userName
       });
-      login(ctx, userName, passWord);
+      await login(ctx, userName, passWord);
       return (ctx.body = true);
     }
     throw new Error($t("TXT_CODE_router.user.installed"));

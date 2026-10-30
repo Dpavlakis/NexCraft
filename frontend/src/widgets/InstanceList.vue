@@ -17,7 +17,7 @@ import {
   SearchOutlined,
   WarningOutlined
 } from "@ant-design/icons-vue";
-import { computed, h, onMounted, ref } from "vue";
+import { computed, h, onMounted, onUnmounted, ref, watch } from "vue";
 
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import { router } from "@/config/router";
@@ -43,12 +43,33 @@ import { computeNodeName } from "../tools/nodes";
 import type { NodeStatus } from "../types/index";
 import InstanceLine from "./instance/InstanceLine.vue";
 import Shortcut from "./instance/Shortcut.vue";
+import ServerGroup from "./instance/ServerGroup.vue";
+import { groupServers } from "@/tools/serverGroups";
+import ServerLayoutSwitch, { type ServerLayout } from "@/components/ServerLayoutSwitch.vue";
 
 defineProps<{
   card: LayoutCard;
 }>();
 
 const { isPhone } = useScreen();
+const layoutStorageKey = "nexcraft.server-list.layout";
+const initialLayout = (): ServerLayout => {
+  try {
+    const saved = localStorage.getItem(layoutStorageKey);
+    if (saved === "compact" || saved === "list" || saved === "overview") return saved;
+  } catch {
+    /* Keep a usable in-memory choice when storage is unavailable. */
+  }
+  return "compact";
+};
+const serverLayout = ref<ServerLayout>(initialLayout());
+watch(serverLayout, (layout) => {
+  try {
+    localStorage.setItem(layoutStorageKey, layout);
+  } catch {
+    /* Presentation still switches. */
+  }
+});
 const operationForm = ref({
   instanceName: "",
   currentPage: 1,
@@ -65,7 +86,8 @@ const currentRemoteNode = ref<NodeStatus>();
 const isGlobalDaemonMode = computed(() => currentRemoteNode.value?.uuid === ALL_DAEMON_MODE);
 
 const { execute: getNodes, state: nodes, isLoading: loadingNodes } = remoteNodeList();
-const { execute: getInstances, state: instances, isLoading: loadingInstance } = remoteInstances();
+const { state: instances } = remoteInstances();
+const loadingInstance = ref(false);
 const isGlobalLoading = ref(true);
 const { updateTagTips, tagTips } = useInstanceTagTips();
 const {
@@ -82,6 +104,7 @@ const isLoading = computed(
 );
 
 const instancesMoreInfo = computed(() => {
+  if (!isPageCurrent()) return [];
   const newInstances: InstanceMoreDetail[] = [];
   for (const instance of instances.value?.data || []) {
     const instanceMoreInfo = useInstanceMoreDetail(instance);
@@ -96,8 +119,18 @@ const initNodes = async () => {
   if (nodes.value?.length === 0) {
     return reportErrorMsg(t("TXT_CODE_e3d96a26"));
   }
-  if (localStorage.getItem("pageSelectedRemote")) {
-    currentRemoteNode.value = JSON.parse(localStorage.pageSelectedRemote);
+  let storedNode: NodeStatus | undefined;
+  try {
+    const stored = localStorage.getItem("pageSelectedRemote");
+    if (stored) storedNode = JSON.parse(stored);
+  } catch {
+    /* A corrupt or unavailable browser preference must not prevent loading servers. */
+  }
+  if (storedNode) {
+    currentRemoteNode.value = storedNode;
+    currentRemoteNode.value =
+      nodes.value?.find((node) => node.uuid === currentRemoteNode.value?.uuid) ||
+      currentRemoteNode.value;
     if (isGlobalDaemonMode.value) return;
     if (!nodes.value?.some((item) => item.uuid === currentRemoteNode.value?.uuid)) {
       currentRemoteNode.value = undefined;
@@ -108,25 +141,88 @@ const initNodes = async () => {
 };
 
 const tableTreeData = ref<any[]>([]);
+const serverGroups = computed(() =>
+  groupServers(instancesMoreInfo.value, (item) => item.config?.packInfo?.source)
+);
+// Presentation-only groups: loaders, refresh and batch ownership keep the raw tree.
+const groupedTableTreeData = computed(() =>
+  tableTreeData.value.map((node) => ({
+    ...node,
+    children: [
+      ...groupServers<any>(
+        node.children.filter((row: any) => row.inst),
+        (row) => row.inst.config?.packInfo?.source
+      ).map((group) => ({
+        key: node.key + ":group:" + group.kind,
+        isServerGroup: true,
+        name: t("TXT_CODE_server_groups_" + group.kind),
+        count: group.items.length,
+        // Ant Table indexes the entire tree by key, including other daemons.
+        children: group.items.map((row) => ({
+          ...row,
+          key: JSON.stringify(["instance", node.key, row.key])
+        }))
+      })),
+      ...node.children.filter((row: any) => row.isLoadMore)
+    ]
+  }))
+);
+const collapsedTableRows = ref(new Set<string>());
+const expandedTableKeys = computed(() =>
+  groupedTableTreeData.value.flatMap((node) =>
+    [node, ...node.children]
+      .filter((row) => row.children?.length && !collapsedTableRows.value.has(row.key))
+      .map((row) => row.key)
+  )
+);
+const setTableExpanded = (expanded: boolean, record: { key: string }) => {
+  if (expanded) collapsedTableRows.value.delete(record.key);
+  else collapsedTableRows.value.add(record.key);
+};
+let endpointGeneration = 0;
+const pageContext = () =>
+  JSON.stringify([currentRemoteNode.value?.uuid, operationForm.value, selectedTags.value]);
+const loadedPage = ref<{ daemonId: string; query: string; generation: number }>();
+const isPageCurrent = () =>
+  mounted &&
+  !isGlobalDaemonMode.value &&
+  !!loadedPage.value &&
+  loadedPage.value.daemonId === currentRemoteNode.value?.uuid &&
+  loadedPage.value.query === pageContext() &&
+  loadedPage.value.generation === endpointGeneration;
 
 const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanceId?: string) => {
+  selectedInstance.value = [];
+  loadedPage.value = undefined;
+  if (resetPage) operationForm.value.currentPage = 1;
+  let generation = ++endpointGeneration;
+  let query = pageContext();
+  const stillCurrent = () =>
+    mounted && generation === endpointGeneration && query === pageContext();
   try {
-    selectedInstance.value = [];
-    if (resetPage) operationForm.value.currentPage = 1;
     if (!currentRemoteNode.value) await initNodes();
-
+    if (!mounted) return;
+    generation = ++endpointGeneration;
+    query = pageContext();
+    const nodeId = currentRemoteNode.value?.uuid ?? "";
     if (!isGlobalDaemonMode.value) {
-      await getInstances({
+      loadingInstance.value = true;
+      // Each request owns its response ref; an old request cannot overwrite the active page.
+      const { execute: getInstances } = remoteInstances();
+      const result = await getInstances({
         params: {
           page: operationForm.value.currentPage,
           page_size: operationForm.value.pageSize,
           status: operationForm.value.status,
           instance_name: operationForm.value.instanceName.trim(),
           tag: JSON.stringify(selectedTags.value),
-          daemonId: currentRemoteNode.value?.uuid ?? "",
+          daemonId: nodeId,
           type: operationForm.value.type
         }
       });
+      if (!stillCurrent()) return;
+      instances.value = result.value;
+      loadedPage.value = { daemonId: nodeId, query, generation };
       updateTagTips(instances.value?.allTags || []);
       return;
     }
@@ -136,7 +232,7 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
     if (daemonId && instanceId) {
       const { execute: getInfo, state: info } = getInstanceInfo();
       await getInfo({ params: { uuid: instanceId, daemonId } });
-      if (!info.value) return;
+      if (!stillCurrent() || !info.value) return;
 
       const targetNodeIndex = tableTreeData.value.findIndex((n) => n.key === daemonId);
       if (targetNodeIndex === -1) return;
@@ -163,6 +259,7 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
       }
     });
 
+    if (!stillCurrent()) return;
     if (globalInstances.value) {
       const newTreeData = [];
 
@@ -211,13 +308,17 @@ const initInstancesData = async (resetPage?: boolean, daemonId?: string, instanc
       tableTreeData.value = newTreeData;
     }
   } catch (err) {
-    return reportErrorMsg(t("TXT_CODE_e109c091"));
+    if (stillCurrent()) return reportErrorMsg(t("TXT_CODE_e109c091"));
   } finally {
-    isGlobalLoading.value = false;
+    if (stillCurrent()) {
+      loadingInstance.value = false;
+      isGlobalLoading.value = false;
+    }
   }
 };
 
 const loadMoreInstances = async (daemonId: string) => {
+  ++endpointGeneration;
   const targetNodeIndex = tableTreeData.value.findIndex((n) => n.key === daemonId);
   if (targetNodeIndex === -1) return;
   const nodeData = tableTreeData.value[targetNodeIndex];
@@ -314,6 +415,25 @@ const toNodesPage = () => {
 
 const multipleMode = ref(false);
 const selectedInstance = ref<InstanceMoreDetail[]>([]);
+watch(
+  pageContext,
+  () => {
+    ++endpointGeneration;
+    loadedPage.value = undefined;
+    selectedInstance.value = [];
+  },
+  { flush: "sync" }
+);
+
+const snapshotSelection = () => {
+  if (!isPageCurrent() || !loadedPage.value || selectedInstance.value.length === 0) return;
+  const visible = new Set(instancesMoreInfo.value.map((item) => item.instanceUuid));
+  const uuids = [...new Set(selectedInstance.value.map((item) => item.instanceUuid))];
+  if (uuids.some((uuid) => !visible.has(uuid))) return;
+  return { owner: loadedPage.value, uuids };
+};
+const isSnapshotCurrent = (snapshot: NonNullable<ReturnType<typeof snapshotSelection>>) =>
+  isPageCurrent() && loadedPage.value === snapshot.owner;
 
 const instanceTableColumns: AntColumnsType[] = [
   { title: t("TXT_CODE_f70badb9"), dataIndex: "name", key: "name", width: 250, align: "left" },
@@ -338,6 +458,20 @@ const instanceTableColumns: AntColumnsType[] = [
     width: 160,
     align: "center"
   },
+  {
+    title: t("TXT_CODE_game_endpoint_configured_address"),
+    dataIndex: "gameAddress",
+    key: "gameAddress",
+    width: 230,
+    align: "left"
+  },
+  {
+    title: t("TXT_CODE_game_endpoint_installed_versions"),
+    dataIndex: "installedVersion",
+    key: "installedVersion",
+    width: 250,
+    align: "left"
+  },
   { title: t("TXT_CODE_b283e720"), dataIndex: "resources", key: "resources", align: "left" },
   {
     title: t("TXT_CODE_7e9727bd"),
@@ -360,14 +494,21 @@ const findInstance = (item: InstanceMoreDetail) => {
 };
 
 const selectInstance = (item: InstanceMoreDetail) => {
-  if (findInstance(item)) {
-    selectedInstance.value.splice(selectedInstance.value.indexOf(item), 1);
+  if (
+    !isPageCurrent() ||
+    !instancesMoreInfo.value.some((row) => row.instanceUuid === item.instanceUuid)
+  )
+    return;
+  const index = selectedInstance.value.findIndex((row) => row.instanceUuid === item.instanceUuid);
+  if (index !== -1) {
+    selectedInstance.value.splice(index, 1);
   } else {
     selectedInstance.value.push(item);
   }
 };
 
 const handleSelectInstance = (item: InstanceMoreDetail) => {
+  if (!isPageCurrent()) return;
   if (multipleMode.value) {
     selectInstance(item);
   } else {
@@ -376,21 +517,10 @@ const handleSelectInstance = (item: InstanceMoreDetail) => {
 };
 
 const selectAllInstances = () => {
-  // The card grid renders from `instancesMoreInfo` (single-node view); the global
-  // daemon view renders a tree from `tableTreeData`. The old code only walked
-  // `tableTreeData`, so Select All did nothing in the normal card view (that tree
-  // is empty there). Select from both sources, deduped via findInstance().
   selectedInstance.value = [];
+  if (!isPageCurrent()) return;
   for (const item of instancesMoreInfo.value) {
-    if (findInstance(item)) continue;
-    selectedInstance.value.push(item);
-  }
-  for (const node of tableTreeData.value) {
-    if (!node.children) continue;
-    for (const child of node.children) {
-      if (!child.inst || findInstance(child.inst)) continue;
-      selectedInstance.value.push(child.inst);
-    }
+    if (!findInstance(item)) selectedInstance.value.push(item);
   }
 };
 
@@ -435,7 +565,8 @@ const instanceOperations = [
 ];
 
 const batchOperation = async (actName: "start" | "stop" | "kill" | "restart") => {
-  if (selectedInstance.value.length === 0) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
+  const snapshot = snapshotSelection();
+  if (!snapshot) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
   const operationMap = {
     start: async () => exec(batchStart().execute, t("TXT_CODE_2b5fd76e")),
     stop: async () => exec(batchStop().execute, t("TXT_CODE_4822a21")),
@@ -446,12 +577,12 @@ const batchOperation = async (actName: "start" | "stop" | "kill" | "restart") =>
   const exec = async (fn: Function, msg: string) => {
     try {
       const state = await fn({
-        data: selectedInstance.value.map((item) => ({
-          instanceUuid: item.instanceUuid,
-          daemonId: currentRemoteNode.value?.uuid ?? ""
+        data: snapshot.uuids.map((instanceUuid) => ({
+          instanceUuid,
+          daemonId: snapshot.owner.daemonId
         }))
       });
-      if (state.value) {
+      if (state.value && isSnapshotCurrent(snapshot)) {
         notification.success({
           message: msg,
           description: t("TXT_CODE_1514d08f")
@@ -465,16 +596,16 @@ const batchOperation = async (actName: "start" | "stop" | "kill" | "restart") =>
     }
   };
 
-  operationMap[actName]();
+  return operationMap[actName]();
 };
 
 const batchDeleteInstance = async (deleteFile: boolean) => {
-  if (selectedInstance.value.length === 0) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
+  const snapshot = snapshotSelection();
+  if (!snapshot) return reportErrorMsg(t("TXT_CODE_a0a77be5"));
   const { execute, state } = batchDelete();
-  const uuids: string[] = [];
+  const uuids = snapshot.uuids;
   const paths: string[] = [];
   for (const i of selectedInstance.value) {
-    uuids.push(i.instanceUuid);
     if (i.config?.cwd) {
       paths.push(i.config.cwd);
     }
@@ -495,17 +626,18 @@ const batchDeleteInstance = async (deleteFile: boolean) => {
       ]),
     okText: t("TXT_CODE_d507abff"),
     async onOk() {
+      if (!isSnapshotCurrent(snapshot)) return;
       try {
         await execute({
           params: {
-            daemonId: currentRemoteNode.value?.uuid ?? ""
+            daemonId: snapshot.owner.daemonId
           },
           data: {
             uuids: uuids,
             deleteFile: deleteFile
           }
         });
-        if (state.value) {
+        if (state.value && isSnapshotCurrent(snapshot)) {
           confirmDeleteInstanceModal.destroy();
           exitMultipleMode();
           notification.success({
@@ -531,9 +663,142 @@ const globalNode = {
   remarks: ""
 };
 
+// Refresh data without replacing the grid with a loading state or clearing
+// selection. Configured endpoints can change while the instance is stopped.
+let endpointRefresh: ReturnType<typeof setInterval> | undefined;
+let refreshInFlight = false;
+let mounted = true;
+const refreshVisibleInstances = async () => {
+  if (
+    document.hidden ||
+    refreshInFlight ||
+    isLoading.value ||
+    multipleMode.value ||
+    !currentRemoteNode.value
+  )
+    return;
+  refreshInFlight = true;
+  const generation = endpointGeneration;
+  const nodeId = currentRemoteNode.value.uuid;
+  const query = JSON.stringify([operationForm.value, selectedTags.value]);
+  const filters = {
+    instance_name: operationForm.value.instanceName.trim(),
+    status: operationForm.value.status,
+    tag: JSON.stringify(selectedTags.value),
+    type: isGlobalDaemonMode.value ? undefined : operationForm.value.type
+  };
+  const stillCurrent = () =>
+    mounted &&
+    !document.hidden &&
+    endpointGeneration === generation &&
+    currentRemoteNode.value?.uuid === nodeId &&
+    JSON.stringify([operationForm.value, selectedTags.value]) === query &&
+    !multipleMode.value;
+  const requestPage = async (daemonId: string, page: number, pageSize: number) => {
+    const { execute } = remoteInstances();
+    return (
+      await execute({
+        forceRequest: true,
+        timeout: 15000,
+        errorAlert: false,
+        params: { daemonId, page, page_size: pageSize, ...filters }
+      })
+    ).value;
+  };
+  try {
+    if (!isGlobalDaemonMode.value) {
+      const updated = await requestPage(
+        nodeId,
+        operationForm.value.currentPage,
+        operationForm.value.pageSize
+      );
+      if (stillCurrent() && updated) instances.value = updated;
+    } else {
+      const rows = tableTreeData.value.map((row) => ({
+        row,
+        pages: row.nodeCurrentPage || 1,
+        failed: false,
+        results: [] as Awaited<ReturnType<typeof requestPage>>[]
+      }));
+      const jobs = rows.flatMap((item) =>
+        Array.from({ length: item.pages }, (_, index) => async () => {
+          try {
+            item.results[index] = await requestPage(item.row.key, index + 1, 10);
+          } catch {
+            item.failed = true;
+          }
+        })
+      );
+      // One shared queue limits total node/page requests to four.
+      let nextJob = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(4, jobs.length) }, async () => {
+          while (stillCurrent()) {
+            const job = jobs[nextJob++];
+            if (!job) return;
+            await job();
+          }
+        })
+      );
+      for (const item of rows) {
+        if (
+          !stillCurrent() ||
+          item.failed ||
+          item.row.nodeCurrentPage !== item.pages ||
+          item.results.length !== item.pages ||
+          item.results.some((result) => !result)
+        )
+          continue;
+        // Page one describes the latest total. Keep every still-loaded page,
+        // discard pages removed by deletions, and rebuild the load-more row.
+        const maxPage = Math.max(1, item.results[0]?.maxPage ?? item.pages);
+        const currentPage = Math.min(item.pages, maxPage);
+        const seen = new Set<string>();
+        const children = item.results.slice(0, currentPage).flatMap((result) =>
+          (result?.data || []).flatMap((inst) => {
+            if (seen.has(inst.instanceUuid)) return [];
+            seen.add(inst.instanceUuid);
+            const info = useInstanceMoreDetail(inst);
+            return [
+              {
+                daemonId: item.row.key,
+                key: info.instanceUuid,
+                name: info.config.nickname || info.instanceUuid,
+                inst: info
+              }
+            ];
+          })
+        );
+        item.row.maxPage = maxPage;
+        item.row.nodeCurrentPage = currentPage;
+        item.row.children = [
+          ...children,
+          ...(currentPage < maxPage
+            ? [
+                {
+                  isLoadMore: true,
+                  daemonId: item.row.key,
+                  key: `${item.row.key}-load-more`
+                }
+              ]
+            : [])
+        ];
+      }
+    }
+  } catch {
+    /* Retain the last successful snapshot; normal refresh controls report errors. */
+  } finally {
+    refreshInFlight = false;
+  }
+};
 onMounted(async () => {
   await initInstancesData();
   setRefreshFn(initInstancesData);
+  if (mounted) endpointRefresh = setInterval(refreshVisibleInstances, 3000);
+});
+onUnmounted(() => {
+  mounted = false;
+  if (endpointRefresh) clearInterval(endpointRefresh);
 });
 </script>
 
@@ -622,12 +887,16 @@ onMounted(async () => {
                 >
                   <a-select-option value="">{{ t("TXT_CODE_filter_all_types") }}</a-select-option>
                   <a-select-option value="java">{{ t("TXT_CODE_edition_java") }}</a-select-option>
-                  <a-select-option value="bedrock">{{ t("TXT_CODE_edition_bedrock") }}</a-select-option>
+                  <a-select-option value="bedrock">{{
+                    t("TXT_CODE_edition_bedrock")
+                  }}</a-select-option>
                 </a-select>
                 <a-input
                   v-model:value.trim="operationForm.instanceName"
                   :placeholder="t('TXT_CODE_ce132192')"
-                  :style="{ width: isGlobalDaemonMode ? 'calc(100% - 90px)' : 'calc(100% - 200px)' }"
+                  :style="{
+                    width: isGlobalDaemonMode ? 'calc(100% - 90px)' : 'calc(100% - 200px)'
+                  }"
                   @press-enter="handleQueryInstance"
                   @change="handleQueryInstance"
                   @mouseenter="searchExpanded = true"
@@ -645,7 +914,7 @@ onMounted(async () => {
         </BetweenMenus>
       </a-col>
       <a-col :span="24">
-        <BetweenMenus>
+        <BetweenMenus class="server-list-toolbar">
           <template v-if="instances || isGlobalDaemonMode" #left>
             <div v-if="multipleMode && !isGlobalDaemonMode">
               <a-button class="mr-10" @click="exitMultipleMode">
@@ -659,7 +928,12 @@ onMounted(async () => {
               >
                 {{ t("TXT_CODE_df87c46d") }}
               </a-button>
-              <a-button v-else class="mr-10" @click="selectAllInstances">
+              <a-button
+                v-else
+                class="mr-10"
+                :disabled="!isPageCurrent()"
+                @click="selectAllInstances"
+              >
                 {{ t("TXT_CODE_f466d7a") }}
               </a-button>
               <a-dropdown>
@@ -675,7 +949,7 @@ onMounted(async () => {
                     </a-menu-item>
                   </a-menu>
                 </template>
-                <a-button type="primary">
+                <a-button type="primary" :disabled="!isPageCurrent()">
                   {{ t("TXT_CODE_8fd8bfd3") }}
                   <DownOutlined />
                 </a-button>
@@ -690,11 +964,12 @@ onMounted(async () => {
               </a-button>
             </div>
           </template>
-          <template v-if="multipleMode && !isGlobalDaemonMode" #center>
-            <a-typography-text>
+          <template v-if="!isGlobalDaemonMode" #center>
+            <a-typography-text v-if="multipleMode">
               {{ t("TXT_CODE_432cbc38") }}{{ selectedInstance?.length || 0 }}
               {{ t("TXT_CODE_5cd3b4bd") }}
             </a-typography-text>
+            <ServerLayoutSwitch v-model="serverLayout" />
           </template>
           <template v-if="instances && !isGlobalDaemonMode" #right>
             <a-pagination
@@ -733,42 +1008,56 @@ onMounted(async () => {
       </a-col>
 
       <a-col v-else-if="!isGlobalDaemonMode && instancesMoreInfo?.length > 0" :span="24">
-        <a-row :gutter="[16, 16]">
-          <fade-up-animation>
-            <a-col
-              v-for="item in instancesMoreInfo"
-              :key="item.instanceUuid"
-              :span="24"
-              :xl="6"
-              :lg="8"
-              :sm="12"
-            >
-              <Shortcut
-                class="instance-card"
-                :class="{ selected: multipleMode && findInstance(item) }"
-                style="height: 100%"
-                :card="card"
-                :target-instance-info="item"
-                :target-daemon-id="currentRemoteNode?.uuid"
-                @click="handleSelectInstance(item)"
-                @refresh-list="initInstancesData()"
-              />
-            </a-col>
-          </fade-up-animation>
-        </a-row>
+        <ServerGroup
+          v-for="group in serverGroups"
+          :key="group.kind"
+          :kind="group.kind"
+          :count="group.items.length"
+          :force-open="multipleMode"
+        >
+          <div class="server-layout-grid" :class="'servers-' + serverLayout">
+            <Shortcut
+              v-for="item in group.items"
+              :key="JSON.stringify([currentRemoteNode?.uuid, item.instanceUuid])"
+              class="instance-card"
+              :class="{ selected: multipleMode && findInstance(item) }"
+              :layout="serverLayout"
+              :disabled="multipleMode"
+              :card="card"
+              :target-instance-info="item"
+              :target-daemon-id="currentRemoteNode?.uuid"
+              :target-node="currentRemoteNode"
+              @click="handleSelectInstance(item)"
+              @refresh-list="initInstancesData()"
+            />
+          </div>
+        </ServerGroup>
       </a-col>
 
       <a-col v-else-if="isGlobalDaemonMode" :span="24">
         <fade-up-animation>
           <a-table
-            :data-source="tableTreeData"
+            :data-source="groupedTableTreeData"
             :columns="instanceTableColumns"
             :pagination="false"
             size="small"
             row-key="key"
-            :default-expand-all-rows="true"
+            :expanded-row-keys="expandedTableKeys"
+            @expand="setTableExpanded"
             :scroll="{ x: 'max-content' }"
           >
+            <template #expandIcon="{ expanded, record, onExpand }">
+              <button
+                v-if="record.children?.length"
+                type="button"
+                class="server-tree-toggle"
+                :aria-expanded="expanded"
+                :aria-label="record.name"
+                @click="onExpand(record, $event)"
+              >
+                <span aria-hidden="true">{{ expanded ? "⌄" : "›" }}</span>
+              </button>
+            </template>
             <template #headerCell="{ column }">
               <div v-if="column.key === 'name'" style="margin-left: 25px">
                 {{ column.title }}
@@ -783,20 +1072,37 @@ onMounted(async () => {
 
             <template #bodyCell="{ column, record }">
               <template v-if="record.isLoadMore">
-                <div
+                <button
                   v-if="column.key === 'name'"
-                  style="text-align: center; cursor: pointer; color: var(--color-blue-6)"
+                  type="button"
+                  class="server-load-more"
                   @click="loadMoreInstances(record.daemonId)"
                 >
                   {{ t("TXT_CODE_101ef36f") }}
-                </div>
+                </button>
+              </template>
+              <template v-else-if="record.isServerGroup">
+                <span v-if="column.key === 'name'" class="server-table-group">
+                  {{ record.name }}
+                  <span class="server-table-count"
+                    >{{ record.count }} {{ t("TXT_CODE_server_groups_on_page") }}</span
+                  >
+                </span>
+              </template>
+              <template v-else-if="record.node">
+                <span v-if="column.key === 'name'">
+                  <DatabaseOutlined v-if="record.node.available" class="mr-8" />
+                  <FrownOutlined v-else class="mr-8" />
+                  <strong>{{ record.name }}</strong>
+                </span>
               </template>
               <InstanceLine
-                v-else
+                v-else-if="record.inst"
                 :column="column"
                 :record="record"
                 :target-instance-info="record.inst"
                 :target-daemon-id="record.daemonId"
+                :target-node="nodes?.find((node) => node.uuid === record.daemonId)"
                 @refresh-list="
                   (daemonId: string, instanceId: string) =>
                     initInstancesData(false, daemonId, instanceId)
@@ -827,6 +1133,92 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" scoped>
+.server-list-toolbar :deep(.menus-item-center) {
+  flex: 0 0 auto;
+  width: auto;
+}
+.server-list-toolbar :deep(.menus-item-left) {
+  flex: 0 1 auto;
+}
+.server-list-toolbar :deep(.menus-item-left > div) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.server-list-toolbar :deep(.menus-item-right) {
+  margin-left: auto;
+}
+.server-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.server-layout-grid.servers-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+.server-layout-grid .instance-card {
+  cursor: pointer;
+}
+@media (max-width: 1100px) {
+  .server-layout-grid:not(.servers-list) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 680px) {
+  .server-list-toolbar :deep(.menus-item-left) {
+    flex-basis: 100%;
+  }
+  .server-list-toolbar :deep(.menus-item-center) {
+    width: auto !important;
+  }
+  .server-list-toolbar :deep(.menus-item-right) {
+    justify-content: flex-end !important;
+    min-width: 0;
+  }
+  .server-list-toolbar :deep(.ant-pagination) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .server-layout-grid:not(.servers-list) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.server-tree-toggle,
+.server-load-more {
+  border: 0;
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+  cursor: pointer;
+}
+.server-tree-toggle {
+  width: 24px;
+  height: 28px;
+  margin-right: 4px;
+}
+.server-load-more {
+  color: var(--color-blue-6);
+  padding: 4px 8px;
+}
+.server-tree-toggle:focus-visible,
+.server-load-more:focus-visible {
+  outline: 2px solid var(--color-blue-6);
+  outline-offset: 2px;
+}
+.server-table-group {
+  font-weight: 600;
+}
+.server-table-count {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 .search-input {
   transition: all 0.6s;
   text-align: center;

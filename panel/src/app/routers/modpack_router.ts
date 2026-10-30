@@ -12,6 +12,18 @@ import RemoteServiceSubsystem from "../service/remote_service";
 
 const router = new Router({ prefix: "/protected_modpack" });
 
+function validateGamePort(value: unknown, bedrock = false): number | undefined {
+  if (value === undefined || value === "") return undefined;
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > (bedrock ? 65534 : 65535)
+  )
+    throw new Error(`Game port must be an integer from 1 to ${bedrock ? 65534 : 65535}.`);
+  return value;
+}
+
 // Reset modes the daemon understands. An unknown value (typo / wrong case) must
 // NOT silently fall through to a no-backup full wipe on the daemon, so clamp any
 // unrecognised value to the safest option (always backs up first).
@@ -38,6 +50,25 @@ router.get(
       } else {
         ctx.body = await modManagerService.getProjectVersions(projectId, "modrinth");
       }
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
+// Release notes for the selected modpack version.
+router.get(
+  "/changelog",
+  permission({ level: ROLE.USER }),
+  requestConcurrencyLimiter("modpack:changelog"),
+  validator({ query: { source: String, projectId: String, versionId: String } }),
+  async (ctx) => {
+    try {
+      ctx.body = await modManagerService.getModpackChangelog(
+        String(ctx.query.source),
+        String(ctx.query.projectId),
+        String(ctx.query.versionId)
+      );
     } catch (err) {
       ctx.body = err;
     }
@@ -149,7 +180,9 @@ router.post(
     try {
       const daemonId = String(ctx.query.daemonId);
       const body = ctx.request.body;
+      const gamePort = validateGamePort(body.gamePort);
       const descriptor: any = await buildDescriptor(body);
+      descriptor.gamePort = gamePort;
       descriptor.acceptEula = !!body.acceptEula;
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
@@ -229,7 +262,11 @@ const SERVER_SOFTWARE = ["paper", "purpur", "folia"];
 // preview builds via this JSON API). Cached for an hour.
 const BEDROCK_LINKS_API =
   "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links";
-let bedrockCache: { at: number; stable?: { version: string; url: string }; preview?: { version: string; url: string } } | null = null;
+let bedrockCache: {
+  at: number;
+  stable?: { version: string; url: string };
+  preview?: { version: string; url: string };
+} | null = null;
 
 async function getBedrockLinks() {
   const now = Date.now();
@@ -239,7 +276,8 @@ async function getBedrockLinks() {
     headers: { "User-Agent": "Mozilla/5.0 (NexCraft)" }
   });
   const links: any[] = data?.result?.links || data?.links || [];
-  const find = (type: string) => links.find((l) => l.downloadType === type)?.downloadUrl as string | undefined;
+  const find = (type: string) =>
+    links.find((l) => l.downloadType === type)?.downloadUrl as string | undefined;
   const verOf = (url?: string) => url?.match(/bedrock-server-([\d.]+)\.zip/i)?.[1];
   const stableUrl = find("serverBedrockLinux");
   const previewUrl = find("serverBedrockPreviewLinux");
@@ -274,8 +312,10 @@ function neoforgeBuildToMc(build: string): string {
 
 async function fetchFabricLikeGameVersions(url: string) {
   const { data } = await axios.get(url, { timeout: 15000 });
-  return (Array.isArray(data) ? data : [])
-    .map((g: any) => ({ id: String(g.version), type: g.stable ? "release" : "snapshot" }));
+  return (Array.isArray(data) ? data : []).map((g: any) => ({
+    id: String(g.version),
+    type: g.stable ? "release" : "snapshot"
+  }));
 }
 
 async function fetchNeoforgeMcVersions() {
@@ -288,7 +328,7 @@ async function fetchNeoforgeMcVersions() {
   for (const v of versions) {
     const mc = neoforgeBuildToMc(v);
     const stable = !/beta|alpha|rc/i.test(v);
-    byMc.set(mc, (byMc.get(mc) || false) || stable);
+    byMc.set(mc, byMc.get(mc) || false || stable);
   }
   return [...byMc.entries()].map(([id, hasStable]) => ({
     id,
@@ -524,7 +564,8 @@ router.post(
     try {
       const daemonId = String(ctx.query.daemonId);
       const b = ctx.request.body;
-      const descriptor = await buildServerDescriptor(b);
+      const gamePort = validateGamePort(b.gamePort, String(b.loader).toLowerCase() === "bedrock");
+      const descriptor = { ...(await buildServerDescriptor(b)), gamePort };
       operationLogger.log("instance_modpack_install", {
         operator_ip: ctx.ip,
         operator_name: ctx.session?.["userName"],

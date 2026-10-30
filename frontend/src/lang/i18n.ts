@@ -104,6 +104,16 @@ async function initI18n(lang: string) {
     }
   }
 
+  // A selected catalog may omit newer keys; load the English fallback once.
+  if (!messages.en_us) {
+    const fallbackPath = Object.keys(langFiles).find((path) =>
+      toStandardLang(path).endsWith("/en_us.json")
+    );
+    if (fallbackPath) {
+      messages.en_us = normalizeLangModule(await langFiles[fallbackPath]());
+    }
+  }
+
   i18n = createI18n({
     allowComposition: true,
     globalInjection: true,

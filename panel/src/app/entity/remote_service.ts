@@ -17,6 +17,10 @@ export default class RemoteService {
   public config: RemoteServiceConfig;
   public realUrl: string = "";
 
+  public get gameHost(): string {
+    return this.config.gameHost || "";
+  }
+
   constructor(uuid: string, config: RemoteServiceConfig) {
     this.uuid = uuid;
     this.config = config;

@@ -1,3 +1,6 @@
+import { acquireInstanceOperation } from "../service/instance_operation_lock";
+import { assertSafePath } from "../utils/safe_path";
+import { v4 } from "uuid";
 import fs from "fs-extra";
 import path from "path";
 import { $t } from "../i18n";
@@ -36,18 +39,28 @@ routerApp.on("world/prepare_download", async (ctx, data) => {
   try {
     const inst = InstanceSubsystem.getInstance(data.instanceUuid);
     if (!inst) throw new Error($t("TXT_CODE_backup.instanceNotExist"));
-    const cwd = inst.absoluteCwdPath();
-    const kind = getWorldKind(inst);
-    const levelName = readLevelName(cwd);
-    const fileName = worldDownloadFileName(kind, levelName);
-    const dlDir = path.join(cwd, WORLD_DOWNLOAD_DIR);
-    await fs.remove(dlDir);
-    await fs.ensureDir(dlDir);
-    await zipWorld(cwd, kind, levelName, path.join(dlDir, fileName));
-    protocol.response(ctx, {
-      fileName,
-      relPath: path.posix.join(WORLD_DOWNLOAD_DIR, fileName)
-    });
+    const release = acquireInstanceOperation(inst.instanceUuid);
+    try {
+      const cwd = inst.absoluteCwdPath();
+      const kind = getWorldKind(inst);
+      const levelName = readLevelName(cwd);
+      const fileName = worldDownloadFileName(kind, levelName);
+      const downloadRoot = assertSafePath(cwd, path.join(cwd, WORLD_DOWNLOAD_DIR));
+      await fs.remove(downloadRoot);
+      const relativeDir = path.posix.join(WORLD_DOWNLOAD_DIR, v4());
+      const dlDir = assertSafePath(cwd, path.join(cwd, relativeDir));
+      try {
+        await fs.ensureDir(dlDir);
+        await zipWorld(cwd, kind, levelName, path.join(dlDir, fileName));
+      } catch (error) {
+        try { await fs.remove(dlDir); } catch { /* Preserve the prepare failure. */ }
+        throw error;
+      }
+      protocol.response(ctx, {
+        fileName,
+        relPath: path.posix.join(relativeDir, fileName)
+      });
+    } finally { release(); }
   } catch (error: any) {
     protocol.responseError(ctx, error);
   }

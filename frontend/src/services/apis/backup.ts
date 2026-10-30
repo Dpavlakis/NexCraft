@@ -1,4 +1,5 @@
 import { useDefineApi } from "@/stores/useDefineApi";
+import type { OperationProgress } from "@/tools/operationProgress";
 import type { RemoteMappingEntry } from "@/tools/protocol";
 
 export interface BackupConfig {
@@ -118,12 +119,7 @@ export const backupTaskStatus = useDefineApi<
     taskId: string;
     status: number;
     instanceStatus: number;
-    progress?: {
-      percentage: number;
-      processedBytes: number;
-      totalBytes: number;
-      entries: number;
-    };
+    progress?: OperationProgress;
   } | null
 >({
   url: "/api/protected_backup/task_status",

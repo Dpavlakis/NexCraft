@@ -1,3 +1,6 @@
+import { SecurityError } from "../service/security_error";
+import { sessionStore } from "../service/session_store";
+import { sensitivePermission } from "../service/two_factor_service";
 import Router from "@koa/router";
 import Koa from "koa";
 import { ROLE } from "../entity/user";
@@ -57,8 +60,7 @@ router.get(
       ctx.session["ssoState"] = state;
       ctx.session["ssoNonce"] = nonce;
       ctx.session["ssoCodeVerifier"] = codeVerifier;
-      ctx.session["ssoTimestamp"] = Date.now();
-      ctx.session.save();
+      ctx.session["ssoTimestamp"] = sessionStore(ctx).now();
 
       const url = await buildAuthorizationUrl(state, nonce, codeVerifier, ctx);
       ctx.redirect(url);
@@ -95,12 +97,15 @@ router.get(
     const codeVerifier = ctx.session["ssoCodeVerifier"];
     const ssoTimestamp = ctx.session["ssoTimestamp"];
 
+    // Consume the exact protected generation before any provider await.
+    sessionStore(ctx).checkpoint(ctx);
     // Clean up session SSO data immediately
     delete ctx.session["ssoState"];
     delete ctx.session["ssoNonce"];
     delete ctx.session["ssoCodeVerifier"];
     delete ctx.session["ssoTimestamp"];
-    ctx.session.save();
+
+    sessionStore(ctx).checkpoint(ctx);
 
     const isOAuth2 = systemConfig?.ssoType === "oauth2";
     if (!expectedState || !codeVerifier || (!isOAuth2 && !expectedNonce)) {
@@ -109,7 +114,7 @@ router.get(
     }
 
     // Reject if the SSO flow took longer than 10 minutes
-    if (!ssoTimestamp || Date.now() - ssoTimestamp > 10 * 60 * 1000) {
+    if (!ssoTimestamp || sessionStore(ctx).now() - ssoTimestamp > 10 * 60 * 1000) {
       ctx.redirect("/#/login?sso_error=sso_session_expired");
       return;
     }
@@ -149,12 +154,18 @@ router.get(
         ));
       }
 
-      logger.info(`[SSO] Callback received for sub: ${sub}`);
+      sessionStore(ctx).checkpoint(ctx);
+      const verifiedAt = sessionStore(ctx).now();
+      logger.info("[SSO] Provider callback verified");
 
+      // Only a verified provider subject may trigger recovery of a quarantined binding.
+      const candidate = Array.from(userSystem.objects.values()).find((user) => user.ssoSub === sub);
+      if (candidate) await userSystem.recoverAuthentication(candidate.uuid);
+      sessionStore(ctx).checkpoint(ctx);
       // Check if user is already bound
       const existingUser = userSystem.getUserBySsoSub(sub);
       if (existingUser) {
-        loginSuccess(ctx, existingUser.userName);
+        loginSuccess(ctx, existingUser.userName, verifiedAt);
         operationLogger.info("user_login", {
           operator_ip: ctx.ip,
           operator_name: existingUser.userName,
@@ -166,10 +177,10 @@ router.get(
       }
 
       // Not bound yet - redirect to bind page
+      ctx.session!["ssoProviderVerifiedAt"] = verifiedAt;
       ctx.session!["ssoBindSub"] = sub;
       ctx.session!["ssoBindClaims"] = JSON.stringify(claims);
-      ctx.session!["ssoBindTimestamp"] = Date.now();
-      ctx.session!.save();
+      ctx.session!["ssoBindTimestamp"] = sessionStore(ctx).now();
 
       ctx.redirect("/#/sso/bind");
     } catch (err: any) {
@@ -210,11 +221,10 @@ router.post(
     }
 
     // Reject if the bind session is older than 10 minutes
-    if (!ssoBindTimestamp || Date.now() - ssoBindTimestamp > 10 * 60 * 1000) {
+    if (!ssoBindTimestamp || sessionStore(ctx).now() - ssoBindTimestamp > 10 * 60 * 1000) {
       delete ctx.session["ssoBindSub"];
       delete ctx.session["ssoBindClaims"];
       delete ctx.session["ssoBindTimestamp"];
-      ctx.session.save();
       throw new Error("SSO binding session expired");
     }
 
@@ -224,7 +234,6 @@ router.post(
       delete ctx.session["ssoBindSub"];
       delete ctx.session["ssoBindClaims"];
       delete ctx.session["ssoBindTimestamp"];
-      ctx.session.save();
       throw new Error("This SSO account is already bound to another user");
     }
 
@@ -250,14 +259,27 @@ router.post(
       throw new Error("This account is already bound to another SSO provider");
     }
 
-    await userSystem.bindSso(user.uuid, ssoSub);
-
+    sessionStore(ctx).checkpoint(ctx);
+    const verifiedAt = ctx.session["ssoProviderVerifiedAt"];
     // Clean up session
     delete ctx.session["ssoBindSub"];
     delete ctx.session["ssoBindClaims"];
     delete ctx.session["ssoBindTimestamp"];
 
-    const token = loginSuccess(ctx, userName);
+    delete ctx.session["ssoProviderVerifiedAt"];
+    sessionStore(ctx).checkpoint(ctx);
+    await userSystem.withUser(user.uuid, async (current, save) => {
+      sessionStore(ctx).checkpoint(ctx);
+      if (current.userName !== userName || current.ssoBound || current.ssoSub)
+        throw new SecurityError(409, "SSO binding changed");
+      userSystem.checkUser(
+        { userName, passWord },
+        code || undefined,
+        systemConfig?.totpDriftToleranceSteps || 0
+      );
+      await save({ ssoSub, ssoBound: true });
+    });
+    const token = loginSuccess(ctx, userName, verifiedAt);
 
     operationLogger.info("user_login", {
       operator_ip: ctx.ip,
@@ -274,6 +296,7 @@ router.post(
 // [Logged-in user] Bind SSO to current session account (no password needed)
 router.post(
   "/bind-current",
+  sensitivePermission,
   permission({ level: ROLE.USER }),
   async (ctx: Koa.ParameterizedContext) => {
     if (!systemConfig?.ssoEnabled) {
@@ -291,11 +314,10 @@ router.post(
       throw new Error("No pending SSO binding session");
     }
 
-    if (!ssoBindTimestamp || Date.now() - ssoBindTimestamp > 10 * 60 * 1000) {
+    if (!ssoBindTimestamp || sessionStore(ctx).now() - ssoBindTimestamp > 10 * 60 * 1000) {
       delete ctx.session["ssoBindSub"];
       delete ctx.session["ssoBindClaims"];
       delete ctx.session["ssoBindTimestamp"];
-      ctx.session.save();
       throw new Error("SSO binding session expired");
     }
 
@@ -304,7 +326,6 @@ router.post(
       delete ctx.session["ssoBindSub"];
       delete ctx.session["ssoBindClaims"];
       delete ctx.session["ssoBindTimestamp"];
-      ctx.session.save();
       throw new Error("This SSO account is already bound to another user");
     }
 
@@ -318,12 +339,17 @@ router.post(
       throw new Error("This account is already bound to another SSO provider");
     }
 
-    await userSystem.bindSso(user.uuid, ssoSub);
-
+    sessionStore(ctx).checkpoint(ctx);
     delete ctx.session["ssoBindSub"];
     delete ctx.session["ssoBindClaims"];
     delete ctx.session["ssoBindTimestamp"];
-    ctx.session.save();
+    delete ctx.session["ssoProviderVerifiedAt"];
+    sessionStore(ctx).checkpoint(ctx);
+    await userSystem.withUser(user.uuid, async (_current, save) => {
+      sessionStore(ctx).checkpoint(ctx);
+      await save({ ssoSub, ssoBound: true });
+    });
+    loginSuccess(ctx, userName);
 
     operationLogger.info("user_login", {
       operator_ip: ctx.ip,

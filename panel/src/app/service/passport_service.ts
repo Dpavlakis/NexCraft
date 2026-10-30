@@ -1,12 +1,11 @@
 import Koa from "koa";
 import { GlobalVariable } from "mcsmanager-common";
-import { authenticator } from "otplib";
-import QRCode from "qrcode";
-import { ROLE, User } from "../entity/user";
+import { liveBrowserUser, sessionStore } from "./session_store";
+
+import { User } from "../entity/user";
 import { $t } from "../i18n";
 import { systemConfig } from "../setting";
 import { logger } from "./log";
-import { timeUuid } from "./password";
 import userSystem from "./user_service";
 
 export const BAN_IP_COUNT = "banip";
@@ -15,17 +14,22 @@ export const ILLEGAL_ACCESS_KEY = "illegalAccess";
 export const LOGIN_COUNT = "loginCount";
 export const LOGIN_FAILED_COUNT_KEY = "loginFailedCount";
 
-export function login(
+export async function login(
   ctx: Koa.ParameterizedContext,
   userName: string,
   passWord: string,
   twoFACode?: string
-): string {
+): Promise<string> {
   // record the number of login requests
   GlobalVariable.set(LOGIN_COUNT, GlobalVariable.get(LOGIN_COUNT, 0) + 1);
   const ip = getLoginIp(ctx);
   // check user information
   try {
+    // Lookup is only a reload hint. Authentication below always uses committed state.
+    const candidate = Array.from(userSystem.objects.values()).find(
+      (user) => user.userName === userName
+    );
+    if (candidate) await userSystem.recoverAuthentication(candidate.uuid);
     const totpDriftToleranceSteps = systemConfig?.totpDriftToleranceSteps || 0;
     userSystem.checkUser({ userName, passWord }, twoFACode, totpDriftToleranceSteps);
     // The number of errors to reset this IP after successful login
@@ -40,76 +44,44 @@ export function login(
     if (ctx.session) {
       ctx.session["login"] = null;
       ctx.session["token"] = null;
-      ctx.session.save();
     }
     logger.info(`[LOGIN] IP: ${ip}, Try login ${userName} failed!`);
     throw err;
   }
 }
 
-export function loginSuccess(ctx: Koa.ParameterizedContext, userName: string) {
+export function loginSuccess(
+  ctx: Koa.ParameterizedContext,
+  userName: string,
+  verifiedProviderAt?: number
+) {
   const ip = getLoginIp(ctx);
   const user = userSystem.getUserByUserName(userName);
   if (!user) throw new Error($t("TXT_CODE_router.login.nameOrPassError"));
   if (!ctx.session) throw new Error("Session is Null!");
 
   user.loginTime = new Date().toLocaleString();
-  ctx.session["login"] = true;
-  ctx.session["userName"] = userName;
-  ctx.session["uuid"] = user.uuid;
-  ctx.session["role"] = user.permission === 10 ? ROLE.ADMIN : ROLE.USER;
-  ctx.session["token"] = timeUuid();
-  ctx.session.save();
+  const token = sessionStore(ctx).issue(ctx, user, verifiedProviderAt);
 
   logger.info($t("TXT_CODE_42036f92"));
   logger.info(`[LOGIN] IP: ${ip} Login ${userName} successful!`);
-  logger.info(`[LOGIN] Token: ${ctx.session["token"]}`);
   logger.info($t("TXT_CODE_42036f92"));
 
-  return String(ctx.session["token"]);
+  return token;
 }
 
 export function getLoginIp(ctx: Koa.ParameterizedContext) {
   return ctx.ip ?? "";
 }
 
-export async function bind2FA(ctx: Koa.ParameterizedContext) {
-  if (!ctx.session) throw new Error("Session is Null!");
-  const userName = ctx.session["userName"];
-  const user = userSystem.getUserByUserName(userName);
-  if (!user) throw new Error("User is Null!");
-  try {
-    const secret = authenticator.generateSecret();
-    const qrCode = await QRCode.toDataURL(
-      authenticator.keyuri(userName, "MCSManager Panel", secret)
-    );
-    userSystem.edit(user.uuid, { secret, open2FA: false });
-    return qrCode;
-  } catch (err) {
-    user.secret = "";
-  }
-}
-
-export async function confirm2FaQRCode(userUuid: string, isEnable: boolean) {
-  await userSystem.edit(userUuid, {
-    open2FA: isEnable
-  });
-}
-
 export function check(ctx: Koa.ParameterizedContext) {
-  if (!ctx.session) return false;
-  if (ctx.session["login"] && ctx.session["userName"] && ctx.session["token"]) return true;
-  return false;
+  return !!liveBrowserUser(ctx);
 }
 
-export function logout(ctx: Koa.ParameterizedContext): boolean {
-  if (!ctx.session) return false;
-  ctx.session["login"] = null;
-  ctx.session["userName"] = null;
-  ctx.session["uuid"] = null;
-  ctx.session["token"] = null;
-  ctx.session.maxAge = 0;
-  ctx.session.save();
+export async function logout(ctx: Koa.ParameterizedContext): Promise<boolean> {
+  // Revocation must never wait for account persistence. Already authorized writes
+  // may finish, but queued work revalidates and late saves cannot recreate this entry.
+  sessionStore(ctx).logout(ctx);
   return true;
 }
 
@@ -146,7 +118,7 @@ export function getUserPermission(ctx: Koa.ParameterizedContext): number {
   if (isApiRequest(ctx)) {
     user = getUuidByApiKey(getApiKey(ctx));
   } else {
-    user = userSystem.getInstance(ctx.session?.["uuid"] || "");
+    user = liveBrowserUser(ctx);
   }
   if (!user) return 0;
   return user.permission ?? 0;
@@ -157,7 +129,7 @@ export function getUserNameBySession(ctx: Koa.ParameterizedContext): string {
     const user = getUuidByApiKey(getApiKey(ctx));
     return user ? user.userName : "";
   }
-  return ctx.session?.["userName"];
+  return liveBrowserUser(ctx)?.userName || "";
 }
 
 export function getUserFromCtx(ctx: Koa.ParameterizedContext) {
@@ -166,7 +138,7 @@ export function getUserFromCtx(ctx: Koa.ParameterizedContext) {
       const user = getUuidByApiKey(getApiKey(ctx));
       return user || undefined;
     }
-    return userSystem.getInstance(ctx.session?.["uuid"] || "") || undefined;
+    return liveBrowserUser(ctx);
   } catch (error) {
     return undefined;
   }
@@ -181,11 +153,11 @@ export function getUserUuid(ctx: Koa.ParameterizedContext): string {
       return "";
     }
   }
-  return ctx.session?.["uuid"] || "";
+  return liveBrowserUser(ctx)?.uuid || "";
 }
 
 export function getToken(ctx: Koa.ParameterizedContext): string {
-  return ctx.session?.["token"] || "";
+  return liveBrowserUser(ctx) ? ctx.session?.token || "" : "";
 }
 
 export function isAjax(ctx: Koa.ParameterizedContext) {
@@ -206,11 +178,14 @@ export function checkBanIp(ctx: Koa.ParameterizedContext) {
     if (ipMap[ip] != 999) {
       // record the number of bans
       GlobalVariable.set(BAN_IP_COUNT, GlobalVariable.get(BAN_IP_COUNT, 0) + 1);
-      setTimeout(() => {
-        delete ipMap[ip];
-        // delete the number of bans
-        GlobalVariable.set(BAN_IP_COUNT, GlobalVariable.get(BAN_IP_COUNT, 1) - 1);
-      }, 1000 * 60 * 10);
+      setTimeout(
+        () => {
+          delete ipMap[ip];
+          // delete the number of bans
+          GlobalVariable.set(BAN_IP_COUNT, GlobalVariable.get(BAN_IP_COUNT, 1) - 1);
+        },
+        1000 * 60 * 10
+      );
     }
     ipMap[ip] = 999;
     return false;

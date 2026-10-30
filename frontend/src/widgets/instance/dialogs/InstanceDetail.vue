@@ -44,6 +44,8 @@ interface FormDetail extends InstanceDetail {
   imageSelectMethod: "SELECT" | "EDIT";
 }
 
+const excludeSearchAll = (item: FilterOption) => item.value !== SEARCH_ALL_KEY;
+
 interface CombinedFormData {
   instance: Partial<FormDetail>;
   template: QuickStartPackages;
@@ -802,7 +804,7 @@ defineExpose({
                     show-search
                     :placeholder="t('TXT_CODE_3bb646e4')"
                     :options="
-                      selectOptions.appGameTypeList?.filter((item) => item.value !== SEARCH_ALL_KEY)
+                      selectOptions.appGameTypeList?.filter(excludeSearchAll)
                     "
                   >
                     <template #dropdownRender="{ menuNode: menu }">
@@ -838,7 +840,7 @@ defineExpose({
                     show-search
                     :placeholder="t('TXT_CODE_3bb646e4')"
                     :options="
-                      selectOptions.appPlatformList?.filter((item) => item.value !== SEARCH_ALL_KEY)
+                      selectOptions.appPlatformList?.filter(excludeSearchAll)
                     "
                   >
                     <template #dropdownRender="{ menuNode: menu }">
@@ -874,7 +876,7 @@ defineExpose({
                     show-search
                     :placeholder="t('TXT_CODE_3bb646e4')"
                     :options="
-                      selectOptions.appCategoryList?.filter((item) => item.value !== SEARCH_ALL_KEY)
+                      selectOptions.appCategoryList?.filter(excludeSearchAll)
                     "
                   >
                     <template #dropdownRender="{ menuNode: menu }">
@@ -976,7 +978,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.nickname"
+                    v-model:value="formData.instance.config!.nickname"
                     :disabled="isGlobalTerminal"
                   />
                 </a-form-item>
@@ -994,7 +996,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-select
-                    v-model:value="formData.instance.config.type"
+                    v-model:value="formData.instance.config!.type"
                     :placeholder="t('TXT_CODE_3bb646e4')"
                     :disabled="isGlobalTerminal"
                   >
@@ -1047,7 +1049,7 @@ defineExpose({
                   </a-typography-paragraph>
                   <a-input-group compact style="display: flex">
                     <a-textarea
-                      v-model:value="formData.instance.config.startCommand"
+                      v-model:value="formData.instance.config!.startCommand"
                       :rows="5"
                       style="min-height: 40px"
                       :placeholder="isDockerMode ? t('TXT_CODE_98e7c829') : t('TXT_CODE_f50cfe2')"
@@ -1068,7 +1070,7 @@ defineExpose({
                   </a-typography-paragraph>
                   <a-input-group compact style="display: flex">
                     <a-input
-                      v-model:value="formData.instance.config.stopCommand"
+                      v-model:value="formData.instance.config!.stopCommand"
                       :placeholder="t('TXT_CODE_83053cd5')"
                     />
                   </a-input-group>
@@ -1150,7 +1152,7 @@ defineExpose({
                       </a-typography-text>
                     </a-tooltip>
                   </a-typography-paragraph>
-                  <a-input v-model:value="formData.instance.config.cwd" />
+                  <a-input v-model:value="formData.instance.config!.cwd" />
                 </a-form-item>
               </a-col>
               <a-col :xs="24" :lg="24" :offset="0">
@@ -1170,7 +1172,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.runAs"
+                    v-model:value="formData.instance.config!.runAs"
                     :placeholder="t('TXT_CODE_9aa83c05')"
                     :disabled="isGlobalTerminal"
                   />
@@ -1189,14 +1191,14 @@ defineExpose({
                 <a-typography-text type="secondary">{{ t("TXT_CODE_sched_restart_desc") }}</a-typography-text>
               </a-typography-paragraph>
 
-              <a-switch v-model:checked="formData.instance.config.scheduledRestart.enabled" class="mb-12" />
+              <a-switch v-model:checked="formData.instance.config!.scheduledRestart.enabled" class="mb-12" />
               <span class="ml-8">{{ t("TXT_CODE_sched_restart_enable") }}</span>
 
-              <template v-if="formData.instance.config.scheduledRestart.enabled">
+              <template v-if="formData.instance.config!.scheduledRestart.enabled">
                 <div class="mt-12">
                   <a-typography-text strong>{{ t("TXT_CODE_sched_restart_type") }}</a-typography-text>
                   <a-radio-group
-                    v-model:value="formData.instance.config.scheduledRestart.scheduleType"
+                    v-model:value="formData.instance.config!.scheduledRestart.scheduleType"
                     class="ml-8"
                   >
                     <a-radio :value="2">{{ t("TXT_CODE_sched_restart_type_cron") }}</a-radio>
@@ -1204,10 +1206,10 @@ defineExpose({
                   </a-radio-group>
                 </div>
 
-                <div v-if="formData.instance.config.scheduledRestart.scheduleType === 2" class="mt-8">
+                <div v-if="formData.instance.config!.scheduledRestart.scheduleType === 2" class="mt-8">
                   <a-typography-text>{{ t("TXT_CODE_sched_restart_cron") }}</a-typography-text>
                   <a-input
-                    v-model:value="formData.instance.config.scheduledRestart.cron"
+                    v-model:value="formData.instance.config!.scheduledRestart.cron"
                     style="max-width: 320px"
                     placeholder="0 4 * * *"
                   />
@@ -1237,7 +1239,7 @@ defineExpose({
                 <div class="mt-12">
                   <a-typography-text>{{ t("TXT_CODE_sched_restart_message") }}</a-typography-text>
                   <a-input
-                    v-model:value="formData.instance.config.scheduledRestart.warningMessage"
+                    v-model:value="formData.instance.config!.scheduledRestart.warningMessage"
                     style="max-width: 420px"
                     placeholder="Server restarting in {time}..."
                   />
@@ -1257,14 +1259,14 @@ defineExpose({
                   <a-typography-text type="secondary">{{ t("TXT_CODE_sleep_desc") }}</a-typography-text>
                 </a-typography-paragraph>
 
-                <a-switch v-model:checked="formData.instance.config.sleepOnEmpty.enabled" class="mb-12" />
+                <a-switch v-model:checked="formData.instance.config!.sleepOnEmpty.enabled" class="mb-12" />
                 <span class="ml-8">{{ t("TXT_CODE_sleep_enable") }}</span>
 
-                <template v-if="formData.instance.config.sleepOnEmpty.enabled">
+                <template v-if="formData.instance.config!.sleepOnEmpty.enabled">
                   <div class="mt-12">
                     <a-typography-text>{{ t("TXT_CODE_sleep_idle") }}</a-typography-text>
                     <a-input-number
-                      v-model:value="formData.instance.config.sleepOnEmpty.idleTimeoutMinutes"
+                      v-model:value="formData.instance.config!.sleepOnEmpty.idleTimeoutMinutes"
                       :min="1"
                       :step="1"
                       style="max-width: 160px; display: block"
@@ -1274,7 +1276,7 @@ defineExpose({
 
                   <div class="mt-12">
                     <a-switch
-                      v-model:checked="formData.instance.config.sleepOnEmpty.wakeOnJoin"
+                      v-model:checked="formData.instance.config!.sleepOnEmpty.wakeOnJoin"
                       class="mr-8"
                     />
                     <span>{{ t("TXT_CODE_sleep_wake") }}</span>
@@ -1283,10 +1285,10 @@ defineExpose({
                     </div>
                   </div>
 
-                  <div v-if="formData.instance.config.sleepOnEmpty.wakeOnJoin" class="mt-12">
+                  <div v-if="formData.instance.config!.sleepOnEmpty.wakeOnJoin" class="mt-12">
                     <a-typography-text>{{ t("TXT_CODE_sleep_motd") }}</a-typography-text>
                     <a-input
-                      v-model:value="formData.instance.config.sleepOnEmpty.wakeMotd"
+                      v-model:value="formData.instance.config!.sleepOnEmpty.wakeMotd"
                       style="max-width: 420px"
                       placeholder="Server is waking up... reconnect in a moment"
                     />
@@ -1328,7 +1330,7 @@ defineExpose({
                   </a-typography-paragraph>
                   <div class="ml-4">
                     <a-switch
-                      v-model:checked="formData.instance.config.processType"
+                      v-model:checked="formData.instance.config!.processType"
                       :disabled="isGlobalTerminal"
                       checked-value="docker"
                       un-checked-value="general"
@@ -1396,7 +1398,7 @@ defineExpose({
                       </a-tooltip>
                     </a-typography-paragraph>
                     <a-switch
-                      v-model:checked="formData.instance.config.docker.changeWorkdir"
+                      v-model:checked="formData.instance.config!.docker.changeWorkdir"
                       :disabled="isGlobalTerminal"
                       :checked-value="true"
                       :un-checked-value="false"
@@ -1421,7 +1423,7 @@ defineExpose({
                       </a-tooltip>
                     </a-typography-paragraph>
                     <a-input
-                      v-model:value="formData.instance.config.docker.workingDir"
+                      v-model:value="formData.instance.config!.docker.workingDir"
                       :placeholder="t('TXT_CODE_2082f659')"
                     />
                   </a-form-item>
@@ -1476,7 +1478,7 @@ defineExpose({
                       </a-tooltip>
                     </a-typography-paragraph>
                     <a-input
-                      v-model:value="formData.instance.config.basePort"
+                      v-model:value="formData.instance.config!.basePort"
                       :min="0"
                       :max="65535"
                       :placeholder="t('TXT_CODE_3bb646e4')"
@@ -1535,7 +1537,7 @@ defineExpose({
                       </a-tooltip>
                     </a-typography-paragraph>
                     <a-select
-                      v-model:value="formData.instance.config.docker.networkMode"
+                      v-model:value="formData.instance.config!.docker.networkMode"
                       size="large"
                       style="width: 100%"
                       :placeholder="t('TXT_CODE_3bb646e4')"
@@ -1580,7 +1582,7 @@ defineExpose({
                     <a-tooltip placement="bottom">
                       <template #title>{{ t("TXT_CODE_8d4882b0") }}</template>
                       <a-input
-                        v-model:value="formData.instance.config.docker.containerName"
+                        v-model:value="formData.instance.config!.docker.containerName"
                         :placeholder="t('TXT_CODE_f6047384')"
                       />
                     </a-tooltip>
@@ -1604,7 +1606,7 @@ defineExpose({
                     </a-typography-paragraph>
                     <div class="ml-4">
                       <a-switch
-                        v-model:checked="formData.instance.config.docker.privileged"
+                        v-model:checked="formData.instance.config!.docker.privileged"
                         :disabled="isGlobalTerminal"
                         :checked-value="true"
                         :un-checked-value="false"
@@ -1675,7 +1677,7 @@ defineExpose({
                       {{ t("TXT_CODE_dce87e42") }}
                     </template>
                     <a-input
-                      v-model:value="formData.instance.config.docker.cpuUsage"
+                      v-model:value="formData.instance.config!.docker.cpuUsage"
                       :allow-clear="true"
                       :placeholder="t('TXT_CODE_91d857f5')"
                       suffix="%"
@@ -1698,7 +1700,7 @@ defineExpose({
                       {{ t("TXT_CODE_67c765be") }}
                     </template>
                     <a-input
-                      v-model:value="formData.instance.config.docker.cpusetCpus"
+                      v-model:value="formData.instance.config!.docker.cpusetCpus"
                       :allow-clear="true"
                       :placeholder="t('TXT_CODE_30fe1717')"
                     />
@@ -1716,7 +1718,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.docker.memory"
+                    v-model:value="formData.instance.config!.docker.memory"
                     :allow-clear="true"
                     :placeholder="t('TXT_CODE_80790069')"
                     suffix="MB"
@@ -1735,7 +1737,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.docker.memorySwap"
+                    v-model:value="formData.instance.config!.docker.memorySwap"
                     :allow-clear="true"
                     :placeholder="t('TXT_CODE_6f1129fb')"
                   />
@@ -1756,7 +1758,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.docker.maxSpace"
+                    v-model:value="formData.instance.config!.docker.maxSpace"
                     :allow-clear="true"
                     :placeholder="t('TXT_CODE_285cef0c')"
                     suffix="GB"
@@ -1775,7 +1777,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.docker.memorySwappiness"
+                    v-model:value="formData.instance.config!.docker.memorySwappiness"
                     :allow-clear="true"
                     :placeholder="t('TXT_CODE_6f1129fb')"
                   />
@@ -1794,7 +1796,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.docker.uploadSpeedLimit"
+                    v-model:value="formData.instance.config!.docker.uploadSpeedLimit"
                     :allow-clear="true"
                     :placeholder="t('TXT_CODE_network_upload_limit_placeholder')"
                     suffix="KB/s"
@@ -1814,7 +1816,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-input
-                    v-model:value="formData.instance.config.docker.downloadSpeedLimit"
+                    v-model:value="formData.instance.config!.docker.downloadSpeedLimit"
                     :allow-clear="true"
                     :placeholder="t('TXT_CODE_network_download_limit_placeholder')"
                     suffix="KB/s"
@@ -1899,7 +1901,7 @@ defineExpose({
                     </a-tooltip>
                   </a-typography-paragraph>
                   <a-switch
-                    v-model:checked="formData.instance.config.docker.gpuEnabled"
+                    v-model:checked="formData.instance.config!.docker.gpuEnabled"
                     :checked-children="t('TXT_CODE_gpu_enabled')"
                     :un-checked-children="t('TXT_CODE_gpu_disabled')"
                   />
@@ -1919,7 +1921,7 @@ defineExpose({
                       </a-tooltip>
                     </a-typography-paragraph>
                     <a-input
-                      v-model:value="formData.instance.config.docker.gpuDriver"
+                      v-model:value="formData.instance.config!.docker.gpuDriver"
                       :placeholder="t('TXT_CODE_gpu_driver_placeholder')"
                     />
                   </a-form-item>
@@ -1960,7 +1962,7 @@ defineExpose({
                       </a-tooltip>
                     </a-typography-paragraph>
                     <a-input-number
-                      v-model:value="formData.instance.config.docker.gpuCount"
+                      v-model:value="formData.instance.config!.docker.gpuCount"
                       :min="1"
                       :max="128"
                       :precision="0"

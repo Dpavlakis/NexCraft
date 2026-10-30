@@ -371,6 +371,7 @@ const dialog = reactive({
   open: false,
   item: null as ResultItem | null,
   instanceName: "",
+  gamePort: "",
   daemonId: "",
   maxMemoryMB: 4096,
   versions: [] as ModpackVersion[],
@@ -458,6 +459,7 @@ const openInstall = (item: ResultItem) => {
   // On a reset the instance already exists (EULA was accepted before), so
   // pre-tick it for convenience; a fresh install still requires explicit consent.
   dialog.acceptEula = isReinstall.value;
+  dialog.gamePort = "";
   dialog.open = true;
   if (source.value === "custom") {
     // item.id is the chosen Minecraft version; loader comes from the radio.
@@ -551,11 +553,30 @@ const formatDownloads = (n?: number) => {
   return String(n);
 };
 
+const creationPortMax = computed(() =>
+  source.value === "custom" && customLoader.value === "bedrock" ? 65534 : 65535
+);
+const creationPortHint = computed(() => creationPortMax.value === 65534
+  ? t("TXT_CODE_modpack_game_port_bedrock_hint")
+  : t("TXT_CODE_modpack_game_port_hint")
+);
+// Keep raw input: InputNumber's normal number coercion accepts exponents and
+// rounds/clamps values. Validation must reject those instead of changing them.
+const parseCreationPort = (value?: string) => value === "" ? "" : /^\d+$/.test(value ?? "") ? value! : NaN;
+const setCreationPort = (value: string | number) => { dialog.gamePort = String(value); };
+
+const creationPortError = computed(() => {
+  if (isReinstall.value || dialog.gamePort === "") return "";
+  const max = source.value === "custom" && customLoader.value === "bedrock" ? 65534 : 65535;
+  return /^\d+$/.test(dialog.gamePort) && Number(dialog.gamePort) >= 1 && Number(dialog.gamePort) <= max
+    ? "" : t("TXT_CODE_modpack_game_port_validation", { max });
+});
+
 const canInstall = computed(() => {
   // In reinstall mode the instance already exists (no name needed); otherwise a
   // name + target node are required.
   if (!dialog.daemonId) return false;
-  if (!isReinstall.value && !dialog.instanceName) return false;
+  if (!isReinstall.value && (!dialog.instanceName || creationPortError.value)) return false;
   // custom (built-in versions): the MC version is the selected row; EULA still
   // required for consistency with the modpack flow.
   if (source.value === "custom") {
@@ -618,6 +639,7 @@ const doInstall = async () => {
           mcVersion: dialog.item.id,
           loader: customLoader.value,
           instanceName: dialog.instanceName,
+          gamePort: dialog.gamePort === "" ? undefined : Number(dialog.gamePort),
           maxMemoryMB: dialog.maxMemoryMB,
           acceptEula: true,
           loaderVersion: dialog.selectedLoaderVersion
@@ -636,6 +658,7 @@ const doInstall = async () => {
           versionName: v ? versionLabel(v) : "",
           iconUrl: dialog.item.icon,
           instanceName: dialog.instanceName,
+          gamePort: dialog.gamePort === "" ? undefined : Number(dialog.gamePort),
           maxMemoryMB: dialog.maxMemoryMB,
           acceptEula: dialog.acceptEula
         }
@@ -1039,6 +1062,22 @@ watch(totalItems, () => nextTick(recomputeHeight));
       <template v-else>
         <a-form-item :label="t('TXT_CODE_modpack_name')">
           <a-input v-model:value="dialog.instanceName" />
+        </a-form-item>
+        <a-form-item :label="t('TXT_CODE_modpack_game_port')" :validate-status="creationPortError ? 'error' : undefined" :help="creationPortError || creationPortHint">
+          <a-input-number
+            :value="dialog.gamePort"
+            string-mode
+            :min="1"
+            :max="creationPortMax"
+            :step="1"
+            :parser="parseCreationPort"
+            :formatter="() => dialog.gamePort"
+            inputmode="numeric"
+            :placeholder="t('TXT_CODE_6f1129fb')"
+            style="width: 100%"
+            @input="setCreationPort"
+            @step="setCreationPort"
+          />
         </a-form-item>
         <a-form-item :label="t('TXT_CODE_modpack_node')">
           <a-select v-model:value="dialog.daemonId">

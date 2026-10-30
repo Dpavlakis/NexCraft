@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ServerSourceBadge from "./ServerSourceBadge.vue";
+import InstanceVersionInfo from "@/components/InstanceVersionInfo.vue";
+import { useGameEndpoint } from "@/hooks/useGameEndpoint";
 import { useDeleteInstanceDialog } from "@/components/fc/index";
 import { useAppRouters } from "@/hooks/useAppRouters";
 import { verifyEULA } from "@/hooks/useInstance";
@@ -7,7 +10,7 @@ import { openInstance, restartInstance, stopInstance } from "@/services/apis/ins
 import { formatMemoryUsage } from "@/tools/memory";
 import { parseTimestamp } from "@/tools/time";
 import { reportErrorMsg } from "@/tools/validator";
-import type { InstanceDetail } from "@/types";
+import type { InstanceDetail, NodeStatus } from "@/types";
 import { INSTANCE_STATUS, INSTANCE_STATUS_CODE } from "@/types/const";
 import {
   CheckCircleOutlined,
@@ -29,10 +32,15 @@ const props = defineProps<{
   record: Record<string, any>;
   targetInstanceInfo: InstanceDetail;
   targetDaemonId: string;
+  targetNode?: NodeStatus;
 }>();
 
 const emits = defineEmits(["refreshList"]);
 const node = props.record?.node;
+const gameEndpoint = useGameEndpoint(
+  () => props.targetInstanceInfo,
+  () => props.targetNode
+);
 
 const instanceId = props.targetInstanceInfo?.instanceUuid;
 const daemonId = props.targetDaemonId;
@@ -141,7 +149,48 @@ const toInstanceTerminal = async () => {
     </template>
 
     <template v-else-if="column.key === 'type' && !node">
-      {{ record.inst.moreInfo?.instanceTypeText }}
+      <div class="instance-line-type">
+        <span>{{ record.inst.moreInfo?.instanceTypeText }}</span>
+        <ServerSourceBadge :source="targetInstanceInfo?.config?.packInfo?.source" />
+      </div>
+    </template>
+
+    <template v-else-if="column.key === 'gameAddress' && !node">
+      <div v-if="targetInstanceInfo?.config.type.includes('minecraft')" @click.stop>
+        <a-tooltip
+          :title="
+            gameEndpoint.address
+              ? t(gameEndpoint.hostHint) + ' ' + t(gameEndpoint.sourceHint)
+              : gameEndpoint.source === 'server.properties'
+              ? t(gameEndpoint.sourceHint)
+              : undefined
+          "
+        >
+          <a-typography-text
+            v-if="gameEndpoint.address"
+            :copyable="{ text: gameEndpoint.address }"
+            style="overflow-wrap: anywhere"
+          >
+            {{ gameEndpoint.address }}
+          </a-typography-text>
+          <a-typography-text v-else type="secondary">
+            {{
+              targetInstanceInfo && !targetInstanceInfo.gameEndpoint
+                ? t("TXT_CODE_game_endpoint_daemon_update_hint")
+                : t(gameEndpoint.unknown)
+            }}
+          </a-typography-text>
+        </a-tooltip>
+      </div>
+    </template>
+
+    <template v-else-if="column.key === 'installedVersion' && !node">
+      <InstanceVersionInfo
+        v-if="targetInstanceInfo?.config.type.includes('minecraft')"
+        :instance="targetInstanceInfo"
+        :daemon-id="String(daemonId)"
+        :compact="true"
+      />
     </template>
 
     <template v-else-if="column.key === 'lastDatetime' && !node">
@@ -203,3 +252,13 @@ const toInstanceTerminal = async () => {
     </template>
   </div>
 </template>
+
+<style scoped>
+.instance-line-type {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+</style>

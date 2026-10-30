@@ -49,8 +49,11 @@ export class UploadFiles {
   }
 
   async init(tempId: string, url: string, password: string, options: UploadOptions) {
-    const { state: uploadCfg, execute: uploadFile } = uploadFileApi();
+    // append must register the entry and observers before setup can fail synchronously.
+    await Promise.resolve();
+    if (this.canceled) return;
     try {
+      const { state: uploadCfg, execute: uploadFile } = uploadFileApi();
       await uploadFile({
         timeout: Number.MAX_VALUE,
         url: `${url}/upload-new/${password}`,
@@ -62,6 +65,14 @@ export class UploadFiles {
         }
       });
 
+      if (!uploadService.has(this)) {
+        if (this.canceled && uploadCfg.value?.id) {
+          this.id = uploadCfg.value.id;
+          this.prepared = true;
+          await this.stop();
+        }
+        return;
+      }
       if (!uploadCfg.value?.id) {
         throw new Error(t("TXT_CODE_62051fcc"));
       }
@@ -82,7 +93,9 @@ export class UploadFiles {
 
       uploadService.update();
     } catch (err: any) {
+      if (!uploadService.has(this)) return;
       this.removing = true;
+      uploadService.remove(this);
       return reportErrorMsg(err.response?.data || err.message);
     }
   }
@@ -141,10 +154,10 @@ export class UploadFiles {
   }
 
   async stop() {
-    if (!this.prepared) {
-      this.canceled = true;
-      return;
-    }
+    this.canceled = true;
+    uploadService.remove(this);
+    this.onEnd();
+    if (!this.prepared) return;
 
     const { execute: uploadFile } = uploadFileApi();
     await uploadFile({
@@ -153,8 +166,6 @@ export class UploadFiles {
         stop: true
       }
     });
-    this.onEnd();
-    uploadService.files.delete(this.id!);
   }
 }
 
@@ -258,6 +269,7 @@ class UploadTask {
 
 class UploadService {
   static concurrency = 5;
+  private nextId = 0;
   files: Map<string, UploadFiles> = new Map();
   uploaded = 0;
   task: (UploadTask | undefined)[] = [];
@@ -285,7 +297,7 @@ class UploadService {
     // eslint-disable-next-line no-unused-vars
     beforeMounted?: (uploadFile: UploadFiles) => void
   ) {
-    const tempId = Date.now().toString();
+    const tempId = "pending-" + ++this.nextId;
     const uploadFile = new UploadFiles(tempId, file, url, password, options);
     if (beforeMounted) {
       beforeMounted(uploadFile);
@@ -300,11 +312,33 @@ class UploadService {
     return uploadFile;
   }
 
+  has(file: UploadFiles) {
+    return [...this.files.values()].includes(file);
+  }
+
+  // Initialization failure and cancellation share one identity-based transition.
+  remove(file: UploadFiles) {
+    const entry = [...this.files].find(([, value]) => value === file);
+    if (!entry) return;
+    const [id] = entry;
+    this.files.delete(id);
+    if (this.current === id) {
+      this.task.forEach((task) => task?.stop());
+      this.task = [];
+      this.current = this.files.keys().next().value;
+      if (this.current) this.files.get(this.current)!.onStart();
+      else this.status = "stopped";
+    }
+    file.onEnd();
+    this.update();
+  }
+
   changeId(oldId: string, newId: string) {
     if (this.files.get(newId)) {
       return;
     }
-    const file = this.files.get(oldId)!;
+    const file = this.files.get(oldId);
+    if (!file) return;
     this.files.set(newId, file);
     this.files.delete(oldId);
     if (this.current == oldId) {
@@ -435,14 +469,11 @@ class UploadService {
     }
     this.task = [];
     this.current = undefined;
-    const stopTask: Promise<any>[] = [];
-    for (const file of this.files) {
-      stopTask.push(file[1].stop());
-    }
-    await Promise.all(stopTask);
+    const files = [...this.files.values()];
     this.files.clear();
     this.uploaded = 0;
     this.updateProgress();
+    await Promise.all(files.map((file) => file.stop()));
   }
 
   updateProgress() {

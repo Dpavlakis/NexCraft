@@ -18,13 +18,13 @@ NexCraft replaces the generic app marketplace with a **Prism-Launcher-style Mine
    - **Paper**, **Purpur**, **Folia** — high-performance server software (downloaded as a ready-to-run jar from their official APIs).
    - **Fabric**, **Forge**, **NeoForge**, **Quilt** — modloaders (the daemon runs the official installer/bootstrap).
 3. Choose a **Minecraft version** from the list. Versions are pulled live — Mojang's manifest for Vanilla/loaders, and each project's API for Paper/Purpur/Folia. Tick **Show snapshots** to include non-release versions.
-4. Click **Install**, set an **instance name** and **max memory**, and confirm.
+4. Click **Install**, set an **instance name** and **max memory**, optionally choose a **Server Port** (see below), and confirm.
 
 The **Details** tab for each software shows its tags (version, release type, category), a curated **Key Features** list, and a note about the **Java version auto-provisioned** for it.
 
 ![Custom builder — Details tab with tags, key features, and the Java note](images/builder-detail-vanilla.webp)
 
-The daemon downloads the server, runs any loader bootstrap, assigns a free port, and writes the start command for you.
+The daemon downloads the server, runs any loader bootstrap, configures the chosen or automatically assigned port before first start, and writes the start command for you.
 
 ## CurseForge / Modrinth / FTB modpacks
 
@@ -36,7 +36,7 @@ The daemon downloads the server, runs any loader bootstrap, assigns a free port,
 2. Click a pack to open its detail dialog — description, tags, supported versions, and a **Version** picker.
 
    ![Modpack detail dialog — description, tags, versions, and Install](images/modpack-detail-curseforge.webp)
-3. Choose a version, accept the **Minecraft EULA**, set memory, and **Install**.
+3. Choose a version, accept the **Minecraft EULA**, set memory, optionally choose a **Server Port**, and **Install**.
 
 What happens under the hood:
 
@@ -48,6 +48,19 @@ What happens under the hood:
 - A **server icon** is generated from the pack's logo, and the **EULA** is accepted on your behalf.
 
 After install, NexCraft routes you to the instance's console to watch the bootstrap and start the server.
+
+## Choosing a server port
+
+For a **new instance**, the install dialog accepts an optional server port. Leave it **blank** to let NexCraft choose a free port automatically, or enter a whole decimal number:
+
+- **Java:** `1` to `65535`.
+- **Bedrock:** `1` to `65534`. Bedrock uses an adjacent UDP pair: your chosen port and the next port, so both must be available.
+
+NexCraft checks ports used by other instances on the node, including stopped instances, other applications, and installations in progress. A conflicting explicit choice is rejected; choose another port or leave the field blank. Java query traffic can share the game port number over UDP; RCON uses a separate TCP port.
+
+The new-port choice applies to new installations, not the Import / Existing flow. Reset/reinstall within the same edition preserves the existing game/query ports and RCON settings rather than assigning new ones. Switching between Java and Bedrock reallocates ports compatible with the destination edition.
+
+After installation, find and copy the configured game address in the **Instances** cards/table or **Basic Info**. See [Game addresses and node hosts](managing-instances.md#game-addresses-and-node-hosts) if the address players use differs from the node's daemon address.
 
 ## Importing an existing server
 
@@ -65,5 +78,5 @@ On the instance terminal, click **Start**. NexCraft shows **"Instance is startin
 ## Notes
 
 - All servers run in **host / general process mode**. Running servers inside Docker containers is not supported in NexCraft.
-- Ports are auto-assigned from 25565 upward so multiple servers don't collide. You can change them later in the server's `server.properties` (Config Files) or instance settings.
+- To change a game port later, edit `server.properties` in **Config Files** and restart the server. The displayed configured address can reflect a saved change before the running server has applied it.
 - The **start command** is generated for you but is editable under **Instance Settings → Startup Command** if you need to tweak it.

@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import fs from "fs-extra";
 import { t } from "i18next";
 import { ProcessWrapper } from "mcsmanager-common";
@@ -14,7 +14,7 @@ import {
   isZipFormat
 } from "../service/seven_zip_service";
 
-const execPromise = promisify(exec);
+const execFilePromise = promisify(execFile);
 
 const COMPRESS_ERROR_MSG = {
   invalidName: t("TXT_CODE_3aa9f36"),
@@ -24,11 +24,7 @@ const COMPRESS_ERROR_MSG = {
 };
 
 function checkFileName(fileName: string) {
-  const disableList = ['"', "'", "?", "|", "&"];
-  for (const iterator of disableList) {
-    if (fileName.includes(iterator)) return false;
-  }
-  return true;
+  return !fileName.includes("\0");
 }
 
 export async function compress(
@@ -87,19 +83,19 @@ export async function decompress(
  */
 async function use7zip(sourceZip: string, destDir: string): Promise<boolean> {
   try {
-    const sourceDir = path.dirname(sourceZip);
-    const normalizedDest = path.normalize(destDir);
-    const normalizedSource = path.normalize(sourceDir);
+    // Resolve against the caller CWD before changing the child working directory.
+    // Absolute archive paths cannot be interpreted as switches or @listfiles.
+    const absoluteSource = path.resolve(sourceZip);
+    const absoluteDest = path.resolve(destDir);
+    const args = ["x", absoluteSource, `-o${absoluteDest}`, "-aoa"];
+    const workingDir = path.dirname(absoluteSource);
 
-    let command: string;
-    let workingDir: string;
-
-    await fs.ensureDir(destDir);
-    command = `"${SEVEN_ZIP_PATH}" x "${sourceZip}" "-o${destDir}" -aoa`;
-    workingDir = sourceDir;
+    await fs.ensureDir(absoluteDest);
+    const command = JSON.stringify([SEVEN_ZIP_PATH, ...args]);
     logger.info($t("TXT_CODE_35d2ee7a", { command }));
 
-    const { stdout, stderr } = await execPromise(command, {
+    const { stdout, stderr } = await execFilePromise(SEVEN_ZIP_PATH, args, {
+      shell: false,
       cwd: workingDir,
       timeout: ZIP_TIMEOUT_SECONDS * 1000
     });
@@ -200,7 +196,8 @@ async function useUnzip(sourceZip: string, destDir: string, code = "utf-8"): Pro
     params,
     path.dirname(sourceZip),
     ZIP_TIMEOUT_SECONDS,
-    code
+    code,
+    { shell: false }
   );
   subProcess.setErrMsg(COMPRESS_ERROR_MSG);
   return subProcess.start();
@@ -223,7 +220,8 @@ async function useZip(distZip: string, files: string[], code = "utf-8"): Promise
     params,
     path.dirname(distZip),
     ZIP_TIMEOUT_SECONDS,
-    code
+    code,
+    { shell: false }
   );
   subProcess.setErrMsg(COMPRESS_ERROR_MSG);
   return subProcess.start();

@@ -206,7 +206,7 @@ const downloadProgress = (dTask: any) => {
   return dTask.total > 0 ? Number(((dTask.current / dTask.total) * 100).toFixed(2)) : 0;
 };
 
-let task: NodeJS.Timer | undefined;
+let task: ReturnType<typeof setInterval> | undefined;
 task = setInterval(async () => {
   await getFileStatus();
 }, 3000);
@@ -240,16 +240,76 @@ const submitPathEdit = async () => {
   await handleChangeDir(targetPath);
 };
 
-const opacity = ref(false);
-const handleDragover = (e: DragEvent) => {
+const isFileDragActive = ref(false);
+let fileDragDepth = 0;
+let fileDragTimeout: ReturnType<typeof setTimeout> | undefined;
+
+const isFileDrag = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+
+const resetFileDrag = () => {
+  fileDragDepth = 0;
+  isFileDragActive.value = false;
+  clearTimeout(fileDragTimeout);
+  fileDragTimeout = undefined;
+};
+
+const refreshFileDrag = () => {
+  isFileDragActive.value = true;
+  clearTimeout(fileDragTimeout);
+  // External file drags may not emit dragend when cancelled outside the browser.
+  fileDragTimeout = setTimeout(resetFileDrag, 1500);
+};
+
+const handleDragenter = (e: DragEvent) => {
+  if (!isFileDrag(e)) return;
   e.preventDefault();
-  opacity.value = true;
+  fileDragDepth++;
+  refreshFileDrag();
+};
+
+const handleDragover = (e: DragEvent) => {
+  if (!isFileDrag(e)) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+  refreshFileDrag();
 };
 
 const handleDragleave = (e: DragEvent) => {
-  e.preventDefault();
-  opacity.value = false;
+  if (!isFileDragActive.value) return;
+  fileDragDepth = Math.max(0, fileDragDepth - 1);
+  const target = e.currentTarget as HTMLElement;
+  if (e.relatedTarget instanceof Node && target.contains(e.relatedTarget)) return;
+  if (e.relatedTarget || fileDragDepth === 0) resetFileDrag();
 };
+
+const handleWindowDragleave = (e: DragEvent) => {
+  if (
+    !e.relatedTarget &&
+    (e.clientX <= 0 || e.clientY <= 0 ||
+      e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)
+  ) resetFileDrag();
+};
+
+const handleDragKeydown = (e: KeyboardEvent) => {
+  if (e.key === "Escape") resetFileDrag();
+};
+
+onMounted(() => {
+  window.addEventListener("drop", resetFileDrag, true);
+  window.addEventListener("dragend", resetFileDrag, true);
+  window.addEventListener("dragleave", handleWindowDragleave);
+  window.addEventListener("blur", resetFileDrag);
+  window.addEventListener("keydown", handleDragKeydown, true);
+});
+
+onUnmounted(() => {
+  resetFileDrag();
+  window.removeEventListener("drop", resetFileDrag, true);
+  window.removeEventListener("dragend", resetFileDrag, true);
+  window.removeEventListener("dragleave", handleWindowDragleave);
+  window.removeEventListener("blur", resetFileDrag);
+  window.removeEventListener("keydown", handleDragKeydown, true);
+});
 
 const processUploadItems = (files: File[], folders: FileSystemEntry[]) => {
   if (files.length === 0 && folders.length === 0) return;
@@ -283,8 +343,9 @@ const processUploadItems = (files: File[], folders: FileSystemEntry[]) => {
 };
 
 const handleDrop = (e: DragEvent) => {
+  resetFileDrag();
+  if (!isFileDrag(e)) return;
   e.preventDefault();
-  opacity.value = false;
 
   const items = e.dataTransfer?.items;
   if (!items) return;
@@ -615,12 +676,17 @@ onUnmounted(() => {
       <a-col :span="24">
         <CardPanel
           style="height: 100%"
-          :style="opacity && 'opacity: 0.4'"
+          @dragenter="handleDragenter"
           @dragover="handleDragover"
           @dragleave="handleDragleave"
           @drop="handleDrop"
         >
           <template #body>
+            <div v-if="isFileDragActive" class="upload-tip" aria-hidden="true">
+              <UploadOutlined class="upload-tip-icon" />
+              <strong>{{ t("TXT_CODE_file_drop_title") }}</strong>
+              <span>{{ t("TXT_CODE_file_drop_hint") }}</span>
+            </div>
             <div v-if="uploadData.current" class="flex-nowrap w-100">
               <a-typography-text
                 :ellipsis="true"
@@ -674,7 +740,7 @@ onUnmounted(() => {
               v-model:activeKey="activeTab"
               type="editable-card"
               @edit="onEditTabs"
-              @change="(key) => handleChangeTab(key as string)"
+              @change="(key: string | number) => handleChangeTab(key as string)"
             >
               <a-tab-pane v-for="b in currentTabs" :key="b.key" :tab="b.name" :closable="true">
               </a-tab-pane>
@@ -956,10 +1022,25 @@ onUnmounted(() => {
 
 .upload-tip {
   position: absolute;
-  right: 0;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  border: 2px dashed var(--color-primary);
+  border-radius: 6px;
+  background: var(--background-color-white);
+  color: var(--text-color);
+
+  .upload-tip-icon {
+    font-size: 36px;
+    color: var(--color-primary);
+  }
 }
 
 @media (max-width: 992px) {

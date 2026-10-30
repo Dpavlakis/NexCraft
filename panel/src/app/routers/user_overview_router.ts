@@ -1,3 +1,4 @@
+import { SecurityError } from "../service/security_error";
 import Koa from "koa";
 import Router from "@koa/router";
 import permission from "../middleware/permission";
@@ -24,6 +25,7 @@ router.put("/", permission({ level: ROLE.ADMIN }), async (ctx: Koa.Parameterized
     await userSystem.edit(uuid, config);
     ctx.body = true;
   } catch (error: any) {
+    if (error instanceof SecurityError) throw error;
     ctx.throw(500, error.message);
   }
 });

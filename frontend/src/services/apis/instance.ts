@@ -471,7 +471,10 @@ export const batchDelete = useDefineApi<
       deleteFile: boolean;
     };
   },
-  string[]
+  {
+    instanceUuids: string[];
+    instances: { instanceUuid: string; nickname: string }[];
+  }
 >({
   method: "DELETE",
   url: "/api/instance"

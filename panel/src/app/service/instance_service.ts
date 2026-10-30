@@ -4,6 +4,7 @@ import { t } from "i18next";
 import { toText } from "mcsmanager-common";
 import path from "path";
 import { MARKET_CACHE_FILE_PATH, SAVE_DIR_PATH } from "../const";
+import { withPlayerGameEndpoint } from "./game_endpoint";
 import RemoteRequest from "../service/remote_command";
 import RemoteServiceSubsystem from "../service/remote_service";
 import userSystem from "../service/user_service";
@@ -28,6 +29,7 @@ export interface IAdvancedInstanceInfo {
   instanceUuid: string;
   daemonId: string;
   hostIp?: string;
+  gameEndpoint?: IGameEndpoint;
   remarks?: string;
   status?: number;
   nickname?: string;
@@ -107,9 +109,10 @@ export async function getInstancesByUuid(
           instanceUuids: [iterator.instanceUuid]
         });
         if (!instancesInfo || instancesInfo.length === 0) continue;
-        instancesInfo = instancesInfo[0];
+        instancesInfo = withPlayerGameEndpoint(instancesInfo[0], remoteService.config);
         resInstances.push({
           hostIp: `${remoteService.config.ip}:${remoteService.config.port}`,
+          gameEndpoint: instancesInfo.gameEndpoint,
           remarks: remoteService.config.remarks,
           instanceUuid: instancesInfo.instanceUuid,
           daemonId: remoteService.uuid,

@@ -1,13 +1,19 @@
+import {
+  changePassword,
+  changeApiKey,
+  startFactor,
+  confirmFactor,
+  cancelFactor,
+  sensitivePermission
+} from "../service/two_factor_service";
 import Koa from "koa";
 import Router from "@koa/router";
 import permission from "../middleware/permission";
-import { bind2FA, confirm2FaQRCode, getUserUuid, getUserFromCtx, logout } from "../service/passport_service";
+import { getUserUuid } from "../service/passport_service";
 import userSystem from "../service/user_service";
 import { getToken, isAjax } from "../service/passport_service";
 import { getUserByUserName, isTopPermissionByUuid } from "../service/permission_service";
 import validator from "../middleware/validator";
-import { v4 } from "uuid";
-import { $t } from "../i18n";
 import { ROLE } from "../entity/user";
 import { getInstancesByUuid } from "../service/instance_service";
 import { toBoolean } from "mcsmanager-common";
@@ -51,16 +57,8 @@ router.get("/", permission({ level: ROLE.USER, token: false, speedLimit: false }
 
 // [Low-level Permission]
 // Modify personal user information
-router.put("/update", permission({ level: ROLE.USER }), async (ctx: Koa.ParameterizedContext) => {
-  const userUuid = getUserUuid(ctx);
-  if (userUuid) {
-    const config = ctx.request.body;
-    const { passWord, isInit } = config;
-    if (!userSystem.validatePassword(passWord))
-      throw new Error($t("TXT_CODE_router.user.passwordCheck"));
-    await userSystem.edit(userUuid, { passWord, isInit });
-    ctx.body = logout(ctx);
-  }
+router.put("/update", sensitivePermission, permission({ level: ROLE.USER }), async (ctx) => {
+  ctx.body = await changePassword(ctx, ctx.request.body);
 });
 
 // [Low-level Permission]
@@ -97,59 +95,18 @@ router.put(
 
 // [Low-level Permission]
 // API generation and shutdown
-router.put("/api", permission({ level: ROLE.USER }), async (ctx: Koa.ParameterizedContext) => {
-  const userUuid = getUserUuid(ctx);
-  const enable = ctx.request.body.enable;
-  const user = userSystem.getInstance(userUuid);
-  let newKey = "";
-  try {
-    if (user) {
-      if (enable) {
-        newKey = v4().replace(/-/gim, "");
-        await userSystem.edit(userUuid, {
-          apiKey: newKey
-        });
-      } else {
-        await userSystem.edit(userUuid, {
-          apiKey: ""
-        });
-      }
-    }
-    ctx.body = newKey;
-  } catch (error: any) {
-    ctx.body = error;
-  }
+router.put("/api", sensitivePermission, permission({ level: ROLE.USER }), async (ctx) => {
+  ctx.body = await changeApiKey(ctx, ctx.request.body);
 });
-
-// [Low-level Permission]
-// 2FA
-router.post("/bind2fa", permission({ level: 1 }), async (ctx: Koa.ParameterizedContext) => {
-  const userUuid = getUserUuid(ctx);
-  if (userUuid) {
-    const qrcode = await bind2FA(ctx);
-    ctx.body = qrcode;
-  }
+router.post("/bind2fa", sensitivePermission, permission({ level: ROLE.USER }), async (ctx) => {
+  ctx.body = await startFactor(ctx, ctx.request.body);
 });
-
-// [Low-level Permission]
-// 2FA
-router.post(
-  "/confirm2fa",
-  permission({ level: 1 }),
-  validator({ body: { enable: Boolean, TOTPCode: String } }),
-  async (ctx: Koa.ParameterizedContext) => {
-    const TOTPCode = ctx.request.body.TOTPCode;
-    const MFAResult = userSystem.check2FA(TOTPCode, getUserFromCtx(ctx) ?? {}, 0);
-    const enable = Boolean(ctx.request.body.enable);
-    if (enable && !MFAResult) {
-      ctx.body = false;
-      return;
-    }
-    const userUuid = getUserUuid(ctx);
-    await confirm2FaQRCode(userUuid, enable);
-    ctx.body = true;
-  }
-);
+router.delete("/bind2fa", sensitivePermission, permission({ level: ROLE.USER }), async (ctx) => {
+  ctx.body = await cancelFactor(ctx, ctx.request.body);
+});
+router.post("/confirm2fa", sensitivePermission, permission({ level: ROLE.USER }), async (ctx) => {
+  ctx.body = await confirmFactor(ctx, ctx.request.body);
+});
 
 // [Public Permission]
 router.get(

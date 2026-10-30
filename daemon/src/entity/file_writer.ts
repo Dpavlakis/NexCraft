@@ -1,4 +1,5 @@
 import fs from "fs-extra";
+import { assertSafePath, validateWorldName } from "../utils/safe_path";
 import path from "path";
 import * as lockfile from "proper-lockfile";
 import logger from "../service/log";
@@ -30,11 +31,12 @@ export default class FileWriter {
     if (!FileManager.checkFileName(path.basename(this.filename)))
       throw new Error("Access denied: Malformed file name");
 
-    this.path = filePath;
     this.cwd = instance.absoluteCwdPath();
+    this.path = assertSafePath(this.cwd, filePath);
   }
 
   static async getPath(cwd: string, dir: string, filename: string, overwrite: boolean) {
+    validateWorldName(filename);
     const fileManager = new FileManager(cwd);
 
     const ext = path.extname(filename);
@@ -82,6 +84,7 @@ export default class FileWriter {
     // legacy /upload route used fs.move (which auto-creates parents); restore that
     // parity so a chunked upload into a not-yet-existing subdir (e.g. the World
     // card's .nexcraft_world_up staging dir) doesn't fail with ENOENT.
+    assertSafePath(this.cwd!, this.path);
     await fs.ensureDir(path.dirname(this.path));
     let locked = false;
     try {
@@ -91,12 +94,15 @@ export default class FileWriter {
       throw new Error("File is locked");
     }
     try {
-      this.fd = await fs.open(this.path, "w+");
+      assertSafePath(this.cwd!, this.path);
+      this.fd = await fs.open(this.path, fs.constants.O_RDWR | fs.constants.O_CREAT | fs.constants.O_TRUNC | (fs.constants.O_NOFOLLOW || 0));
       this.releaseLock = await lockfile.lock(this.path);
       await fs.ftruncate(this.fd, this.size);
     } catch (e) {
       if (typeof this.releaseLock === "function") await this.releaseLock();
       this.releaseLock = undefined;
+      if (this.fd !== null) await fs.close(this.fd);
+      this.fd = null;
       throw e;
     }
   }
@@ -140,7 +146,7 @@ export default class FileWriter {
         logger.info("File unzipped:", this.path);
 
         if (this.deleteAfterUnzip) {
-          await fs.remove(this.path);
+          await fs.remove(assertSafePath(this.cwd!, this.path));
           logger.info("Temporary zip deleted:", this.path);
         }
       } finally {
@@ -159,7 +165,7 @@ export default class FileWriter {
     if (this.id != null) {
       uploadManager.delete(this.id);
     }
-    await fs.remove(this.path);
+    await fs.remove(assertSafePath(this.cwd!, this.path));
     logger.info("Browser Upload Task Stopped:", this.path);
   }
 
