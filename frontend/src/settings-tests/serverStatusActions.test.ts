@@ -62,7 +62,8 @@ vi.mock("@/components/InstanceVersionInfo.vue", () => ({
 }));
 vi.mock("@/components/InstanceSecondaryActions.vue", () => ({
   default: defineComponent({
-    props: ["instanceId", "daemonId", "disabled", "tags"],
+    props: ["instanceId", "daemonId", "nickname", "disabled", "tags"],
+    emits: ["changed", "deleted"],
     setup(props) {
       return () =>
         h(
@@ -112,7 +113,9 @@ const server = (
     lastDatetime: 0,
     packInfo: type.includes("bedrock")
       ? { source: "bedrock" }
-      : { source: "curseforge", loader: "neoforge" }
+      : type.includes("minecraft")
+      ? { source: "curseforge", loader: "neoforge" }
+      : undefined
   },
   info: { memoryUsage: 0, memoryLimit: 1024, mcPingOnline: false },
   gameEndpoint: { port: 25565, protocol: "tcp", source: "server.properties" }
@@ -149,6 +152,10 @@ describe.each(["compact", "list", "overview"] as const)(
       async (type) => {
         const wrapper = host(server(3, type), layout);
         expect(wrapper.classes()).toContain("status-running");
+        expect(wrapper.find(".server-icon").exists()).toBe(type.includes("minecraft"));
+        expect(wrapper.get(".server-identity").classes().includes("has-server-icon")).toBe(
+          type.includes("minecraft")
+        );
         expect(wrapper.get(".server-status").text()).toBe("Running");
         expect(actions(wrapper)).toEqual(["stop", "restart", "kill"]);
         expect(wrapper.find(".power-menu-trigger,[role=menu],[aria-haspopup]").exists()).toBe(
@@ -158,10 +165,21 @@ describe.each(["compact", "list", "overview"] as const)(
         for (const control of wrapper.findAll(".server-power button")) {
           expect(control.attributes("aria-label")).toBeTruthy();
           expect(control.attributes("title")).toBe(control.attributes("aria-label"));
-          expect(control.text()).toBe("");
+          expect(control.text()).toBe(control.attributes("aria-label"));
           expect(control.find("svg").exists()).toBe(true);
         }
         expect(wrapper.get('[data-action="kill"]').classes()).toContain("terminate-action");
+        const secondary = wrapper.getComponent({ name: "InstanceSecondaryActions" });
+        expect(wrapper.findAll(".instance-secondary-actions")).toHaveLength(1);
+        expect(wrapper.find(".server-identity .instance-secondary-actions").exists()).toBe(true);
+        expect(wrapper.find(".server-actions .instance-secondary-actions").exists()).toBe(false);
+        expect(secondary.props()).toMatchObject({
+          instanceId: "sample-a",
+          daemonId: "node-a",
+          nickname: "sample-a",
+          tags: ["Friends"],
+          disabled: false
+        });
         expect(wrapper.get(".instance-secondary-actions").text()).toContain("Tags");
         expect(wrapper.get(".instance-secondary-actions").text()).toContain("Delete");
         await wrapper.setProps({ targetInstanceInfo: server(2, type) as any });
@@ -173,9 +191,11 @@ describe.each(["compact", "list", "overview"] as const)(
         expect(wrapper.classes()).not.toContain("status-running");
         expect(wrapper.classes()).not.toContain("status-starting");
         expect(actions(wrapper)).toEqual(["start"]);
+        expect(wrapper.get('[data-action="start"]').text()).toBe("TXT_CODE_57245e94");
         expect(wrapper.get(".server-status").text()).toBe("Stopped");
         await wrapper.setProps({ targetInstanceInfo: server(0, type, "update.sh") as any });
         expect(actions(wrapper)).toEqual(["start", "update"]);
+        expect(wrapper.get('[data-action="update"]').text()).toBe("TXT_CODE_40ca4f2");
         await wrapper.setProps({ targetInstanceInfo: server(1, type, "update.sh") as any });
         expect(wrapper.classes()).not.toContain("status-running");
         expect(wrapper.classes()).not.toContain("status-starting");
@@ -207,7 +227,8 @@ describe.each(["compact", "list", "overview"] as const)(
         path: "/instances/terminal",
         query: { daemonId: "node-a", instanceId: "sample-a" }
       });
-      await wrapper.get(".instance-secondary-actions button").trigger("click");
+      for (const button of wrapper.findAll(".server-identity .instance-secondary-actions button"))
+        await button.trigger("click");
       await wrapper.get("summary").trigger("click");
       expect(wrapper.emitted("click")).toHaveLength(1);
     });
@@ -215,6 +236,35 @@ describe.each(["compact", "list", "overview"] as const)(
 );
 
 describe("direct native action guards", () => {
+  it("retains the single header action instance, target props and refresh events across layouts", async () => {
+    const wrapper = host();
+    const secondary = wrapper.getComponent({ name: "InstanceSecondaryActions" });
+    const root = secondary.element;
+    for (const layout of ["list", "overview", "compact"] as const) {
+      await wrapper.setProps({ layout });
+      expect(wrapper.get(".server-identity .instance-secondary-actions").element).toBe(root);
+      expect(wrapper.findAll(".instance-secondary-actions")).toHaveLength(1);
+    }
+    secondary.vm.$emit("changed");
+    secondary.vm.$emit("deleted");
+    expect(wrapper.emitted("refreshList")).toHaveLength(2);
+    await wrapper.setProps({
+      targetInstanceInfo: server(0, "universal", "", "sample-b") as any,
+      targetDaemonId: "node-b"
+    });
+    expect(secondary.element).toBe(root);
+    expect(secondary.props()).toMatchObject({
+      instanceId: "sample-b",
+      daemonId: "node-b",
+      nickname: "sample-b"
+    });
+    await wrapper.setProps({ disabled: true });
+    secondary.vm.$emit("changed");
+    secondary.vm.$emit("deleted");
+    expect(wrapper.emitted("refreshList")).toHaveLength(2);
+    expect(api.hook).toHaveBeenCalledOnce();
+  });
+
   it.each([
     ["stop", "TXT_CODE_6da85509"],
     ["restart", "TXT_CODE_f6bd907d"],

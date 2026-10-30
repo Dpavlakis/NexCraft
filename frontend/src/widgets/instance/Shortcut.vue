@@ -309,7 +309,7 @@ const formatSpeed = (value?: number) =>
     :aria-label="instanceInfo?.config.nickname"
     @click="onCardClick"
   >
-    <header class="server-identity">
+    <header class="server-identity" :class="{ 'has-server-icon': displayIcon }">
       <img
         v-if="displayIcon"
         :src="displayIcon"
@@ -332,6 +332,16 @@ const formatSpeed = (value?: number) =>
           }}</a-tag>
         </div>
       </div>
+      <InstanceSecondaryActions
+        class="server-header-actions"
+        :instance-id="instanceId || ''"
+        :daemon-id="daemonId || ''"
+        :nickname="instanceInfo?.config.nickname"
+        :tags="instanceInfo?.config.tag"
+        :disabled="unavailable"
+        @changed="refreshList"
+        @deleted="refreshList"
+      />
     </header>
     <div v-if="instanceEdition" class="server-address">
       <span class="server-label">{{ t("TXT_CODE_game_endpoint_configured_address_label") }}</span>
@@ -438,6 +448,7 @@ const formatSpeed = (value?: number) =>
             v-else
             aria-hidden="true"
           />
+          {{ t(isStopped ? "TXT_CODE_57245e94" : "TXT_CODE_b1dedda3") }}
         </a-button>
         <a-tooltip v-for="item in secondaryPower" :key="item.action" :title="item.title">
           <a-button
@@ -455,19 +466,10 @@ const formatSpeed = (value?: number) =>
             :aria-label="item.title"
             :title="item.title"
             @click="requestAction(item.action)"
-            ><component :is="item.icon" aria-hidden="true"
-          /></a-button>
+            ><component :is="item.icon" aria-hidden="true" /> {{ item.title }}</a-button
+          >
         </a-tooltip>
       </div>
-      <InstanceSecondaryActions
-        :instance-id="instanceId || ''"
-        :daemon-id="daemonId || ''"
-        :nickname="instanceInfo?.config.nickname"
-        :tags="instanceInfo?.config.tag"
-        :disabled="unavailable"
-        @changed="refreshList"
-        @deleted="refreshList"
-      />
     </footer>
   </article>
 </template>
@@ -500,10 +502,23 @@ const formatSpeed = (value?: number) =>
   border-left-color: var(--color-gold-6, #faad14);
 }
 .server-identity {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  --title-size: 15px;
+  --utility-size: 36px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 7px 12px;
   min-width: 0;
+}
+.server-identity.has-server-icon {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.server-header-actions {
+  grid-column: -2 / -1;
+  grid-row: 1;
+  justify-self: end;
+  position: relative;
+  top: calc((var(--title-size) * 1.45 - var(--utility-size)) / 2);
 }
 .server-icon {
   width: 36px;
@@ -513,21 +528,31 @@ const formatSpeed = (value?: number) =>
   flex: none;
 }
 .server-name {
-  min-width: 0;
+  display: contents;
 }
 h3 {
-  margin: 0 0 7px;
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  margin: 0;
   font: inherit;
-  font-size: 15px;
+  font-size: var(--title-size);
   font-weight: 600;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+.has-server-icon h3 {
+  grid-column: 2;
+}
 .server-chips {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+}
+.has-server-icon .server-chips {
+  grid-column: 2 / -1;
 }
 .server-chips :deep(.ant-tag) {
   margin: 0;
@@ -632,7 +657,7 @@ summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   margin-top: auto;
   align-self: end;
@@ -646,31 +671,22 @@ summary {
   border-color: var(--nx-accent, var(--color-blue-5));
 }
 .server-power {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+  // Each native action participates in the footer's natural wrapping.
+  display: contents;
 }
 .server-power :deep(.power-icon-action) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  min-width: 32px;
-  padding: 0;
+  min-width: 44px;
+  gap: 7px;
 }
-.terminate-action:not(:disabled) :deep(.anticon) {
+.terminate-action:not(:disabled) {
   color: var(--color-red-7);
 }
 .server-actions :deep(button:focus-visible) {
   outline: 2px solid var(--nx-accent, var(--color-blue-6));
   outline-offset: 3px;
-}
-.server-actions > .instance-secondary-actions {
-  margin-left: auto;
-  padding-left: 6px;
-  border-left: 1px solid var(--card-border-color);
 }
 summary:focus-visible {
   outline: 2px solid var(--nx-accent, var(--color-blue-6));
@@ -681,8 +697,8 @@ summary:focus-visible {
   padding-left: 19px;
   gap: 20px;
 }
-.layout-overview h3 {
-  font-size: 17px;
+.layout-overview .server-identity {
+  --title-size: 17px;
 }
 .layout-overview .server-icon {
   width: 48px;
@@ -727,15 +743,15 @@ summary:focus-visible {
 }
 .layout-list {
   grid-template-columns:
-    minmax(180px, 1.2fr) minmax(130px, 1fr) minmax(140px, 1fr) minmax(125px, 0.8fr)
-    auto;
+    minmax(180px, 1.2fr) minmax(130px, 1fr) minmax(140px, 1fr) minmax(365px, max-content);
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
   padding-left: 15px;
 }
-.layout-list h3 {
-  font-size: 14px;
+.layout-list .server-identity {
+  --title-size: 14px;
+  grid-column: 1 / -1;
 }
 .layout-list .server-icon {
   width: 30px;
@@ -760,8 +776,8 @@ summary:focus-visible {
   font-size: 12px;
 }
 .layout-list .server-actions {
-  grid-column: 5;
-  grid-row: 1;
+  grid-column: 4 / -1;
+  grid-row: 2;
   margin-top: 0;
   align-self: center;
 }
@@ -773,13 +789,13 @@ summary:focus-visible {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   }
   .layout-list .server-actions {
-    grid-column: 2/-1;
-    grid-row: 2;
+    grid-column: 1/-1;
+    grid-row: 3;
     justify-self: end;
   }
   .layout-list .server-details {
     grid-column: 1/-1;
-    grid-row: 3;
+    grid-row: 4;
   }
 }
 @media (max-width: 760px) {
@@ -802,17 +818,6 @@ summary:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@container (max-width:350px) {
-  .server-actions {
-    flex-wrap: wrap;
-  }
-  .server-actions :deep(.ant-btn) {
-    padding-inline: 8px;
-  }
-  .server-actions > .instance-secondary-actions {
-    padding-left: 2px;
-  }
-}
 @media (max-width: 560px) {
   .game-instance-card {
     padding: 16px;
@@ -825,11 +830,8 @@ summary:focus-visible {
   .server-actions :deep(.ant-btn) {
     min-height: 44px;
   }
-  .server-power :deep(.power-icon-action),
-  .server-actions :deep(.secondary-icon) {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 0;
+  .server-identity {
+    --utility-size: 44px;
   }
   .layout-list .server-address,
   .layout-list .server-versions {
