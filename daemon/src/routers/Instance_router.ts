@@ -1,5 +1,6 @@
 import fs from "fs-extra";
 import { resolveGameEndpoint } from "../service/game_endpoint";
+import metricsService from "../service/metrics_service";
 import path from "path";
 import Instance from "../entity/instance/instance";
 import { $t } from "../i18n";
@@ -103,7 +104,7 @@ routerApp.on("instance/select", (ctx, data) => {
       status: instance.status(),
       config: instance.config,
       gameEndpoint: resolveGameEndpoint(instance),
-      info: instance.info
+      info: metricsService.getLiveInfo(instance)
     });
   });
 
@@ -127,7 +128,7 @@ routerApp.on("instance/overview", (ctx) => {
       status: instance.status(),
       config: instance.config,
       gameEndpoint: resolveGameEndpoint(instance),
-      info: instance.info
+      info: metricsService.getLiveInfo(instance)
     });
   });
 
@@ -148,7 +149,7 @@ routerApp.on("instance/section", (ctx, data) => {
           status: instance.status(),
           config: instance.config,
           gameEndpoint: resolveGameEndpoint(instance),
-          info: instance.info
+          info: metricsService.getLiveInfo(instance)
         });
       }
     });
@@ -175,7 +176,7 @@ routerApp.on("instance/detail", async (ctx, data) => {
       status: instance.status(),
       config: instance.config,
       gameEndpoint: resolveGameEndpoint(instance),
-      info: instance.info,
+      info: metricsService.getLiveInfo(instance),
       space,
       processInfo
     });

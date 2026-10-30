@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import { DownOutlined } from "@ant-design/icons-vue";
 import { t } from "@/lang/i18n";
 import type { ServerGroupKind } from "@/tools/serverGroups";
 
@@ -21,7 +22,7 @@ const toggle = () => {
         :aria-disabled="!!forceOpen"
         @click="toggle"
       >
-        <span class="server-group-chevron" aria-hidden="true">{{ expanded ? "⌄" : "›" }}</span>
+        <DownOutlined class="server-group-chevron" aria-hidden="true" />
         <span>{{ t(`TXT_CODE_server_groups_${kind}`) }}</span>
         <span class="server-group-count"
           >{{ count }} {{ t("TXT_CODE_server_groups_on_page") }}</span
@@ -64,8 +65,24 @@ const toggle = () => {
   cursor: default;
 }
 .server-group-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 14px;
   width: 14px;
-  text-align: center;
+  height: 14px;
+  font-size: 12px;
+  line-height: 1;
+  transform: rotate(-90deg);
+  transition: transform 160ms ease;
+}
+.server-group-toggle[aria-expanded="true"] .server-group-chevron {
+  transform: rotate(0deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-group-chevron {
+    transition: none;
+  }
 }
 .server-group-count {
   margin-left: auto;

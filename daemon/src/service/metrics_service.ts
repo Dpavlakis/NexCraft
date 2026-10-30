@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import os from "os";
 import path from "path";
 import pidusage from "pidusage";
+import Instance from "../entity/instance/instance";
 import InstanceSubsystem from "./system_instance";
 
 export interface MetricSample {
@@ -12,6 +13,7 @@ export interface MetricSample {
 }
 
 const SAMPLE_INTERVAL_MS = 60 * 1000;
+export const LIVE_MEMORY_MAX_AGE_MS = SAMPLE_INTERVAL_MS * 2;
 const MAX_POINTS = 1440; // ~24h at 60s
 const METRICS_DIR = path.normalize(path.join(process.cwd(), "data", "metrics"));
 const CPU_CORES = Math.max(1, os.cpus()?.length || 1);
@@ -59,31 +61,122 @@ function collectPidTree(root: number): number[] {
   }
 }
 
+// Linux start ticks fence OS PID reuse while the asynchronous sample is pending.
+// On platforms without /proc, process identity and instance run counters still fence it.
+function processStartTime(pid: number): string | undefined {
+  try {
+    const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf-8");
+    return stat
+      .slice(stat.lastIndexOf(")") + 2)
+      .trim()
+      .split(/\s+/)[19];
+  } catch {
+    return undefined;
+  }
+}
+
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Measure summed CPU% (per-core, can exceed 100) and RSS bytes for a pid tree.
 // We sample twice ~1s apart so pidusage reports instantaneous CPU rather than
 // the long-run average since process start.
 async function measureTree(root: number): Promise<{ cpu: number; memBytes: number }> {
+  const startTime = processStartTime(root);
   const prime = collectPidTree(root);
   await Promise.all(prime.map((p) => pidusage(p).catch(() => null)));
   await wait(1000);
   const pids = collectPidTree(root);
   const stats = await Promise.all(pids.map((p) => pidusage(p).catch(() => null)));
+  if (processStartTime(root) !== startTime) throw new Error("Process changed during sample");
   let cpu = 0;
   let memBytes = 0;
-  for (const s of stats) {
-    if (!s) continue;
-    cpu += (s as any).cpu || 0;
-    memBytes += (s as any).memory || 0;
+  let measured = 0;
+  for (const stat of stats) {
+    if (!stat || !Number.isFinite(stat.memory) || stat.memory < 0) continue;
+    cpu += Number.isFinite(stat.cpu) && stat.cpu >= 0 ? stat.cpu : 0;
+    memBytes += stat.memory;
+    measured++;
   }
+  // A vanished/unreadable tree is unknown, not a real zero-byte measurement.
+  if (!measured || !Number.isFinite(memBytes)) throw new Error("No process memory measurement");
   return { cpu, memBytes };
+}
+
+interface ProcessRun {
+  process: NonNullable<Instance["process"]>;
+  pid: number | string;
+  startCount: number;
+  startTimestamp: number;
+  processType: string;
 }
 
 class MetricsService {
   private series = new Map<string, MetricSample[]>();
   private dirty = new Set<string>();
   private loaded = false;
+  // Live evidence is deliberately separate from persisted, rounded chart history.
+  private liveMemory = new WeakMap<Instance, ProcessRun & { bytes: number; measuredAt: number }>();
+  private sampling = new WeakMap<Instance, ProcessRun>();
+
+  private run(instance: Instance): ProcessRun | undefined {
+    const status = instance.status();
+    const process = instance.process;
+    if (
+      !process?.pid ||
+      (status !== Instance.STATUS_STARTING && status !== Instance.STATUS_RUNNING)
+    )
+      return;
+    return {
+      process,
+      pid: process.pid,
+      startCount: instance.startCount,
+      startTimestamp: instance.startTimestamp,
+      processType: instance.config.processType
+    };
+  }
+
+  private sameRun(instance: Instance, run: ProcessRun) {
+    const current = this.run(instance);
+    return (
+      !!current &&
+      current.process === run.process &&
+      current.pid === run.pid &&
+      current.startCount === run.startCount &&
+      current.startTimestamp === run.startTimestamp &&
+      current.processType === run.processType
+    );
+  }
+
+  public getLiveInfo(instance: Instance) {
+    const info = { ...instance.info };
+    const run = this.run(instance);
+    const sample = this.liveMemory.get(instance);
+    const age = sample ? Date.now() - sample.measuredAt : Infinity;
+    const fresh =
+      !!run &&
+      !!sample &&
+      this.sameRun(instance, sample) &&
+      age >= 0 &&
+      age <= LIVE_MEMORY_MAX_AGE_MS;
+    if (!fresh) this.liveMemory.delete(instance);
+    // DockerStatsTask remains the authority for container RSS/limits. General
+    // processes may use only this run's actual sampler result, never chart data.
+    info.memoryUsage =
+      run?.processType === "docker"
+        ? typeof info.memoryUsage === "number" &&
+          Number.isFinite(info.memoryUsage) &&
+          info.memoryUsage >= 0
+          ? info.memoryUsage
+          : undefined
+        : fresh
+        ? sample!.bytes
+        : undefined;
+    if (!run || run.processType !== "docker") {
+      info.memoryLimit = undefined;
+      info.memoryUsagePercent = undefined;
+    }
+    return info;
+  }
 
   private file(uuid: string) {
     return path.join(METRICS_DIR, `${uuid}.json`);
@@ -125,38 +218,43 @@ class MetricsService {
     await Promise.all(jobs);
   }
 
-  private async sampleInstance(instance: any, now: number) {
+  private async sampleInstance(instance: Instance, now: number) {
+    const run = this.run(instance);
+    const previous = this.sampling.get(instance);
+    if (previous && this.sameRun(instance, previous)) return;
+    if (run) this.sampling.set(instance, run);
+    const current = () =>
+      InstanceSubsystem.instances.get(instance.instanceUuid) === instance &&
+      !!run &&
+      this.sampling.get(instance) === run &&
+      this.sameRun(instance, run);
     try {
-      const info: any = instance.info || {};
-      const status = instance.status();
-      // STATUS_STARTING (2) or STATUS_RUNNING (3): the process exists and is
-      // worth measuring (startup is CPU-heavy and useful to chart).
-      const hasProc = !!(instance.process && instance.process.pid);
-      const alive = status === 2 || status === 3;
-
+      const info = instance.info;
       let cpu = 0;
       let memMB = 0;
-      if (hasProc && alive) {
-        let measured = false;
-        // Prefer a live process-tree measurement (accurate for general-mode
-        // instances, including shell-wrapper start commands).
-        try {
-          const { cpu: treeCpu, memBytes } = await measureTree(instance.process.pid);
-          // Normalize summed per-core CPU to a share of the whole machine so it
-          // matches the 0-100 axis and the Overview system gauge.
-          cpu = Math.round((treeCpu / CPU_CORES) * 10) / 10;
-          memMB = Math.round(memBytes / 1024 / 1024);
-          measured = true;
-        } catch {
-          // ignore — fall back below
-        }
-        // Docker-mode instances expose stats via instance.info instead.
-        if (!measured || (cpu === 0 && memMB === 0)) {
-          if (Number(info.cpuUsage) || Number(info.memoryUsage)) {
-            cpu = Number(info.cpuUsage) || 0;
-            memMB = Math.round((Number(info.memoryUsage) || 0) / 1024 / 1024);
+      if (run) {
+        if (run.processType === "docker") {
+          // Container IDs are not host PIDs. Keep the native Docker stats source.
+          const memory = this.getLiveInfo(instance).memoryUsage;
+          cpu = Number(info.cpuUsage) || 0;
+          memMB = memory == null ? 0 : Math.round(memory / 1024 / 1024);
+        } else {
+          try {
+            const pid = Number(run.pid);
+            if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error("Invalid process PID");
+            const { cpu: treeCpu, memBytes } = await measureTree(pid);
+            if (!current()) return;
+            cpu = Math.round((treeCpu / CPU_CORES) * 10) / 10;
+            memMB = Math.round(memBytes / 1024 / 1024);
+            this.liveMemory.set(instance, { ...run, bytes: memBytes, measuredAt: Date.now() });
+          } catch {
+            if (!current()) return;
+            this.liveMemory.delete(instance);
           }
         }
+        if (!current()) return;
+      } else {
+        this.liveMemory.delete(instance);
       }
 
       const sample: MetricSample = {
@@ -172,6 +270,8 @@ class MetricsService {
       this.dirty.add(instance.instanceUuid);
     } catch {
       // skip this instance
+    } finally {
+      if (run && this.sampling.get(instance) === run) this.sampling.delete(instance);
     }
   }
 

@@ -65,10 +65,11 @@ Module._load = function (id, parent, ...args) {
   }
   return originalLoad.call(this, id, parent, ...args);
 };
-let createInstanceVersionCache, useInstanceVersions, INSTANCE_VERSIONS_TTL, INSTANCE_VERSIONS_TIMEOUT;
+let createInstanceVersionCache, publishInstanceVersions, useInstanceVersions, INSTANCE_VERSIONS_TTL, INSTANCE_VERSIONS_TIMEOUT;
 try {
   ({
     createInstanceVersionCache,
+    publishInstanceVersions,
     useInstanceVersions,
     INSTANCE_VERSIONS_TTL,
     INSTANCE_VERSIONS_TIMEOUT
@@ -556,6 +557,17 @@ function loadFrontendScript(relative, exposed, mocks, props = {}) {
   );
 }
 
+// Progress is a UI boundary here; the dedicated progress tests exercise the real poll lifecycle.
+// Still invoke create so native version guards must prevent unsafe update API calls.
+const operationProgressBoundary = {
+  useOperationProgress: () => ({
+    busy: { value: false },
+    task: { value: null },
+    failure: { value: undefined },
+    start: async (create) => { await create(); }
+  })
+};
+
 const routeContext = { daemonId: "daemon-a", instanceId: "instance-a" };
 function updateQuery(versionId = "compatible-old", extra = {}) {
   return {
@@ -588,7 +600,8 @@ function panelHarness(rows, query = updateQuery(), installedPack = pack, meta = 
     vue: { ...vueBoundary, ref: (value) => ({ value }), inject: (_, fallback) => fallback, onMounted() {} },
     "vue-router": { useRoute: () => route },
     "@/hooks/useAppRouters": { useAppRouters: () => ({ toPage() {} }) },
-    "@/hooks/useInstanceVersions": { INSTANCE_VERSIONS_TIMEOUT },
+    "@/hooks/useInstanceVersions": { INSTANCE_VERSIONS_TIMEOUT, publishInstanceVersions },
+    "@/hooks/useOperationProgress": operationProgressBoundary,
     "@/hooks/useCardTools": { useLayoutCardTools: () => ({ getMetaOrRouteValue: (key) => meta[key] }) },
     "@/hooks/useScreen": { useScreen: () => ({ isPhone: { value: false } }) },
     "@/lang/i18n": { t: (key) => key },
@@ -603,8 +616,9 @@ function panelHarness(rows, query = updateQuery(), installedPack = pack, meta = 
     marked: { marked: { parse: (value) => value } },
     "sanitize-html": (value) => value,
     "@/components/BetweenMenus.vue": {},
-    "@/components/CardPanel.vue": {}
-  }, { card: {} });
+    "@/components/CardPanel.vue": {},
+    "@/components/OperationProgress.vue": {}
+  }, { card: { meta } });
   panel.packInfo.value = installedPack;
   return { ...panel, context, route, requests, notes, updates };
 }
@@ -766,11 +780,25 @@ test("panel version loads ignore old project responses and abort only their own 
 });
 
 test("contradictory stored loader and exact installed CurseForge release stay unknown", () => {
-  const pack = { source: "curseforge", projectId: "1", fileId: "old", loader: "vanilla", mcVersion: "1.21.1" };
+  const pack = { source: "curseforge", projectId: "1", fileId: "old", loader: "fabric", mcVersion: "1.21.1" };
   const rows = ["new", "old"].map((fileId) => ({ fileId, loader: "neoforge", mcVersion: "1.21.1", hasServerPack: true, releaseType: 2 }));
   assert.deepEqual(selectInstanceUpdate(pack, rows), { status: "unknown" });
-  assert.equal(pack.loader, "vanilla");
+  assert.equal(pack.loader, "fabric");
+  assert.deepEqual(selectInstanceUpdate(pack, [rows[1]]), { status: "unknown" });
   assert.equal(selectInstanceUpdate({ ...pack, loader: "neoforge" }, rows).status, "available");
+});
+
+test("legacy CurseForge vanilla fallback resolves exact installed IDs but preserves incomplete unknowns", () => {
+  const pack = { source: "curseforge", projectId: "1", fileId: "old", loader: "vanilla", mcVersion: "1.21.1" };
+  const current = { fileId: "old", loader: "neoforge", mcVersion: "1.21.1", hasServerPack: true, releaseType: 2 };
+  const newer = { ...current, fileId: "new" };
+  assert.deepEqual(selectInstanceUpdate(pack, [current]), { status: "current" });
+  assert.deepEqual(selectInstanceUpdate(pack, [newer, current]), { status: "available", latest: newer });
+  assert.deepEqual(selectInstanceUpdate(pack, [newer]), { status: "unknown" });
+  assert.deepEqual(selectInstanceUpdate(pack, [{ ...current, loader: "vanilla" }]), { status: "unknown" });
+  assert.deepEqual(selectInstanceUpdate(pack, [{ ...newer, loader: undefined }, current]), { status: "unknown" });
+  assert.deepEqual(selectInstanceUpdate(pack, [{ ...newer, releaseType: undefined }, current]), { status: "unknown" });
+  assert.equal(pack.loader, "vanilla");
 });
 
 test("contradictory stored Minecraft version and exact installed release stay unknown", () => {

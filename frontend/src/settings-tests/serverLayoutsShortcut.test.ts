@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   eula: vi.fn(),
   confirm: vi.fn(),
   push: vi.fn(),
+  cardClick: vi.fn(),
   hook: vi.fn(),
   versionMount: vi.fn(),
   success: vi.fn()
@@ -146,7 +147,8 @@ function host(info = server(), layout: "compact" | "list" | "overview" = "compac
       targetInstanceInfo: info as any,
       targetDaemonId: "node-a",
       targetNode: { ip: "localhost" } as any,
-      layout
+      layout,
+      onClick: api.cardClick
     },
     global: { stubs }
   });
@@ -346,6 +348,70 @@ afterEach(() => {
   wrappers.splice(0).forEach((w) => w.unmount());
 });
 describe("production Shortcut layouts and operations", () => {
+  it("accepts immediate static-region clicks after each layout switch, keeping nested controls isolated", async () => {
+    vi.useFakeTimers();
+    try {
+      const { wrapper } = host();
+      await flush();
+      const root = wrapper.element;
+      const version = wrapper.get('[data-versions="a"]').element;
+      for (const layout of ["list", "overview", "compact", "list"] as const) {
+        await wrapper.setProps({ layout });
+        for (const region of [
+          "h3",
+          ".server-address > .server-label",
+          "[data-installed-pack]",
+          ".server-metrics",
+          ".server-actions"
+        ]) {
+          api.cardClick.mockClear();
+          await wrapper.get(region).trigger("click");
+          expect(api.cardClick, layout + " " + region).toHaveBeenCalledOnce();
+        }
+        api.cardClick.mockClear();
+        api.push.mockClear();
+        await wrapper.get(".console-action").trigger("click");
+        expect(api.push).toHaveBeenCalledExactlyOnceWith({
+          path: "/instances/terminal",
+          query: { daemonId: "node-a", instanceId: "a" }
+        });
+        await wrapper.get("summary").trigger("click");
+        await wrapper.get('[data-action="restart"]').trigger("click");
+        expect(api.cardClick).not.toHaveBeenCalled();
+        expect(wrapper.element).toBe(root);
+        expect(wrapper.get('[data-versions="a"]').element).toBe(version);
+      }
+      expect(api.hook).toHaveBeenCalledOnce();
+      expect(api.icon).toHaveBeenCalledOnce();
+      expect(api.versionMount).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("does not navigate from interactive descendants, prevented clicks or cards in design mode", async () => {
+    const { wrapper } = host();
+    const label = wrapper.get(".server-address > .server-label").element;
+    const copy = document.createElement("span");
+    copy.setAttribute("role", "button");
+    copy.innerHTML = "<svg><path /></svg>";
+    label.appendChild(copy);
+    copy.querySelector("path")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const prevented = new MouseEvent("click", { bubbles: true, cancelable: true });
+    prevented.preventDefault();
+    label.dispatchEvent(prevented);
+    expect(api.cardClick).not.toHaveBeenCalled();
+    state.isDesignMode = true;
+    await nextTick();
+    await wrapper.get("h3").trigger("click");
+    expect(api.cardClick).not.toHaveBeenCalled();
+    state.isDesignMode = false;
+    await wrapper.setProps({ disabled: true });
+    await wrapper.get("h3").trigger("click");
+    // Batch mode still delegates selection to InstanceList; Console stays disabled.
+    expect(api.cardClick).toHaveBeenCalledOnce();
+    expect(wrapper.get(".console-action").attributes("disabled")).toBeDefined();
+  });
+
   it("retains live fields, custom tags and mounted version/data hooks while switching", async () => {
     const { wrapper } = host();
     await flush();

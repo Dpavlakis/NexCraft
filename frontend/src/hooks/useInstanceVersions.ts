@@ -2,7 +2,9 @@ import { modpackVersions, serverVersionsGet } from "@/services/apis/modpack";
 import {
   getInstanceVersionTarget,
   installedInstanceVersions,
+  orderInstanceReleases,
   selectInstanceUpdate,
+  type InstalledPackVersion,
   type InstanceRelease,
   type InstanceUpdateResult,
   type InstanceVersionTarget
@@ -38,10 +40,25 @@ export function createInstanceVersionCache(
   const concurrency = Math.max(1, options.concurrency ?? 4);
   const entries = new Map<
     string,
-    { promise: Promise<ReleaseSnapshot>; expiresAt: number; pending: boolean }
+    {
+      promise: Promise<ReleaseSnapshot>;
+      expiresAt: number;
+      pending: boolean;
+      published?: ReleaseSnapshot;
+    }
   >();
   const queue: Array<() => void> = [];
   let active = 0;
+  const keyOf = (target: InstanceVersionTarget) =>
+    JSON.stringify([target.source, target.projectId]);
+  const listeners = new Map<string, Set<(snapshot: ReleaseSnapshot) => void>>();
+  const makeRoom = () => {
+    if (entries.size < maxSize) return true;
+    const victim = [...entries].find(([, value]) => !value.pending);
+    if (!victim) return false;
+    entries.delete(victim[0]);
+    return true;
+  };
 
   const schedule = <T>(job: () => Promise<T>): Promise<T> =>
     new Promise((resolve, reject) => {
@@ -60,7 +77,7 @@ export function createInstanceVersionCache(
     });
 
   const get = (target: InstanceVersionTarget): Promise<ReleaseSnapshot> => {
-    const key = JSON.stringify([target.source, target.projectId]);
+    const key = keyOf(target);
     const existing = entries.get(key);
     if (existing && (existing.pending || existing.expiresAt > now())) {
       entries.delete(key);
@@ -69,17 +86,22 @@ export function createInstanceVersionCache(
     }
     entries.delete(key);
     // Keep pending entries for deduplication; bound both cache and waiting queue.
-    if (entries.size >= maxSize) {
-      const victim = [...entries].find(([, value]) => !value.pending);
-      if (victim) entries.delete(victim[0]);
-      else return Promise.resolve({ status: "error", releases: [], expiresAt: now() + ERROR_TTL });
+    if (!makeRoom()) {
+      return Promise.resolve({ status: "error", releases: [], expiresAt: now() + ERROR_TTL });
     }
-    const entry = {
+    const entry: {
+      promise: Promise<ReleaseSnapshot>;
+      expiresAt: number;
+      pending: boolean;
+      published?: ReleaseSnapshot;
+    } = {
       promise: undefined as unknown as Promise<ReleaseSnapshot>,
       expiresAt: 0,
       pending: true
     };
     entry.promise = schedule(async (): Promise<ReleaseSnapshot> => {
+      // A dialog may have refreshed a queued badge before it acquired a request slot.
+      if (entry.published) return entry.published;
       // The cache owns cancellation: one consumer unmounting must not cancel peers.
       const controller = new AbortController();
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -95,13 +117,19 @@ export function createInstanceVersionCache(
           })
         ]);
         if (!Array.isArray(releases)) throw new Error("Version list unavailable");
-        return { status: "ready", releases: releases.slice(), expiresAt: now() + ttl };
+        return {
+          status: "ready",
+          releases: orderInstanceReleases(releases),
+          expiresAt: now() + ttl
+        };
       } catch {
         return { status: "error", releases: [], expiresAt: now() + ERROR_TTL };
       } finally {
         clearTimeout(timer);
       }
     }).then((snapshot) => {
+      // A dialog refresh may finish before an older badge request. Its snapshot wins.
+      snapshot = entry.published ?? snapshot;
       entry.pending = false;
       entry.expiresAt = snapshot.expiresAt;
       return snapshot;
@@ -109,7 +137,42 @@ export function createInstanceVersionCache(
     entries.set(key, entry);
     return entry.promise;
   };
-  return { get };
+  const publish = (target: InstanceVersionTarget, releases: readonly InstanceRelease[]) => {
+    const key = keyOf(target);
+    const snapshot: ReleaseSnapshot = {
+      status: "ready",
+      releases: orderInstanceReleases(releases),
+      expiresAt: now() + ttl
+    };
+    const entry = entries.get(key);
+    if (entry) {
+      entry.published = snapshot;
+      entry.expiresAt = snapshot.expiresAt;
+      entry.promise = Promise.resolve(snapshot);
+      // Keep pending work accounted for until it settles: publication must not grow the queue.
+    } else if (makeRoom()) {
+      entries.set(key, {
+        promise: Promise.resolve(snapshot),
+        expiresAt: snapshot.expiresAt,
+        pending: false
+      });
+    }
+    listeners.get(key)?.forEach((listener) => listener(snapshot));
+  };
+  const subscribe = (
+    target: InstanceVersionTarget,
+    listener: (snapshot: ReleaseSnapshot) => void
+  ) => {
+    const key = keyOf(target);
+    const peers = listeners.get(key) ?? new Set();
+    peers.add(listener);
+    listeners.set(key, peers);
+    return () => {
+      peers.delete(listener);
+      if (!peers.size) listeners.delete(key);
+    };
+  };
+  return { get, publish, subscribe };
 }
 
 const releaseCache = createInstanceVersionCache(async (target, signal) => {
@@ -131,6 +194,21 @@ const releaseCache = createInstanceVersionCache(async (target, signal) => {
   return response.value;
 });
 
+/**
+ * After the dialog's request/target fence, assign its rows through this single call:
+ * versions.value = publishInstanceVersions(pack, rows).
+ * Both consumers then share canonical provider ordering, without another HTTP request.
+ */
+export function publishInstanceVersions<T extends InstanceRelease>(
+  pack: InstalledPackVersion | undefined,
+  releases: readonly T[]
+): T[] {
+  const ordered = orderInstanceReleases(releases);
+  const target = getInstanceVersionTarget(pack);
+  if (target) releaseCache.publish(target, ordered);
+  return ordered;
+}
+
 export function useInstanceVersions(instance: () => InstanceDetail) {
   const installed = computed(() =>
     installedInstanceVersions(instance().config.packInfo, instance().info)
@@ -138,6 +216,7 @@ export function useInstanceVersions(instance: () => InstanceDetail) {
   const update = shallowRef<InstanceUpdateResult>({ status: "unknown" });
   let disposed = false;
   let request = 0;
+  let unsubscribe: (() => void) | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   // Polling replaces InstanceDetail every few seconds. Watch only stable provenance fields.
   const fingerprint = computed(() => {
@@ -154,10 +233,20 @@ export function useInstanceVersions(instance: () => InstanceDetail) {
     ]);
   });
 
+  const apply = (snapshot: ReleaseSnapshot) => {
+    clearTimeout(timer);
+    update.value =
+      snapshot.status === "error"
+        ? { status: "error" }
+        : selectInstanceUpdate(instance().config.packInfo, snapshot.releases);
+    timer = setTimeout(check, Math.max(250, snapshot.expiresAt - Date.now()));
+  };
   const check = async () => {
     if (disposed) return;
     const generation = ++request;
     clearTimeout(timer);
+    unsubscribe?.();
+    unsubscribe = undefined;
     const pack = instance().config.packInfo;
     const target = getInstanceVersionTarget(pack);
     const installedId = pack?.source === "bedrock" ? pack.mcVersion : pack?.fileId;
@@ -165,20 +254,28 @@ export function useInstanceVersions(instance: () => InstanceDetail) {
       update.value = selectInstanceUpdate(pack, []);
       return;
     }
+    unsubscribe = releaseCache.subscribe(target, (snapshot) => {
+      const currentTarget = getInstanceVersionTarget(instance().config.packInfo);
+      if (
+        disposed ||
+        currentTarget?.source !== target.source ||
+        currentTarget?.projectId !== target.projectId
+      )
+        return;
+      ++request;
+      apply(snapshot);
+    });
     update.value = { status: "loading" };
     const snapshot = await releaseCache.get(target);
     if (disposed || generation !== request) return;
-    update.value =
-      snapshot.status === "error"
-        ? { status: "error" }
-        : selectInstanceUpdate(pack, snapshot.releases);
-    timer = setTimeout(check, Math.max(250, snapshot.expiresAt - Date.now()));
+    apply(snapshot);
   };
   watch(fingerprint, check, { immediate: true });
   onBeforeUnmount(() => {
     disposed = true;
     ++request;
     clearTimeout(timer);
+    unsubscribe?.();
   });
   return { installed, update };
 }

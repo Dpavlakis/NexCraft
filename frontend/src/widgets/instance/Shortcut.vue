@@ -28,7 +28,6 @@ import {
   CloseOutlined,
   CloudDownloadOutlined,
   CodeOutlined,
-  DownOutlined,
   PlayCircleOutlined,
   PoweroffOutlined,
   RedoOutlined,
@@ -50,7 +49,7 @@ const props = withDefaults(
   }>(),
   { layout: "compact" }
 );
-const emits = defineEmits(["refreshList"]);
+const emits = defineEmits(["refreshList", "click"]);
 const { containerState } = useLayoutContainerStore();
 const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
 const { toPage } = useAppRouters();
@@ -190,6 +189,29 @@ const secondaryPower = computed(() =>
     { action: "kill" as const, title: t("TXT_CODE_7b67813a"), icon: CloseOutlined }
   ].filter((item) => applicable(item.action))
 );
+// Delegate only card-surface clicks to the list. Static metadata and spacing
+// remain clickable in every layout; nested native controls keep their own actions.
+function onCardClick(event: MouseEvent) {
+  if (
+    !active ||
+    containerState.isDesignMode ||
+    !instanceId.value ||
+    !daemonId.value ||
+    event.defaultPrevented
+  )
+    return;
+  const target = event.target;
+  if (
+    target instanceof Element &&
+    target.closest(
+      "a, button, input, textarea, select, summary, [role='button'], [role='menuitem'], [contenteditable='true']"
+    )
+  )
+    return;
+  // In batch mode the list owns selection instead of navigation.
+  emits("click", event);
+}
+
 function openConsole() {
   if (unavailable.value) return;
   toPage({
@@ -279,8 +301,13 @@ const formatSpeed = (value?: number) =>
 <template>
   <article
     class="game-instance-card"
-    :class="['layout-' + layout, instanceEdition ? 'edition-' + instanceEdition : '']"
+    :class="[
+      'layout-' + layout,
+      instanceEdition ? 'edition-' + instanceEdition : '',
+      { 'status-running': isRunning, 'status-starting': isStarting }
+    ]"
     :aria-label="instanceInfo?.config.nickname"
+    @click="onCardClick"
   >
     <header class="server-identity">
       <img
@@ -306,7 +333,7 @@ const formatSpeed = (value?: number) =>
         </div>
       </div>
     </header>
-    <div v-if="instanceEdition" class="server-address" @click.stop>
+    <div v-if="instanceEdition" class="server-address">
       <span class="server-label">{{ t("TXT_CODE_game_endpoint_configured_address_label") }}</span>
       <a-tooltip
         :title="
@@ -327,7 +354,7 @@ const formatSpeed = (value?: number) =>
         }}</a-typography-text>
       </a-tooltip>
     </div>
-    <div class="server-versions" @click.stop>
+    <div class="server-versions">
       <InstanceVersionInfo
         v-if="versionInstance && instanceEdition"
         :instance="versionInstance"
@@ -392,44 +419,45 @@ const formatSpeed = (value?: number) =>
         </template>
       </dl>
     </details>
-    <footer class="server-actions" @click.stop @keydown.stop>
+    <footer class="server-actions" @keydown.stop>
       <a-button class="console-action" :disabled="unavailable" @click="openConsole"
         ><CodeOutlined aria-hidden="true" /> {{ t("TXT_CODE_server_actions_console") }}</a-button
       >
       <div class="server-power">
         <a-button
           v-if="isStopped || isRunning"
+          class="power-icon-action"
+          :data-action="isStopped ? 'start' : 'stop'"
           :disabled="unavailable || powerBusy"
           :loading="openLoading || stopLoading"
+          :aria-label="t(isStopped ? 'TXT_CODE_57245e94' : 'TXT_CODE_b1dedda3')"
+          :title="t(isStopped ? 'TXT_CODE_57245e94' : 'TXT_CODE_b1dedda3')"
           @click="requestAction(isStopped ? 'start' : 'stop')"
         >
           <PlayCircleOutlined v-if="isStopped" aria-hidden="true" /><PoweroffOutlined
             v-else
             aria-hidden="true"
           />
-          {{ t(isStopped ? "TXT_CODE_57245e94" : "TXT_CODE_b1dedda3") }}
         </a-button>
-        <a-dropdown v-if="secondaryPower.length" :trigger="['click']" :autofocus="true">
+        <a-tooltip v-for="item in secondaryPower" :key="item.action" :title="item.title">
           <a-button
-            class="power-menu-trigger"
+            class="power-icon-action"
+            :class="{ 'terminate-action': item.action === 'kill' }"
+            :data-action="item.action"
             :disabled="unavailable || powerBusy"
-            :aria-label="t('TXT_CODE_server_actions_power')"
-            :title="t('TXT_CODE_server_actions_power')"
-            ><DownOutlined aria-hidden="true"
+            :loading="
+              item.action === 'restart'
+                ? restartLoading
+                : item.action === 'update'
+                ? updateLoading
+                : killLoading
+            "
+            :aria-label="item.title"
+            :title="item.title"
+            @click="requestAction(item.action)"
+            ><component :is="item.icon" aria-hidden="true"
           /></a-button>
-          <template #overlay>
-            <a-menu>
-              <a-menu-item
-                v-for="item in secondaryPower"
-                :key="item.action"
-                :danger="item.action === 'kill'"
-                :disabled="unavailable || powerBusy"
-                @click="requestAction(item.action)"
-                ><component :is="item.icon" aria-hidden="true" /> {{ item.title }}</a-menu-item
-              >
-            </a-menu>
-          </template>
-        </a-dropdown>
+        </a-tooltip>
       </div>
       <InstanceSecondaryActions
         :instance-id="instanceId || ''"
@@ -451,7 +479,9 @@ const formatSpeed = (value?: number) =>
   height: 100%;
   position: relative;
   padding: 18px;
+  padding-left: 15px;
   border: 1px solid var(--card-border-color);
+  border-left: 4px solid var(--color-gray-6);
   border-radius: 7px;
   background: var(--background-color-white);
   color: var(--text-color);
@@ -462,6 +492,12 @@ const formatSpeed = (value?: number) =>
   gap: 14px;
   align-content: start;
   container-type: inline-size;
+}
+.game-instance-card.status-running {
+  border-left-color: var(--color-green-7);
+}
+.game-instance-card.status-starting {
+  border-left-color: var(--color-gold-6, #faad14);
 }
 .server-identity {
   display: flex;
@@ -594,6 +630,7 @@ summary {
 }
 .server-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -610,11 +647,25 @@ summary {
 }
 .server-power {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
+  min-width: 0;
 }
-.power-menu-trigger {
-  padding-inline: 5px !important;
+.server-power :deep(.power-icon-action) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+}
+.terminate-action:not(:disabled) :deep(.anticon) {
+  color: var(--color-red-7);
+}
+.server-actions :deep(button:focus-visible) {
+  outline: 2px solid var(--nx-accent, var(--color-blue-6));
+  outline-offset: 3px;
 }
 .server-actions > .instance-secondary-actions {
   margin-left: auto;
@@ -627,6 +678,7 @@ summary:focus-visible {
 }
 .layout-overview {
   padding: 22px;
+  padding-left: 19px;
   gap: 20px;
 }
 .layout-overview h3 {
@@ -680,6 +732,7 @@ summary:focus-visible {
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
+  padding-left: 15px;
 }
 .layout-list h3 {
   font-size: 14px;
@@ -763,6 +816,7 @@ summary:focus-visible {
 @media (max-width: 560px) {
   .game-instance-card {
     padding: 16px;
+    padding-left: 13px;
   }
   .server-actions {
     flex-wrap: wrap;
@@ -770,6 +824,12 @@ summary:focus-visible {
   }
   .server-actions :deep(.ant-btn) {
     min-height: 44px;
+  }
+  .server-power :deep(.power-icon-action),
+  .server-actions :deep(.secondary-icon) {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
   }
   .layout-list .server-address,
   .layout-list .server-versions {

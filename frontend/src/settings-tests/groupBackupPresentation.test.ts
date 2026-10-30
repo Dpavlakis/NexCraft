@@ -245,6 +245,7 @@ const api = vi.hoisted(() => ({
   eula: vi.fn(),
   download: vi.fn(),
   restore: vi.fn(),
+  status: vi.fn(),
   remove: vi.fn(),
   list: vi.fn(),
   push: vi.fn()
@@ -257,6 +258,7 @@ vi.mock("@/hooks/useCardTools", () => ({
     getMetaOrRouteValue: (key: string) => (key === "daemonId" ? "node-b" : "raw-instance-uuid")
   })
 }));
+vi.mock("vue-router", () => ({ useRoute: () => ({ query: {} }) }));
 vi.mock("@/hooks/useFileManager", () => ({ getFileConfigAddr: () => "http://fixture.test" }));
 vi.mock("@/tools/protocol", () => ({ parseForwardAddress: (address: string) => address }));
 vi.mock("@/hooks/useGameEndpoint", () => ({ useGameEndpoint: () => ({}) }));
@@ -279,12 +281,13 @@ vi.mock("@/services/apis/backup", () => ({
   getBackupConfig: () => ({ execute: async () => ref({ compress: true, exclusions: [] }) }),
   setBackupConfig: () => ({ execute: vi.fn() }),
   createBackup: () => ({ execute: vi.fn() }),
-  backupTaskStatus: () => ({ execute: vi.fn() })
+  backupTaskStatus: () => ({ execute: api.status })
 }));
 vi.mock("ant-design-vue", () => ({ message: { success: vi.fn(), loading: vi.fn() } }));
 
 import InstanceLine from "@/widgets/instance/InstanceLine.vue";
 import Backups from "@/widgets/instance/Backups.vue";
+import { message } from "ant-design-vue";
 
 const passthrough = defineComponent({
   setup(_, { slots }) {
@@ -341,6 +344,7 @@ beforeEach(() => {
   api.eula.mockResolvedValue(true);
   api.download.mockResolvedValue(ref({ password: "one-time-token", addr: "fixture.test" }));
   api.restore.mockResolvedValue(ref({ taskId: "restore-task" }));
+  api.status.mockResolvedValue(ref({ taskId: "restore-task", status: -1 }));
   api.remove.mockResolvedValue(ref(true));
 });
 afterEach(() => {
@@ -393,7 +397,12 @@ describe("backup presentation forwards exact storage identity to existing handle
       api.list.mockResolvedValue(ref([record]));
       const opened = vi.spyOn(window, "open").mockReturnValue(null);
       const host = mount(Backups, {
-        props: { card: { title: "Backups" } as any },
+        props: {
+          card: {
+            title: "Backups",
+            meta: { daemonId: "node-b", instanceId: "raw-instance-uuid" }
+          } as any
+        },
         global: { stubs }
       });
       hosts.push(host);
@@ -412,15 +421,21 @@ describe("backup presentation forwards exact storage identity to existing handle
       }
       await flushPromises();
       expect(api[action]).toHaveBeenCalledExactlyOnceWith(
-        action === "restore"
-          ? {
-              params: { daemonId: "node-b", uuid: "raw-instance-uuid" },
-              data: { file_name: record.name }
-            }
-          : {
-              params: { daemonId: "node-b", uuid: "raw-instance-uuid", file_name: record.name }
-            }
+        expect.objectContaining(
+          action === "restore"
+            ? {
+                params: { daemonId: "node-b", uuid: "raw-instance-uuid" },
+                data: { file_name: record.name }
+              }
+            : {
+                params: { daemonId: "node-b", uuid: "raw-instance-uuid", file_name: record.name }
+              }
+        )
       );
+      if (action === "restore") {
+        expect(message.success).not.toHaveBeenCalledWith("TXT_CODE_backup_restore_done");
+        expect(api.list).toHaveBeenCalledTimes(1);
+      }
       if (action === "download") {
         expect(opened).toHaveBeenCalledExactlyOnceWith(
           `http://fixture.test/backup-download/one-time-token/${record.name}`

@@ -75,10 +75,10 @@ function gameVersions(release: InstanceRelease): string[] {
     : [];
 }
 
-function loaders(release: InstanceRelease): string[] {
-  return (release.loaders?.length ? release.loaders : release.loader ? [release.loader] : []).map(
-    (loader) => loader.toLowerCase()
-  );
+function loaders(release: InstanceRelease, source: string): string[] {
+  return (release.loaders?.length ? release.loaders : release.loader ? [release.loader] : [])
+    .map((loader) => loader.toLowerCase())
+    .filter((loader) => source !== "curseforge" || loader !== "vanilla");
 }
 
 function publishedAt(release: InstanceRelease): number {
@@ -86,7 +86,7 @@ function publishedAt(release: InstanceRelease): number {
 }
 
 /** Sort stably when every row has a date; otherwise retain the provider's newest-first order. */
-export function orderInstanceReleases(releases: readonly InstanceRelease[]): InstanceRelease[] {
+export function orderInstanceReleases<T extends InstanceRelease>(releases: readonly T[]): T[] {
   const rows = releases.slice();
   if (rows.length && rows.every((row) => Number.isFinite(publishedAt(row)))) {
     rows.sort((a, b) => publishedAt(b) - publishedAt(a));
@@ -113,18 +113,28 @@ export function selectInstanceUpdate(
   const current = ordered[index];
   const channel = releaseChannel(current);
   if (!channel) return { status: "unknown" };
-  // The exact installed provider release must agree with persisted provenance.
-  // Legacy metadata can be wrong; do not claim current or guess an update target.
+  // Concrete persisted provenance must agree with the exact installed provider release.
   const currentMc = gameVersions(current);
-  const currentLoaders = loaders(current);
+  const currentLoaders = loaders(current, source);
+  // CF installation reads the server-pack tags, whereas this list describes its client release.
+  // The panel defaults absent CF loader tags to "vanilla". That fallback is missing evidence,
+  // not a concrete conflicting loader. Resolve it only from the exact installed provider ID.
+  const persistedLoader = pack.loader?.toLowerCase();
+  const knownLoader =
+    source === "curseforge" && persistedLoader === "vanilla" ? undefined : persistedLoader;
+  // Supported client loaders do not identify the installed server loader when several differ.
+  // loaders() already folds case, so repeated tags still provide one unambiguous fallback.
+  if (source === "curseforge" && !knownLoader && new Set(currentLoaders).size > 1) {
+    return { status: "unknown" };
+  }
   if (
     source !== "bedrock" &&
     ((pack.mcVersion && currentMc.length && !currentMc.includes(pack.mcVersion)) ||
-      (pack.loader && currentLoaders.length && !currentLoaders.includes(pack.loader.toLowerCase())))
+      (knownLoader && currentLoaders.length && !currentLoaders.includes(knownLoader)))
   )
     return { status: "unknown" };
   const mc = pack.mcVersion ? [pack.mcVersion] : currentMc;
-  const installedLoaders = pack.loader ? [pack.loader.toLowerCase()] : currentLoaders;
+  const installedLoaders = knownLoader ? [knownLoader] : currentLoaders;
   if (source !== "bedrock" && (!mc.length || !installedLoaders.length)) {
     return { status: "unknown" };
   }
@@ -147,7 +157,7 @@ export function selectInstanceUpdate(
     if (candidateChannel !== channel) continue;
     if (source !== "bedrock") {
       const candidateMc = gameVersions(candidate);
-      const candidateLoaders = loaders(candidate);
+      const candidateLoaders = loaders(candidate, source);
       if (candidateMc.length && !candidateMc.some((version) => mc.includes(version))) continue;
       if (
         candidateLoaders.length &&
@@ -159,13 +169,15 @@ export function selectInstanceUpdate(
         continue;
       }
     }
-    // Equal timestamps do not prove a release is newer; preserve stable ordering without guessing.
-    if (
-      Number.isFinite(publishedAt(candidate)) &&
-      publishedAt(candidate) === publishedAt(current)
-    ) {
-      uncertain = true;
-      continue;
+    // With mixed/missing dates we retain provider order, but never contradict known dates.
+    const candidateDate = publishedAt(candidate);
+    const currentDate = publishedAt(current);
+    if (Number.isFinite(candidateDate) && Number.isFinite(currentDate)) {
+      if (candidateDate < currentDate) continue;
+      if (candidateDate === currentDate) {
+        uncertain = true;
+        continue;
+      }
     }
     return { status: "available", latest: candidate };
   }

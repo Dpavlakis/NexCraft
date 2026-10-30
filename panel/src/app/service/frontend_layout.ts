@@ -79,34 +79,49 @@ function quickSettingsCard(width: number) {
   };
 }
 
-// A narrow, idempotent migration. Custom pages retain their placement and can
-// reach Quick Settings through Manage or the independently merged full page.
+// Remove only the previously generated inline stock layout. Older three-card
+// layouts and customized Quick Settings cards retain their placement and data.
 export function migrateQuickSettingsLayout(layout: unknown): boolean {
   if (!Array.isArray(layout)) return false;
   const pages = layout.filter((page) => page?.page === "/instances/terminal");
   if (pages.length !== 1) return false;
   const page = pages[0];
-  if (!Array.isArray(page.items) || page.items.length !== 3) return false;
-  const [terminal, base, manager] = page.items;
+  if (!Array.isArray(page.items) || page.items.length !== 4) return false;
+  const [terminal, base, quick, manager] = page.items;
   const expected = [
     ["Terminal", 12, LayoutCardHeight.BIG, true],
     ["InstanceBaseInfo", 4, LayoutCardHeight.SMALL, undefined],
-    ["InstanceManagerBtns", 8, LayoutCardHeight.SMALL, true]
+    ["InstanceQuickSettings", 8, LayoutCardHeight.AUTO, undefined],
+    ["InstanceManagerBtns", 12, "470px", true]
   ];
   if (
-    !page.items.every((card: ILayoutCard, index: number) =>
-      card && typeof card === "object" &&
-      typeof card.id === "string" && typeof card.title === "string" &&
-      card.meta && typeof card.meta === "object" && !Array.isArray(card.meta) &&
-      card.type === expected[index][0] && card.width === expected[index][1] &&
-      card.height === expected[index][2] && card.disableDelete === expected[index][3]
+    !page.items.every(
+      (card: ILayoutCard, index: number) =>
+        card &&
+        typeof card === "object" &&
+        typeof card.id === "string" &&
+        typeof card.title === "string" &&
+        card.meta &&
+        typeof card.meta === "object" &&
+        !Array.isArray(card.meta) &&
+        card.type === expected[index][0] &&
+        card.width === expected[index][1] &&
+        card.height === expected[index][2] &&
+        card.disableDelete === expected[index][3]
     )
-  ) return false;
+  )
+    return false;
   if (
     terminal.meta.viewType !== "inner" ||
-    new Set(page.items.map((card: ILayoutCard) => card.id)).size !== 3
-  ) return false;
-  page.items = [terminal, base, quickSettingsCard(8), { ...manager, width: 12, height: "470px" }];
+    // The generated Quick card had no target or other custom configuration.
+    Object.keys(quick.meta).length !== 0 ||
+    Object.keys(quick).some(
+      (key) => !["id", "meta", "type", "title", "width", "height"].includes(key)
+    ) ||
+    new Set(page.items.map((card: ILayoutCard) => card.id)).size !== 4
+  )
+    return false;
+  page.items = [terminal, base, { ...manager, width: 8, height: LayoutCardHeight.SMALL }];
   return true;
 }
 
@@ -305,14 +320,13 @@ function getDefaultFrontendLayoutConfig(): IPageLayoutConfig[] {
           width: 4,
           height: LayoutCardHeight.SMALL
         },
-        quickSettingsCard(8),
         {
           id: getRandomId(),
           meta: {},
           type: "InstanceManagerBtns",
           title: t("TXT_CODE_efd37c48"),
-          width: 12,
-          height: "470px",
+          width: 8,
+          height: LayoutCardHeight.SMALL,
           disableDelete: true
         }
       ]

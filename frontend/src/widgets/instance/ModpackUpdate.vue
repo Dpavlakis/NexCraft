@@ -3,15 +3,16 @@ import { inject } from "vue";
 const embeddedInManageModal = inject<boolean>("embeddedInManageModal", false);
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
+import OperationProgress from "@/components/OperationProgress.vue";
+import { useOperationProgress } from "@/hooks/useOperationProgress";
 import { useAppRouters } from "@/hooks/useAppRouters";
-import { INSTANCE_VERSIONS_TIMEOUT } from "@/hooks/useInstanceVersions";
+import { INSTANCE_VERSIONS_TIMEOUT, publishInstanceVersions } from "@/hooks/useInstanceVersions";
 import {
   getInstanceVersionTarget,
   instanceReleaseId,
   selectInstanceUpdate
 } from "@/tools/instanceVersions";
 import { useRoute } from "vue-router";
-import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
 import { getInstanceInfo } from "@/services/apis/instance";
@@ -45,9 +46,12 @@ const props = defineProps<{
 const { isPhone } = useScreen();
 const { toPage } = useAppRouters();
 const route = useRoute();
-const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
-const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
-const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+const getMetaOrRouteValue = (key: string) => props.card.meta[key] ?? route.query[key];
+let instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
+let daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+
+const targetKey = () =>
+  JSON.stringify([getMetaOrRouteValue("daemonId"), getMetaOrRouteValue("instanceId")]);
 
 const toConsole = () => {
   toPage({
@@ -74,7 +78,9 @@ const isUpdatable = computed(
 );
 // Bedrock is a server version, not a modpack — relabel the card accordingly.
 const cardTitle = computed(() =>
-  isBedrock.value ? t("TXT_CODE_version_update_card_title") : t("TXT_CODE_modpack_update_card_title")
+  isBedrock.value
+    ? t("TXT_CODE_version_update_card_title")
+    : t("TXT_CODE_modpack_update_card_title")
 );
 
 const loadInfo = async () => {
@@ -208,7 +214,7 @@ const loadVersions = async () => {
       rows = res.value || [];
     }
     if (disposed || request !== versionsRequest || packInfo.value !== pack) return;
-    versions.value = rows;
+    versions.value = publishInstanceVersions(pack, rows);
     selectedVersion.value = defaultVersion();
   } catch (err: any) {
     if (!disposed && request === versionsRequest) reportErrorMsg(err.message);
@@ -251,15 +257,44 @@ const loadChangelog = async () => {
     if (disposed || request !== changelogRequest) return;
     const notes = res.value;
     if (!notes) throw new Error("Release notes unavailable");
-    const raw = notes.format === "markdown"
-      ? (marked.parse(notes.content, { async: false }) as string)
-      : notes.content;
+    const raw =
+      notes.format === "markdown"
+        ? (marked.parse(notes.content, { async: false }) as string)
+        : notes.content;
     const safeHtml = sanitizeHtml(raw, {
       allowedTags: [
-        "p", "br", "b", "strong", "i", "em", "u", "s", "span", "div",
-        "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote",
-        "code", "pre", "hr", "a", "table", "caption", "thead", "tbody",
-        "tfoot", "tr", "td", "th"
+        "p",
+        "br",
+        "b",
+        "strong",
+        "i",
+        "em",
+        "u",
+        "s",
+        "span",
+        "div",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "li",
+        "blockquote",
+        "code",
+        "pre",
+        "hr",
+        "a",
+        "table",
+        "caption",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "td",
+        "th"
       ],
       allowedAttributes: { a: ["href", "target", "rel"] },
       allowedSchemes: ["http", "https"],
@@ -273,12 +308,14 @@ const loadChangelog = async () => {
     });
     // Empty markup, whitespace entities, and removed unsafe content aren't notes.
     const text = sanitizeHtml(safeHtml, { allowedTags: [], allowedAttributes: {} });
-    const visibleText = text.replace(/&(?:#(\d+)|#x([\da-f]+)|([a-z]+));/gi,
+    const visibleText = text.replace(
+      /&(?:#(\d+)|#x([\da-f]+)|([a-z]+));/gi,
       (entity, decimal, hex, named) => {
         const code = decimal ? Number(decimal) : hex ? parseInt(hex, 16) : undefined;
         if (code !== undefined && code >= 0 && code <= 0x10ffff) return String.fromCodePoint(code);
         return named === "nbsp" ? " " : entity;
-      });
+      }
+    );
     changelogHtml.value = visibleText.replace(/[\s\u200b-\u200d\ufeff]/g, "") ? safeHtml : "";
   } catch {
     if (!disposed && request === changelogRequest) changelogError.value = true;
@@ -306,100 +343,93 @@ const isCurrentSelected = computed(
 
 const formatTime = (ms?: number) => (ms ? new Date(ms).toLocaleString() : "-");
 
-// ---- Update task polling ----
-let pollTimer: ReturnType<typeof setInterval> | undefined;
-const taskRunning = ref(false);
-const taskProgress = ref(0);
-const taskLabel = ref("");
-
-const stopPolling = () => {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = undefined;
-  }
-};
-
-const pollTask = (taskId: string, onDone: () => void) => {
-  taskRunning.value = true;
-  taskProgress.value = 0;
-  taskLabel.value = t("TXT_CODE_modpack_update_running");
-  stopPolling();
-  pollTimer = setInterval(async () => {
-    const { execute } = modpackTaskStatus();
-    try {
-      const res = await execute({
+// ---- Single start + non-overlapping polling, fenced to the current instance. ----
+const {
+  busy: taskRunning,
+  task,
+  failure: taskFailure,
+  start: startTask
+} = useOperationProgress(
+  targetKey,
+  async (taskId) =>
+    (
+      await modpackTaskStatus().execute({
         params: { daemonId, task_id: taskId },
         forceRequest: true
-      });
-      const task = res.value;
-      if (!task) {
-        stopPolling();
-        taskRunning.value = false;
-        onDone();
-        return;
-      }
-      if (task.phase) taskLabel.value = task.phase;
-      if (task.downloadProgress) taskProgress.value = task.downloadProgress.percentage || 0;
-      // status: 1 running, 0 stopped/done, -1 error
-      if (task.status !== 1) {
-        stopPolling();
-        taskRunning.value = false;
-        if (task.status === -1) {
-          reportErrorMsg(t("TXT_CODE_modpack_update_failed"));
-        } else {
-          onDone();
-        }
-      }
-    } catch (err: any) {
-      stopPolling();
-      taskRunning.value = false;
-      reportErrorMsg(err.message);
-    }
-  }, 1500);
-};
+      })
+    ).value
+);
 
 const runUpdate = async () => {
-  if (disposed || taskRunning.value || infoLoading.value || versionsLoading.value || !packInfo.value || !selectedVersion.value) return;
+  if (
+    disposed ||
+    taskRunning.value ||
+    infoLoading.value ||
+    versionsLoading.value ||
+    !packInfo.value ||
+    !selectedVersion.value
+  )
+    return;
   const selected = versions.value.find((v) => versionId(v) === selectedVersion.value);
   if (!selected || !isInstallable(selected)) return;
-  try {
-    let taskId = "";
-    if (isBedrock.value) {
-      // Reinstall the new Bedrock Dedicated Server, preserving the world.
-      const res = await reinstallServer().execute({
-        params: { daemonId, uuid: instanceId },
-        data: {
-          mcVersion: selectedVersion.value,
-          loader: "bedrock",
-          acceptEula: true,
-          resetMode: "preserve_world" as ResetMode
-        }
-      });
-      taskId = res.value?.taskId || "";
-    } else {
-      const chosen = versions.value.find((v) => versionId(v) === selectedVersion.value);
+  await startTask(
+    async () => {
+      if (isBedrock.value) {
+        // Reinstall the new Bedrock Dedicated Server, preserving the world.
+        const res = await reinstallServer().execute({
+          params: { daemonId, uuid: instanceId },
+          data: {
+            mcVersion: selectedVersion.value,
+            loader: "bedrock",
+            acceptEula: true,
+            resetMode: "preserve_world" as ResetMode
+          },
+          forceRequest: true
+        });
+        return res.value?.taskId || "";
+      }
       const res = await updateModpack().execute({
         params: { daemonId, uuid: instanceId },
         data: {
-          source: packInfo.value.source,
-          projectId: packInfo.value.projectId,
-          projectName: packInfo.value.projectName,
+          source: packInfo.value!.source,
+          projectId: packInfo.value!.projectId,
+          projectName: packInfo.value!.projectName,
           fileId: selectedVersion.value,
-          versionName: chosen ? versionLabel(chosen) : ""
-        }
+          versionName: versionLabel(selected)
+        },
+        forceRequest: true
       });
-      taskId = res.value?.taskId || "";
+      return res.value?.taskId || "";
+    },
+    {
+      onStarted: () => message.success(t("TXT_CODE_modpack_update_started")),
+      onSuccess: () => {
+        message.success(t("TXT_CODE_modpack_update_done"));
+        void loadInfo();
+      }
     }
-    if (!taskId) throw new Error(t("TXT_CODE_modpack_update_failed"));
-    message.success(t("TXT_CODE_modpack_update_started"));
-    pollTask(taskId, () => {
-      message.success(t("TXT_CODE_modpack_update_done"));
-      loadInfo();
-    });
-  } catch (err: any) {
-    reportErrorMsg(err.message);
-  }
+  );
 };
+
+watch(
+  targetKey,
+  () => {
+    instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
+    daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+    ++infoRequest;
+    ++versionsRequest;
+    versionsController?.abort();
+    ++changelogRequest;
+    packInfo.value = undefined;
+    versions.value = [];
+    selectedVersion.value = "";
+    changelogHtml.value = "";
+    changelogLoading.value = false;
+    versionsLoading.value = false;
+    void loadInfo();
+  },
+  { flush: "sync" }
+);
 
 onMounted(() => {
   loadInfo();
@@ -411,7 +441,6 @@ onBeforeUnmount(() => {
   ++versionsRequest;
   versionsController?.abort();
   ++changelogRequest;
-  stopPolling();
 });
 </script>
 
@@ -439,11 +468,15 @@ onBeforeUnmount(() => {
         </BetweenMenus>
       </a-col>
 
-      <a-col v-if="taskRunning" :span="24">
+      <a-col v-if="taskRunning || taskFailure" :span="24">
         <CardPanel>
           <template #body>
-            <div class="mb-8">{{ taskLabel }}</div>
-            <a-progress :percent="taskProgress" status="active" />
+            <OperationProgress
+              :task="task"
+              kind="update"
+              :label="t('TXT_CODE_modpack_update_running')"
+              :failure="taskFailure"
+            />
           </template>
         </CardPanel>
       </a-col>
@@ -478,12 +511,7 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <a-descriptions
-                  class="mt-16"
-                  :column="1"
-                  size="small"
-                  bordered
-                >
+                <a-descriptions class="mt-16" :column="1" size="small" bordered>
                   <a-descriptions-item :label="t('TXT_CODE_modpack_update_installed_ver')">
                     <TagOutlined />
                     {{ packInfo.versionName || "-" }}
@@ -531,7 +559,13 @@ onBeforeUnmount(() => {
                       <a-button
                         type="primary"
                         :loading="taskRunning"
-                        :disabled="!selectedVersion || isCurrentSelected || infoLoading || versionsLoading || taskRunning"
+                        :disabled="
+                          !selectedVersion ||
+                          isCurrentSelected ||
+                          infoLoading ||
+                          versionsLoading ||
+                          taskRunning
+                        "
                       >
                         <template #icon><CloudDownloadOutlined /></template>
                         {{ t("TXT_CODE_modpack_update_btn") }}
@@ -558,7 +592,11 @@ onBeforeUnmount(() => {
                     </a-typography-title>
                     <div class="mb-8">
                       <a-typography-text type="secondary">
-                        {{ t("TXT_CODE_modpack_changelog_selected", { version: selectedVersionLabel }) }}
+                        {{
+                          t("TXT_CODE_modpack_changelog_selected", {
+                            version: selectedVersionLabel
+                          })
+                        }}
                       </a-typography-text>
                     </div>
                     <div v-if="changelogLoading" class="release-notes-status" role="status">
@@ -619,11 +657,13 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   line-height: 1.6;
 
-  :deep(pre), :deep(code) {
+  :deep(pre),
+  :deep(code) {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
-  :deep(pre), :deep(blockquote) {
+  :deep(pre),
+  :deep(blockquote) {
     padding: 8px;
     background: var(--level-2-bg-color);
   }
@@ -632,7 +672,8 @@ onBeforeUnmount(() => {
     table-layout: fixed;
     border-collapse: collapse;
   }
-  :deep(th), :deep(td) {
+  :deep(th),
+  :deep(td) {
     border: 1px solid var(--color-gray-3);
     padding: 6px;
     vertical-align: top;

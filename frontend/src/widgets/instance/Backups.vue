@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { inject } from "vue";
+import { useRoute } from "vue-router";
 const embeddedInManageModal = inject<boolean>("embeddedInManageModal", false);
 import BetweenMenus from "@/components/BetweenMenus.vue";
 import CardPanel from "@/components/CardPanel.vue";
+import OperationProgress from "@/components/OperationProgress.vue";
+import { useOperationProgress } from "@/hooks/useOperationProgress";
 import { useAppRouters } from "@/hooks/useAppRouters";
-import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { getFileConfigAddr } from "@/hooks/useFileManager";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
@@ -31,7 +33,7 @@ import {
   SaveOutlined
 } from "@ant-design/icons-vue";
 import { message } from "ant-design-vue";
-import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
 const props = defineProps<{
   card: LayoutCard;
@@ -39,9 +41,17 @@ const props = defineProps<{
 
 const { isPhone } = useScreen();
 const { toPage } = useAppRouters();
-const { getMetaOrRouteValue } = useLayoutCardTools(props.card);
-const instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
-const daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+const route = useRoute();
+const getMetaOrRouteValue = (key: string) => props.card.meta[key] ?? route.query[key];
+let instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
+let daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+
+const targetKey = () =>
+  JSON.stringify([getMetaOrRouteValue("daemonId"), getMetaOrRouteValue("instanceId")]);
+let disposed = false;
+let targetGeneration = 0;
+let listRequest = 0;
+let configRequest = 0;
 
 const exclusionsDialog = ref<InstanceType<typeof BackupExclusions>>();
 
@@ -77,10 +87,14 @@ const configLoading = ref(false);
 const savingConfig = ref(false);
 
 const loadConfig = async () => {
+  const generation = targetGeneration;
+  const request = ++configRequest;
+  const current = () => !disposed && generation === targetGeneration && request === configRequest;
   const { execute } = getBackupConfig();
   try {
     configLoading.value = true;
     const res = await execute({ params: { daemonId, uuid: instanceId } });
+    if (!current()) return;
     if (res.value) {
       config.compress = res.value.compress;
       config.maxBackups = res.value.maxBackups;
@@ -90,13 +104,15 @@ const loadConfig = async () => {
       exclusionsText.value = (res.value.exclusions || []).join("\n");
     }
   } catch (err: any) {
-    reportErrorMsg(err.message);
+    if (current()) reportErrorMsg(err.message);
   } finally {
-    configLoading.value = false;
+    if (current()) configLoading.value = false;
   }
 };
 
 const saveConfig = async () => {
+  const generation = targetGeneration;
+  if (disposed || savingConfig.value) return;
   const { execute } = setBackupConfig();
   try {
     savingConfig.value = true;
@@ -115,11 +131,12 @@ const saveConfig = async () => {
         exclusions
       }
     });
-    message.success(t("TXT_CODE_backup_config_saved"));
+    if (!disposed && generation === targetGeneration)
+      message.success(t("TXT_CODE_backup_config_saved"));
   } catch (err: any) {
-    reportErrorMsg(err.message);
+    if (!disposed && generation === targetGeneration) reportErrorMsg(err.message);
   } finally {
-    savingConfig.value = false;
+    if (!disposed && generation === targetGeneration) savingConfig.value = false;
   }
 };
 
@@ -128,101 +145,76 @@ const backups = ref<BackupItem[]>([]);
 const listLoading = ref(false);
 
 const loadBackups = async () => {
+  const generation = targetGeneration;
+  const request = ++listRequest;
+  const current = () => !disposed && generation === targetGeneration && request === listRequest;
   const { execute } = backupList();
   try {
     listLoading.value = true;
     const res = await execute({ params: { daemonId, uuid: instanceId }, forceRequest: true });
-    backups.value = res.value || [];
+    if (current()) backups.value = res.value || [];
   } catch (err: any) {
-    reportErrorMsg(err.message);
+    if (current()) reportErrorMsg(err.message);
   } finally {
-    listLoading.value = false;
+    if (current()) listLoading.value = false;
   }
 };
 
-// ---- Task polling (shared by backup & restore) ----
-let pollTimer: ReturnType<typeof setInterval> | undefined;
-const taskRunning = ref(false);
-const taskProgress = ref(0);
-const taskLabel = ref("");
-
-const stopPolling = () => {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = undefined;
-  }
-};
-
-const pollTask = (taskId: string, label: string, onDone: () => void) => {
-  taskRunning.value = true;
-  taskProgress.value = 0;
-  taskLabel.value = label;
-  stopPolling();
-  pollTimer = setInterval(async () => {
-    const { execute } = backupTaskStatus();
-    try {
-      const res = await execute({
+// ---- Backup and restore share one operation, including the pending start request. ----
+const {
+  busy: taskRunning,
+  task,
+  failure: taskFailure,
+  start: startTask
+} = useOperationProgress(
+  targetKey,
+  async (taskId) =>
+    (
+      await backupTaskStatus().execute({
         params: { daemonId, uuid: instanceId, task_id: taskId },
         forceRequest: true
-      });
-      const task = res.value;
-      // No task found (already cleaned up) -> treat as finished
-      if (!task) {
-        stopPolling();
-        taskRunning.value = false;
-        onDone();
-        return;
-      }
-      if (task.progress) taskProgress.value = task.progress.percentage || 0;
-      // status: 1 running, 0 stopped, -1 error
-      if (task.status !== 1) {
-        stopPolling();
-        taskRunning.value = false;
-        if (task.status === -1) {
-          reportErrorMsg(t("TXT_CODE_backup_task_failed"));
-        }
-        onDone();
-      }
-    } catch (err: any) {
-      stopPolling();
-      taskRunning.value = false;
-      reportErrorMsg(err.message);
-    }
-  }, 1500);
-};
+      })
+    ).value
+);
+const taskLabel = ref("");
 
 const runBackup = async () => {
-  if (taskRunning.value) return;
-  const { execute } = createBackup();
-  try {
-    const res = await execute({ params: { daemonId, uuid: instanceId } });
-    if (!res.value?.taskId) throw new Error(t("TXT_CODE_backup_task_failed"));
-    message.success(t("TXT_CODE_backup_started"));
-    pollTask(res.value.taskId, t("TXT_CODE_backup_running_label"), () => {
-      message.success(t("TXT_CODE_backup_created"));
-      loadBackups();
-    });
-  } catch (err: any) {
-    reportErrorMsg(err.message);
-  }
+  if (disposed || taskRunning.value) return;
+  taskLabel.value = t("TXT_CODE_backup_running_label");
+  await startTask(
+    async () => {
+      const res = await createBackup().execute({
+        params: { daemonId, uuid: instanceId },
+        forceRequest: true
+      });
+      return res.value?.taskId || "";
+    },
+    {
+      onStarted: () => message.success(t("TXT_CODE_backup_started")),
+      onSuccess: () => {
+        message.success(t("TXT_CODE_backup_created"));
+        void loadBackups();
+      }
+    }
+  );
 };
 
 const restore = async (record: BackupItem) => {
-  if (taskRunning.value) return;
-  const { execute } = restoreBackup();
-  try {
-    const res = await execute({
-      params: { daemonId, uuid: instanceId },
-      data: { file_name: record.name }
-    });
-    if (!res.value?.taskId) throw new Error(t("TXT_CODE_backup_task_failed"));
-    message.loading({ content: t("TXT_CODE_backup_restoring"), key: "restore" });
-    pollTask(res.value.taskId, t("TXT_CODE_backup_restoring"), () => {
-      message.success({ content: t("TXT_CODE_backup_restore_done"), key: "restore" });
-    });
-  } catch (err: any) {
-    reportErrorMsg(err.message);
-  }
+  if (disposed || taskRunning.value) return;
+  taskLabel.value = t("TXT_CODE_backup_restoring");
+  await startTask(
+    async () => {
+      const res = await restoreBackup().execute({
+        params: { daemonId, uuid: instanceId },
+        data: { file_name: record.name },
+        forceRequest: true
+      });
+      return res.value?.taskId || "";
+    },
+    {
+      onSuccess: () => message.success(t("TXT_CODE_backup_restore_done"))
+    }
+  );
 };
 
 const remove = async (record: BackupItem) => {
@@ -250,13 +242,36 @@ const download = async (record: BackupItem) => {
   }
 };
 
+watch(
+  targetKey,
+  () => {
+    instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
+    daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+    ++targetGeneration;
+    backups.value = [];
+    savingConfig.value = false;
+    exclusionsText.value = "";
+    Object.assign(config, {
+      compress: true,
+      maxBackups: 0,
+      shutdown: false,
+      preCommand: "",
+      postCommand: ""
+    });
+    void loadConfig();
+    void loadBackups();
+  },
+  { flush: "sync" }
+);
+
 onMounted(() => {
   loadConfig();
   loadBackups();
 });
 
 onBeforeUnmount(() => {
-  stopPolling();
+  disposed = true;
+  ++targetGeneration;
 });
 </script>
 
@@ -286,11 +301,15 @@ onBeforeUnmount(() => {
         </BetweenMenus>
       </a-col>
 
-      <a-col v-if="taskRunning" :span="24">
+      <a-col v-if="taskRunning || taskFailure" :span="24">
         <CardPanel>
           <template #body>
-            <div class="mb-8">{{ taskLabel }}</div>
-            <a-progress :percent="taskProgress" status="active" />
+            <OperationProgress
+              :task="task"
+              kind="backup"
+              :label="taskLabel"
+              :failure="taskFailure"
+            />
           </template>
         </CardPanel>
       </a-col>

@@ -158,6 +158,7 @@ test("daemon select/overview/section/detail return configured endpoint independe
   Module._load = function(request, parent, main) {
     if (parent?.filename.endsWith("Instance_router.ts")) {
       if (request === "../service/game_endpoint") return endpoint;
+      if (request === "../service/metrics_service") return { __esModule: true, default: { getLiveInfo: (instance) => instance.info } };
       if (request === "fs-extra") return fs;
       if (request === "path") return path;
       if (request === "mcsmanager-common") return { arrayUnique: (a) => [...new Set(a)], toNumber: Number };
