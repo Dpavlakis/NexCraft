@@ -242,7 +242,7 @@ export interface ModpackTask extends OperationTask {
 // Read-only discovery: the daemon is the authority after navigation or a reload.
 export const activeModpackTask = useDefineApi<
   { params: { daemonId: string; uuid: string } },
-  ModpackTask | null
+  { task: ModpackTask | null }
 >({
   url: "/api/protected_modpack/active_task",
   method: "GET"

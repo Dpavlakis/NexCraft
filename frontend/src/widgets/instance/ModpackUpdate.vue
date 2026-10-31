@@ -424,12 +424,29 @@ const discoverActiveTask = async () => {
     ).value;
     if (!current()) return;
     if (pendingStart) return;
-    // Only an explicit null confirms idle. Missing, terminal or unrelated data is unsafe to attach.
-    if (result === null) return;
-    if (!result || !result.taskId || result.status !== 1 || result.instanceUuid !== params.uuid) {
+    // Only an explicit task: null confirms idle. Missing or malformed data remains locked.
+    if (
+      !result ||
+      typeof result !== "object" ||
+      Array.isArray(result) ||
+      !Object.prototype.hasOwnProperty.call(result, "task")
+    ) {
       throw new Error("Invalid active task response.");
     }
-    await attachTask(result, { onSuccess: completed });
+    const activeTask = result.task;
+    if (activeTask === null) return;
+    if (
+      !activeTask ||
+      typeof activeTask !== "object" ||
+      Array.isArray(activeTask) ||
+      typeof activeTask.taskId !== "string" ||
+      !activeTask.taskId ||
+      activeTask.status !== 1 ||
+      activeTask.instanceUuid !== params.uuid
+    ) {
+      throw new Error("Invalid active task response.");
+    }
+    await attachTask(activeTask, { onSuccess: completed });
   } catch {
     if (current()) discoveryFailed.value = true;
   } finally {

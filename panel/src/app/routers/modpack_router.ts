@@ -653,10 +653,12 @@ router.get(
     try {
       const daemonId = String(ctx.query.daemonId);
       const instanceUuid = String(ctx.query.uuid);
-      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+      const task = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
         "modpack/active_task",
         { instanceUuid }
       );
+      // The response protocol treats a bare null as failure; keep idle inside an object.
+      ctx.body = { task };
     } catch (err) {
       ctx.body = err;
     }

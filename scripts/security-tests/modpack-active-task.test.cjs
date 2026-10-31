@@ -260,13 +260,13 @@ test("panel validates required target and proxies exactly the selected daemon an
   remoteResult = { taskId: "existing", instanceUuid: "target", status: 1, phase: "download" };
   for (const [daemonId, uuid] of [["node-a", "target"], ["node-b", "other"]]) {
     const ctx = await request("active_task", ROLE.ADMIN, { daemonId, uuid, task_id: "ignored" });
-    assert.equal(ctx.body, remoteResult);
+    assert.deepEqual(ctx.body, { task: remoteResult });
     assert.deepEqual(calls, [{ daemonId }, {
       target: { daemonId }, event: "modpack/active_task", data: { instanceUuid: uuid }
     }]);
   }
   remoteResult = null;
-  assert.equal((await request("active_task", ROLE.ADMIN, { daemonId: "node-a", uuid: "target" })).body, null);
+  assert.deepEqual((await request("active_task", ROLE.ADMIN, { daemonId: "node-a", uuid: "target" })).body, { task: null });
   remoteError = new Error("instance missing");
   assert.equal((await request("active_task", ROLE.ADMIN, { daemonId: "node-a", uuid: "gone" })).body, remoteError);
   remoteError = undefined;
@@ -278,4 +278,86 @@ test("existing panel task_status remains USER-accessible with the same RPC paylo
   assert.deepEqual(calls, [{ daemonId: "node-a" }, {
     target: { daemonId: "node-a" }, event: "modpack/task_status", data: { taskId: "retained" }
   }]);
+});
+
+// Exercise the actual protocol middleware over HTTP; a plain ctx misses its null => 500 rule.
+const { once } = require("node:events");
+const securityErrors = loadTs("panel/src/app/service/security_error.ts", unexpected);
+const protocol = loadTs("panel/src/app/middleware/protocol.ts", (id) => {
+  if (id === "../service/security_error") return securityErrors;
+  if (id === "stream") return require("node:stream");
+  if (id === "../service/visual_data") return asDefault({ addRequestCount() {} });
+  if (id === "../setting") return { systemConfig: {} };
+  if (id === "../version") return { getVersion: () => "test" };
+  return unexpected(id);
+}).middleware;
+async function httpFixture(t) {
+  calls = [];
+  remoteResult = null;
+  remoteError = undefined;
+  const Koa = panelRequire("koa");
+  const app = new Koa();
+  app.use(protocol);
+  app.use(async (ctx, next) => {
+    ctx.session = { login: true, uuid: "user", userName: "user", token: "token" };
+    ctx.testUser = { permission: ROLE.ADMIN };
+    // Mount the same protected router beneath /api as in the panel.
+    ctx.url = ctx.url.replace(/^\/api/, "");
+    await next();
+  });
+  app.use(router.routes());
+  const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  t.after(() => new Promise((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
+  return async (query = { daemonId: "node-a", uuid: "target" }, key = "admin") => {
+    calls = [];
+    const url = new URL("/api/protected_modpack/active_task", "http://127.0.0.1:" + server.address().port);
+    url.search = new URLSearchParams(query).toString();
+    const response = await fetch(url, { headers: { "x-request-api-key": key } });
+    return { status: response.status, body: await response.json() };
+  };
+}
+
+test("active_task idle is HTTP 200 with explicit data.task null through the real protocol", async (t) => {
+  const get = await httpFixture(t);
+  const response = await get();
+  assert.equal(response.status, 200);
+  assert.equal(response.body.status, 200);
+  assert.deepEqual(response.body.data, { task: null });
+  assert.equal(typeof response.body.time, "number");
+  assert.deepEqual(calls, [{ daemonId: "node-a" }, {
+    target: { daemonId: "node-a" }, event: "modpack/active_task", data: { instanceUuid: "target" }
+  }]);
+});
+
+test("active_task HTTP preserves running tasks and does not turn errors or malformed results into idle", async (t) => {
+  const get = await httpFixture(t);
+  remoteResult = { taskId: "existing", instanceUuid: "target", status: 1, phase: "download" };
+  const running = await get();
+  assert.equal(running.status, 200);
+  assert.deepEqual(running.body.data, { task: remoteResult });
+
+  remoteError = new Error("daemon offline");
+  const offline = await get();
+  assert.equal(offline.status, 500);
+  assert.equal(offline.body.status, 500);
+  assert.equal(offline.body.data, "daemon offline");
+  remoteError = undefined;
+
+  const forbidden = await get(undefined, "user");
+  assert.equal(forbidden.status, 403);
+  assert.equal(forbidden.body.status, 403);
+  assert.deepEqual(calls, []);
+  const invalid = await get({ daemonId: "node-a" });
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.body.status, 400);
+  assert.deepEqual(calls, []);
+
+  for (const malformed of [undefined, {}, false, "invalid", []]) {
+    remoteResult = malformed;
+    const response = await get();
+    assert.equal(response.status, 200);
+    assert.notDeepEqual(response.body.data, { task: null });
+    assert.deepEqual(response.body.data, malformed === undefined ? {} : { task: malformed });
+  }
 });

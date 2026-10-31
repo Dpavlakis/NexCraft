@@ -1,0 +1,7 @@
+# Idle update discovery HTTP response — 2026-10-31
+
+The production Update Modpack screen shows an unavailable-task error on every valid idle instance. The daemon correctly returns null for no active update, but the panel assigns that directly to ctx.body. Its real protocol middleware treats empty bodies as failure, so the frontend never receives the explicit idle result it expects. Earlier route and browser fixtures bypassed that middleware behavior.
+
+Keep the daemon RPC and global protocol behavior unchanged. The admin-only GET active_task endpoint must return an object containing task, where task is null for a valid idle instance or the existing running-task snapshot. Frontend discovery must unwrap the explicit object and preserve fail-closed behavior for missing/malformed data, request/permission errors and mismatched instances. Preserve cancellation, pending-start protection, reattachment and read-only behavior. Other task-status endpoints, permissions, limits and update operations are outside this fix.
+
+Prove the previous null-body failure and corrected idle HTTP200 response through actual Koa and the protocol middleware. Cover active tasks, errors and permission boundaries. Update native frontend fixtures and regression cases for the real transport shape; empty results must not appear as updating or failed. Show an isolated native preview with Changed/Benefit/Status synopsis before rollout. This is a Web-only fix; the daemon wire contract is unchanged.

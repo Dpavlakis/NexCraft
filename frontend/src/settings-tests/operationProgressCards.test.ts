@@ -58,6 +58,9 @@ vi.mock("@/services/apis/modpack", () => ({
 import Backups from "@/widgets/instance/Backups.vue";
 import ModpackUpdate from "@/widgets/instance/ModpackUpdate.vue";
 import OperationProgress from "@/components/OperationProgress.vue";
+import type { ModpackTask } from "@/services/apis/modpack";
+
+const discovery = (task: ModpackTask | null) => ref<{ task: ModpackTask | null }>({ task });
 
 const pending = () => {
   let resolve!: (value: any) => void;
@@ -167,7 +170,7 @@ beforeEach(() => {
   for (const fn of [api.create, api.restore, api.update, api.reinstall])
     fn.mockResolvedValue(ref({ taskId: "job" }));
   api.backupStatus.mockResolvedValue(running());
-  api.activeTask.mockReset().mockResolvedValue(ref(null));
+  api.activeTask.mockReset().mockResolvedValue(discovery(null));
   api.updateStatus.mockResolvedValue(ref({ ...running("backup").value, instanceUuid: "alpha" }));
   vi.spyOn(message, "success").mockImplementation(() => ({}) as any);
 });
@@ -373,7 +376,7 @@ describe("update progress reconnect from the daemon", () => {
     const oldSignal = api.updateStatus.mock.calls[0][0].signal;
     unmount(original);
     expect(oldSignal.aborted).toBe(true);
-    api.activeTask.mockResolvedValue(ref(active()));
+    api.activeTask.mockResolvedValue(discovery(active()));
     api.updateStatus.mockResolvedValue(ref(active()));
     const reopened = create("update");
     await settle();
@@ -393,7 +396,7 @@ describe("update progress reconnect from the daemon", () => {
   it("discovers on a cold mount before slow instance, versions or changelog requests finish", async () => {
     const info = pending();
     api.info.mockReturnValueOnce(info.promise);
-    api.activeTask.mockResolvedValue(ref(active()));
+    api.activeTask.mockResolvedValue(discovery(active()));
     const wrapper = create("update");
     expect(api.activeTask).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       params: { daemonId: "node-a", uuid: "alpha" }, forceRequest: true,
@@ -408,7 +411,7 @@ describe("update progress reconnect from the daemon", () => {
     expectLocked(wrapper);
   });
 
-  it("locks during discovery, then explicit null permits a normal update", async () => {
+  it("locks during discovery, then explicit task null permits a normal update", async () => {
     const response = pending();
     api.activeTask.mockReturnValueOnce(response.promise);
     const wrapper = create("update");
@@ -416,7 +419,7 @@ describe("update progress reconnect from the daemon", () => {
     expectLocked(wrapper);
     await start(wrapper, "update");
     expect(api.update).not.toHaveBeenCalled();
-    response.resolve(ref(null));
+    response.resolve(discovery(null));
     await settle();
     expectLocked(wrapper, false);
     expect(wrapper.findComponent(OperationProgress).exists()).toBe(false);
@@ -424,9 +427,23 @@ describe("update progress reconnect from the daemon", () => {
     expect(api.update).toHaveBeenCalledTimes(1);
   });
 
+  it("accepts the serialized idle HTTP payload without a warning and starts only once", async () => {
+    // protocol.ts adds the outer status/data/time wrapper; apiService unwraps data once.
+    const wire = JSON.parse('{"status":200,"data":{"task":null},"time":1}');
+    api.activeTask.mockResolvedValue(ref(wire.data));
+    const wrapper = create("update");
+    await settle();
+    expectLocked(wrapper, false);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(api.updateStatus).not.toHaveBeenCalled();
+    await start(wrapper, "update");
+    await start(wrapper, "update");
+    expect(api.update).toHaveBeenCalledTimes(1);
+  });
+
   it.each(["versions", "changelog"] as const)("restores without waiting for slow %s", async (source) => {
     api[source].mockReturnValueOnce(pending().promise);
-    api.activeTask.mockResolvedValue(ref(active()));
+    api.activeTask.mockResolvedValue(discovery(active()));
     const wrapper = create("update");
     await settle();
     expect(wrapper.get("[data-percent]").text()).toBe("42%");
@@ -434,7 +451,7 @@ describe("update progress reconnect from the daemon", () => {
   });
 
   it("refreshes the installed pack exactly once on confirmed resumed completion", async () => {
-    api.activeTask.mockResolvedValue(ref(active()));
+    api.activeTask.mockResolvedValue(discovery(active()));
     api.updateStatus.mockResolvedValue(ref(active({ status: 0, progress: { completed: true } })));
     const wrapper = create("update");
     await settle();
@@ -452,7 +469,7 @@ describe("update progress reconnect from the daemon", () => {
 
   it("uses the same discovery and status endpoints for an existing Bedrock preserve-world installer", async () => {
     api.info.mockResolvedValue(ref({ config: { packInfo: { ...pack, source: "bedrock" } } }));
-    api.activeTask.mockResolvedValue(ref(active({ taskId: "installer-job" })));
+    api.activeTask.mockResolvedValue(discovery(active({ taskId: "installer-job" })));
     api.updateStatus.mockResolvedValue(ref(active({ taskId: "installer-job", progress: undefined,
       phase: "download", downloadProgress: { percentage: 63 } })));
     const wrapper = create("update");
@@ -468,10 +485,14 @@ describe("update progress reconnect from the daemon", () => {
     expect(api.update).not.toHaveBeenCalled();
   });
 
-  it.each([undefined, {}, { taskId: "job", status: 1 },
-    { taskId: "job", status: 1, instanceUuid: "beta" },
-    { taskId: "job", status: -1, instanceUuid: "alpha" },
-    { taskId: "job", status: 0, instanceUuid: "alpha" }])(
+  it.each([undefined, null, {}, [], false, "invalid", { task: undefined },
+    { task: false }, { task: [] }, { task: "invalid" }, { task: {} },
+    { taskId: "job", status: 1, instanceUuid: "alpha" },
+    { task: { taskId: "job", status: 1 } },
+    { task: { taskId: 42, status: 1, instanceUuid: "alpha" } },
+    { task: { taskId: "job", status: 1, instanceUuid: "beta" } },
+    { task: { taskId: "job", status: -1, instanceUuid: "alpha" } },
+    { task: { taskId: "job", status: 0, instanceUuid: "alpha" } }])(
     "fails closed for invalid, mismatched or terminal discovery %j until Refresh confirms idle", async (result) => {
       api.activeTask.mockResolvedValueOnce(ref(result));
       const wrapper = create("update");
@@ -482,7 +503,7 @@ describe("update progress reconnect from the daemon", () => {
       await start(wrapper, "update");
       expect(api.update).not.toHaveBeenCalled();
       expect(api.updateStatus).not.toHaveBeenCalled();
-      api.activeTask.mockResolvedValue(ref(null));
+      api.activeTask.mockResolvedValue(discovery(null));
       await refreshButton(wrapper).trigger("click");
       await settle();
       expectLocked(wrapper, false);
@@ -498,7 +519,7 @@ describe("update progress reconnect from the daemon", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe("TXT_CODE_operation_error_unavailable");
     await vi.advanceTimersByTimeAsync(30000);
     expect(api.activeTask).toHaveBeenCalledTimes(1);
-    api.activeTask.mockResolvedValue(ref(active()));
+    api.activeTask.mockResolvedValue(discovery(active()));
     await refreshButton(wrapper).trigger("click");
     await settle();
     expect(wrapper.get("[data-percent]").text()).toBe("42%");
@@ -520,7 +541,7 @@ describe("update progress reconnect from the daemon", () => {
       }));
     } else unmount(wrapper);
     expect(signal.aborted).toBe(true);
-    response.resolve(ref(active()));
+    response.resolve(discovery(active()));
     await settle();
     await vi.advanceTimersByTimeAsync(10000);
     expect(api.updateStatus).not.toHaveBeenCalled();
@@ -538,7 +559,7 @@ describe("update progress reconnect from the daemon", () => {
     await settle();
     await wrapper.setProps({ card: card() });
     await settle();
-    response.resolve(ref(active()));
+    response.resolve(discovery(active()));
     await settle();
     expectLocked(wrapper, false);
     expect(wrapper.findComponent(OperationProgress).exists()).toBe(false);
@@ -547,7 +568,7 @@ describe("update progress reconnect from the daemon", () => {
 
   it.each(["target", "unmount"])("ignores a late resumed completion after %s", async (change) => {
     const response = pending();
-    api.activeTask.mockResolvedValueOnce(ref(active()));
+    api.activeTask.mockResolvedValueOnce(discovery(active()));
     api.updateStatus.mockReturnValueOnce(response.promise);
     const wrapper = create("update");
     await settle();
@@ -570,7 +591,7 @@ describe("update progress reconnect from the daemon", () => {
     { taskId: "job", status: 0 }, { taskId: "job", status: 0, instanceUuid: "beta" },
     { taskId: "job", status: -1, instanceUuid: "alpha" }])(
     "never refreshes or reports success for a missing, mismatched or failed resumed poll %j", async (result) => {
-      api.activeTask.mockResolvedValue(ref(active()));
+      api.activeTask.mockResolvedValue(discovery(active()));
       api.updateStatus.mockResolvedValue(ref(result));
       const wrapper = create("update");
       await settle();
@@ -586,7 +607,7 @@ describe("update progress reconnect from the daemon", () => {
   );
 
   it("clears a resumed poll failure only after Refresh confirms null idle, without another write", async () => {
-    api.activeTask.mockResolvedValueOnce(ref(active()));
+    api.activeTask.mockResolvedValueOnce(discovery(active()));
     api.updateStatus.mockRejectedValueOnce(new Error("offline"));
     const wrapper = create("update");
     await settle();
@@ -594,7 +615,7 @@ describe("update progress reconnect from the daemon", () => {
     await settle();
     expectLocked(wrapper);
     expect(wrapper.get('[role="alert"]').text()).toBe("TXT_CODE_operation_error_unavailable");
-    api.activeTask.mockResolvedValue(ref(null));
+    api.activeTask.mockResolvedValue(discovery(null));
     await refreshButton(wrapper).trigger("click");
     await settle();
     expectLocked(wrapper, false);
@@ -625,12 +646,12 @@ describe("update progress reconnect from the daemon", () => {
   });
 
   it("coalesces Refresh discovery and replaces the old local poll without writes", async () => {
-    api.activeTask.mockResolvedValueOnce(ref(active()));
+    api.activeTask.mockResolvedValueOnce(discovery(active()));
     api.updateStatus.mockResolvedValue(ref(active()));
     const wrapper = create("update");
     await settle();
-    const discovery = pending();
-    api.activeTask.mockReturnValueOnce(discovery.promise);
+    const discoveryResponse = pending();
+    api.activeTask.mockReturnValueOnce(discoveryResponse.promise);
     const refresh = refreshButton(wrapper);
     await refresh.trigger("click");
     // Emit directly as well: duplicate handlers must still be harmless.
@@ -640,7 +661,7 @@ describe("update progress reconnect from the daemon", () => {
     expect(api.activeTask).toHaveBeenCalledTimes(2);
     expect(api.updateStatus).not.toHaveBeenCalled();
     expectLocked(wrapper);
-    discovery.resolve(ref(active({ progress: { phase: "apply", indeterminate: true } })));
+    discoveryResponse.resolve(discovery(active({ progress: { phase: "apply", indeterminate: true } })));
     await settle();
     expect(wrapper.text()).toContain("TXT_CODE_operation_phase_apply");
     await vi.advanceTimersByTimeAsync(1500);

@@ -615,7 +615,7 @@ function panelHarness(rows, query = updateQuery(), installedPack = pack, meta = 
       ...Object.fromEntries([
         "modpackVersions", "serverVersionsGet", "modpackChangelog", "modpackTaskStatus", "reinstallServer", "updateModpack"
       ].map((name) => [name, api(name)])),
-      activeModpackTask: () => ({ execute: async () => ({ value: null }) })
+      activeModpackTask: () => ({ execute: async () => ({ value: { task: null } }) })
     },
     "@/tools/instanceVersions": selection,
     "@/tools/validator": { reportErrorMsg() {} },
