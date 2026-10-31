@@ -1,4 +1,4 @@
-import type { OperationProgress } from "@/tools/operationProgress";
+import type { OperationTask } from "@/tools/operationProgress";
 import { useDefineApi } from "@/stores/useDefineApi";
 
 export interface ModpackHit {
@@ -235,19 +235,25 @@ export const installServer = useDefineApi<
   method: "POST"
 });
 
+export interface ModpackTask extends OperationTask {
+  instanceUuid?: string;
+}
+
+// Read-only discovery: the daemon is the authority after navigation or a reload.
+export const activeModpackTask = useDefineApi<
+  { params: { daemonId: string; uuid: string } },
+  ModpackTask | null
+>({
+  url: "/api/protected_modpack/active_task",
+  method: "GET"
+});
+
 // Poll a modpack install/update task
 export const modpackTaskStatus = useDefineApi<
   {
     params: { daemonId: string; task_id: string };
   },
-  {
-    taskId: string;
-    status: number; // 1 running, 0 stopped, -1 error
-    instanceUuid?: string;
-    phase?: string;
-    downloadProgress?: { percentage: number };
-    progress?: OperationProgress;
-  } | null
+  ModpackTask | null
 >({
   url: "/api/protected_modpack/task_status",
   method: "GET"

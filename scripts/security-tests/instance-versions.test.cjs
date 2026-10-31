@@ -560,12 +560,17 @@ function loadFrontendScript(relative, exposed, mocks, props = {}) {
 // Progress is a UI boundary here; the dedicated progress tests exercise the real poll lifecycle.
 // Still invoke create so native version guards must prevent unsafe update API calls.
 const operationProgressBoundary = {
-  useOperationProgress: () => ({
-    busy: { value: false },
-    task: { value: null },
-    failure: { value: undefined },
-    start: async (create) => { await create(); }
-  })
+  useOperationProgress: () => {
+    const busy = { value: false };
+    const task = { value: null };
+    const failure = { value: undefined };
+    return {
+      busy, task, failure,
+      start: async (create) => { await create(); },
+      attach: async (existing) => { busy.value = true; task.value = existing; },
+      reset: () => { busy.value = false; task.value = null; failure.value = undefined; }
+    };
+  }
 };
 
 const routeContext = { daemonId: "daemon-a", instanceId: "instance-a" };
@@ -595,7 +600,7 @@ function panelHarness(rows, query = updateQuery(), installedPack = pack, meta = 
     return { value: await loadRows(config, name) };
   } });
   const panel = loadFrontendScript("frontend/src/widgets/instance/ModpackUpdate.vue", [
-    "packInfo", "versions", "selectedVersion", "requestedVersion", "loadInfo", "loadVersions", "loadChangelog", "runUpdate"
+    "packInfo", "versions", "selectedVersion", "requestedVersion", "loadInfo", "loadVersions", "loadChangelog", "runUpdate", "discoverActiveTask"
   ], {
     vue: { ...vueBoundary, ref: (value) => ({ value }), inject: (_, fallback) => fallback, onMounted() {} },
     "vue-router": { useRoute: () => route },
@@ -606,9 +611,12 @@ function panelHarness(rows, query = updateQuery(), installedPack = pack, meta = 
     "@/hooks/useScreen": { useScreen: () => ({ isPhone: { value: false } }) },
     "@/lang/i18n": { t: (key) => key },
     "@/services/apis/instance": { getInstanceInfo: api("getInstanceInfo") },
-    "@/services/apis/modpack": Object.fromEntries([
-      "modpackVersions", "serverVersionsGet", "modpackChangelog", "modpackTaskStatus", "reinstallServer", "updateModpack"
-    ].map((name) => [name, api(name)])),
+    "@/services/apis/modpack": {
+      ...Object.fromEntries([
+        "modpackVersions", "serverVersionsGet", "modpackChangelog", "modpackTaskStatus", "reinstallServer", "updateModpack"
+      ].map((name) => [name, api(name)])),
+      activeModpackTask: () => ({ execute: async () => ({ value: null }) })
+    },
     "@/tools/instanceVersions": selection,
     "@/tools/validator": { reportErrorMsg() {} },
     "@ant-design/icons-vue": {},
@@ -620,6 +628,9 @@ function panelHarness(rows, query = updateQuery(), installedPack = pack, meta = 
     "@/components/OperationProgress.vue": {}
   }, { card: { meta } });
   panel.packInfo.value = installedPack;
+  // Settle the real idle-discovery guard; each case still controls its version requests.
+  // Otherwise unsafe-ID checks could pass solely because checkingActive never cleared.
+  void panel.discoverActiveTask();
   return { ...panel, context, route, requests, notes, updates };
 }
 

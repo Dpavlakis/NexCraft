@@ -305,3 +305,41 @@ describe("truthful stage presentation", () => {
     expect(wrapper.get('[role="alert"]').text()).toContain("TXT_CODE_operation_error_missing");
   });
 });
+
+
+describe("additive operation attachment", () => {
+  it("seeds the observed snapshot without starting a job and continues one non-overlapping poll", async () => {
+    const response = pending<OperationTask>();
+    const c = setup(vi.fn().mockReturnValue(response.promise));
+    const seed = running({ phase: "download", indeterminate: false, percentage: 42 });
+    await c.flow.attach(seed, c.callbacks);
+    expect(c.flow.busy.value).toBe(true);
+    expect(c.flow.task.value).toEqual(seed);
+    expect(c.onStarted).not.toHaveBeenCalled();
+    expect(c.read).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(c.read).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(c.read).toHaveBeenCalledTimes(1);
+    response.resolve({ taskId: "job", status: 0 });
+    await flushPromises();
+    expect(c.onSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("reset aborts an in-flight local read and fences its late success before reattachment", async () => {
+    const response = pending<OperationTask>();
+    const c = setup(vi.fn().mockReturnValueOnce(response.promise).mockResolvedValue(running()));
+    await c.flow.attach(running(), { onSuccess: c.onSuccess });
+    await vi.advanceTimersByTimeAsync(1500);
+    const signal = c.read.mock.calls[0][1] as AbortSignal;
+    c.flow.reset();
+    expect(signal.aborted).toBe(true);
+    await c.flow.attach(running({ phase: "apply" }), { onSuccess: c.onSuccess });
+    response.resolve({ taskId: "job", status: 0 });
+    await flushPromises();
+    expect(c.onSuccess).not.toHaveBeenCalled();
+    expect(c.flow.task.value?.progress?.phase).toBe("apply");
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(c.read).toHaveBeenCalledTimes(2);
+  });
+});

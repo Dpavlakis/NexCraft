@@ -56,6 +56,52 @@ routerApp.on("modpack/reinstall", (ctx, data) => {
   }
 });
 
+// Discover an existing update for this current instance without changing task state.
+routerApp.on("modpack/active_task", (ctx, data) => {
+  try {
+    const instanceUuid = data?.instanceUuid;
+    if (typeof instanceUuid !== "string" || !instanceUuid.trim())
+      throw new Error("instanceUuid is required and must be a non-empty string.");
+    const instance = InstanceSubsystem.getInstance(instanceUuid);
+    if (!instance || instance.instanceUuid !== instanceUuid)
+      throw new Error($t("TXT_CODE_backup.instanceNotExist"));
+
+    const task = TaskCenter.tasks.find((candidate) => {
+      if (
+        candidate.type !== ModpackUpdateTask.TYPE &&
+        candidate.type !== ModpackInstallTask.TYPE
+      )
+        return false;
+      const update = candidate as ModpackUpdateTask | ModpackInstallTask;
+      return (
+        update.instance === instance &&
+        update.instance.instanceUuid === instanceUuid &&
+        update.status() === 1 &&
+        (update.type === ModpackUpdateTask.TYPE ||
+          ((update as ModpackInstallTask).resetMode === "preserve_world" &&
+            update.descriptor.source === "bedrock"))
+      );
+    });
+    if (!task) {
+      protocol.response(ctx, null);
+      return;
+    }
+    // Install-task polling also contains instanceConfig; discovery only needs status/progress.
+    const snapshot = task.toObject();
+    protocol.response(ctx, {
+      taskId: snapshot.taskId,
+      status: snapshot.status,
+      instanceUuid: snapshot.instanceUuid,
+      instanceStatus: snapshot.instanceStatus,
+      phase: snapshot.phase,
+      progress: snapshot.progress,
+      downloadProgress: snapshot.downloadProgress
+    });
+  } catch (error: any) {
+    protocol.responseError(ctx, error);
+  }
+});
+
 // Poll a modpack install/update task
 routerApp.on("modpack/task_status", (ctx, data) => {
   try {
