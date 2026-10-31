@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
   update: vi.fn(),
   reinstall: vi.fn(),
   updateStatus: vi.fn(),
+  activeTask: vi.fn(),
   info: vi.fn(),
   versions: vi.fn(),
   publish: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock("@/services/apis/modpack", () => ({
   updateModpack: () => ({ execute: api.update }),
   reinstallServer: () => ({ execute: api.reinstall }),
   modpackTaskStatus: () => ({ execute: api.updateStatus }),
+  activeModpackTask: () => ({ execute: api.activeTask }),
   modpackVersions: () => ({ execute: api.versions }),
   serverVersionsGet: () => ({ execute: api.serverVersions }),
   modpackChangelog: () => ({ execute: api.changelog })
@@ -94,7 +96,7 @@ const create = (kind: "backup" | "update", value = card()) => {
       renderStubDefaultSlot: true,
       stubs: {
         OperationProgress: false,
-        ASelect: { name: "ASelect", props: ["children", "value", "loading", "options"], template: "<div/>" },
+        ASelect: { name: "ASelect", props: ["children", "value", "loading", "options", "disabled"], template: "<div/>" },
         APopconfirm: { name: "APopconfirm", props: ["children"], template: "<div><slot/></div>" },
         CardPanel: { template: '<section><slot name="title"/><slot name="body"/></section>' },
         BetweenMenus: { template: '<nav><slot name="left"/><slot name="right"/></nav>' },
@@ -165,7 +167,8 @@ beforeEach(() => {
   for (const fn of [api.create, api.restore, api.update, api.reinstall])
     fn.mockResolvedValue(ref({ taskId: "job" }));
   api.backupStatus.mockResolvedValue(running());
-  api.updateStatus.mockResolvedValue(running("backup"));
+  api.activeTask.mockReset().mockResolvedValue(ref(null));
+  api.updateStatus.mockResolvedValue(ref({ ...running("backup").value, instanceUuid: "alpha" }));
   vi.spyOn(message, "success").mockImplementation(() => ({}) as any);
 });
 afterEach(() => {
@@ -203,7 +206,7 @@ describe.each(["backup", "update"] as const)("native %s progress consumer", (kin
   it.each([null, { taskId: "job", status: -1 }])(
     "never reports success or refreshes info/list for %j",
     async (task) => {
-      status().mockResolvedValue(ref(task));
+      status().mockResolvedValue(ref(task && { ...task, instanceUuid: "alpha" }));
       const wrapper = create(kind);
       await settle();
       expect(reads()).toHaveBeenCalledTimes(1);
@@ -220,9 +223,9 @@ describe.each(["backup", "update"] as const)("native %s progress consumer", (kin
 
   it("refreshes only after confirmed task success", async () => {
     status()
-      .mockResolvedValueOnce(running())
+      .mockResolvedValueOnce(ref({ ...running().value, instanceUuid: "alpha" }))
       .mockResolvedValueOnce(
-        ref({ taskId: "job", status: 0, progress: { phase: "done", completed: true } })
+        ref({ taskId: "job", instanceUuid: "alpha", status: 0, progress: { phase: "done", completed: true } })
       );
     const wrapper = create(kind);
     await settle();
@@ -338,5 +341,312 @@ describe("version snapshot publication from the update card", () => {
     late.resolve(ref([old]));
     await settle();
     expect(api.publish).toHaveBeenCalledTimes(change === "target replacement" ? 1 : 0);
+  });
+});
+
+
+describe("update progress reconnect from the daemon", () => {
+  const active = (overrides = {}) => ({
+    ...running("download").value,
+    instanceUuid: "alpha",
+    progress: { phase: "download", indeterminate: false, percentage: 42 },
+    ...overrides
+  });
+  const updateButton = (wrapper: VueWrapper) =>
+    wrapper.findAll("button").find((b) => b.text() === "TXT_CODE_modpack_update_btn")!;
+  const refreshButton = (wrapper: VueWrapper) =>
+    wrapper.findAll("button").find((b) => b.text() === "TXT_CODE_b76d94e0")!;
+  const expectLocked = (wrapper: VueWrapper, locked = true) => {
+    expect(updateButton(wrapper).attributes("disabled") !== undefined).toBe(locked);
+    expect(wrapper.findComponent({ name: "ASelect" }).props("disabled")).toBe(locked);
+  };
+  const unmount = (wrapper: VueWrapper) => {
+    wrappers.splice(wrappers.indexOf(wrapper), 1);
+    wrapper.unmount();
+  };
+
+  it("starts once, unmounts, and restores the same job on reopen without another POST or started toast", async () => {
+    const original = create("update");
+    await settle();
+    await start(original, "update");
+    expect(api.update).toHaveBeenCalledTimes(1);
+    const oldSignal = api.updateStatus.mock.calls[0][0].signal;
+    unmount(original);
+    expect(oldSignal.aborted).toBe(true);
+    api.activeTask.mockResolvedValue(ref(active()));
+    api.updateStatus.mockResolvedValue(ref(active()));
+    const reopened = create("update");
+    await settle();
+    expect(reopened.get("[data-percent]").text()).toBe("42%");
+    expect(reopened.text()).toContain("TXT_CODE_operation_phase_download");
+    expectLocked(reopened);
+    await start(reopened, "update");
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(api.update).toHaveBeenCalledTimes(1);
+    expect(api.updateStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      params: { daemonId: "node-a", task_id: "job" }, forceRequest: true
+    }));
+    expect(vi.mocked(message.success).mock.calls.filter(([key]) => key === "TXT_CODE_modpack_update_started")).toHaveLength(1);
+    expect(api.reinstall).not.toHaveBeenCalled();
+  });
+
+  it("discovers on a cold mount before slow instance, versions or changelog requests finish", async () => {
+    const info = pending();
+    api.info.mockReturnValueOnce(info.promise);
+    api.activeTask.mockResolvedValue(ref(active()));
+    const wrapper = create("update");
+    expect(api.activeTask).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      params: { daemonId: "node-a", uuid: "alpha" }, forceRequest: true,
+      timeout: 30000, signal: expect.any(AbortSignal)
+    }));
+    await settle();
+    expect(wrapper.get("[data-percent]").text()).toBe("42%");
+    expect(api.versions).not.toHaveBeenCalled();
+    expect(api.update).not.toHaveBeenCalled();
+    info.resolve(ref({ config: { packInfo: pack } }));
+    await settle();
+    expectLocked(wrapper);
+  });
+
+  it("locks during discovery, then explicit null permits a normal update", async () => {
+    const response = pending();
+    api.activeTask.mockReturnValueOnce(response.promise);
+    const wrapper = create("update");
+    await settle();
+    expectLocked(wrapper);
+    await start(wrapper, "update");
+    expect(api.update).not.toHaveBeenCalled();
+    response.resolve(ref(null));
+    await settle();
+    expectLocked(wrapper, false);
+    expect(wrapper.findComponent(OperationProgress).exists()).toBe(false);
+    await start(wrapper, "update");
+    expect(api.update).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["versions", "changelog"] as const)("restores without waiting for slow %s", async (source) => {
+    api[source].mockReturnValueOnce(pending().promise);
+    api.activeTask.mockResolvedValue(ref(active()));
+    const wrapper = create("update");
+    await settle();
+    expect(wrapper.get("[data-percent]").text()).toBe("42%");
+    expectLocked(wrapper);
+  });
+
+  it("refreshes the installed pack exactly once on confirmed resumed completion", async () => {
+    api.activeTask.mockResolvedValue(ref(active()));
+    api.updateStatus.mockResolvedValue(ref(active({ status: 0, progress: { completed: true } })));
+    const wrapper = create("update");
+    await settle();
+    expect(api.info).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1500);
+    await settle();
+    expect(api.info).toHaveBeenCalledTimes(2);
+    expect(message.success).toHaveBeenCalledExactlyOnceWith("TXT_CODE_modpack_update_done");
+    expectLocked(wrapper, false);
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(api.updateStatus).toHaveBeenCalledTimes(1);
+    expect(api.info).toHaveBeenCalledTimes(2);
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it("uses the same discovery and status endpoints for an existing Bedrock preserve-world installer", async () => {
+    api.info.mockResolvedValue(ref({ config: { packInfo: { ...pack, source: "bedrock" } } }));
+    api.activeTask.mockResolvedValue(ref(active({ taskId: "installer-job" })));
+    api.updateStatus.mockResolvedValue(ref(active({ taskId: "installer-job", progress: undefined,
+      phase: "download", downloadProgress: { percentage: 63 } })));
+    const wrapper = create("update");
+    await settle();
+    expectLocked(wrapper);
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(wrapper.get("[data-percent]").text()).toBe("63%");
+    expect(api.updateStatus).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      params: { daemonId: "node-a", task_id: "installer-job" }
+    }));
+    expect(api.activeTask).toHaveBeenCalledTimes(1);
+    expect(api.reinstall).not.toHaveBeenCalled();
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, {}, { taskId: "job", status: 1 },
+    { taskId: "job", status: 1, instanceUuid: "beta" },
+    { taskId: "job", status: -1, instanceUuid: "alpha" },
+    { taskId: "job", status: 0, instanceUuid: "alpha" }])(
+    "fails closed for invalid, mismatched or terminal discovery %j until Refresh confirms idle", async (result) => {
+      api.activeTask.mockResolvedValueOnce(ref(result));
+      const wrapper = create("update");
+      await settle();
+      expectLocked(wrapper);
+      expect(wrapper.get('[role="alert"]').text()).toBe("TXT_CODE_operation_error_unavailable");
+      expect(message.success).not.toHaveBeenCalled();
+      await start(wrapper, "update");
+      expect(api.update).not.toHaveBeenCalled();
+      expect(api.updateStatus).not.toHaveBeenCalled();
+      api.activeTask.mockResolvedValue(ref(null));
+      await refreshButton(wrapper).trigger("click");
+      await settle();
+      expectLocked(wrapper, false);
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    }
+  );
+
+  it("shows a localized discovery transport error and retries only on Refresh", async () => {
+    api.activeTask.mockRejectedValueOnce(new Error("offline"));
+    const wrapper = create("update");
+    await settle();
+    expectLocked(wrapper);
+    expect(wrapper.get('[role="alert"]').text()).toBe("TXT_CODE_operation_error_unavailable");
+    await vi.advanceTimersByTimeAsync(30000);
+    expect(api.activeTask).toHaveBeenCalledTimes(1);
+    api.activeTask.mockResolvedValue(ref(active()));
+    await refreshButton(wrapper).trigger("click");
+    await settle();
+    expect(wrapper.get("[data-percent]").text()).toBe("42%");
+    expectLocked(wrapper);
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it.each(["target", "unmount"])("aborts and ignores late discovery after %s", async (change) => {
+    const response = pending();
+    api.activeTask.mockReturnValueOnce(response.promise);
+    const wrapper = create("update");
+    await settle();
+    const signal = api.activeTask.mock.calls[0][0].signal;
+    if (change === "target") {
+      await wrapper.setProps({ card: card({ instanceId: "beta", daemonId: "node-b" }) });
+      await settle();
+      expect(api.activeTask).toHaveBeenLastCalledWith(expect.objectContaining({
+        params: { daemonId: "node-b", uuid: "beta" }
+      }));
+    } else unmount(wrapper);
+    expect(signal.aborted).toBe(true);
+    response.resolve(ref(active()));
+    await settle();
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(api.updateStatus).not.toHaveBeenCalled();
+    expect(api.update).not.toHaveBeenCalled();
+    expect(message.success).not.toHaveBeenCalled();
+    if (change === "target") expectLocked(wrapper, false);
+  });
+
+  it("ignores late discovery even after the target changes away and back", async () => {
+    const response = pending();
+    api.activeTask.mockReturnValueOnce(response.promise);
+    const wrapper = create("update");
+    await settle();
+    await wrapper.setProps({ card: card({ instanceId: "beta", daemonId: "node-a" }) });
+    await settle();
+    await wrapper.setProps({ card: card() });
+    await settle();
+    response.resolve(ref(active()));
+    await settle();
+    expectLocked(wrapper, false);
+    expect(wrapper.findComponent(OperationProgress).exists()).toBe(false);
+    expect(api.activeTask).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["target", "unmount"])("ignores a late resumed completion after %s", async (change) => {
+    const response = pending();
+    api.activeTask.mockResolvedValueOnce(ref(active()));
+    api.updateStatus.mockReturnValueOnce(response.promise);
+    const wrapper = create("update");
+    await settle();
+    await vi.advanceTimersByTimeAsync(1500);
+    const signal = api.updateStatus.mock.calls[0][0].signal;
+    if (change === "target") {
+      await wrapper.setProps({ card: card({ instanceId: "beta", daemonId: "node-b" }) });
+      await settle();
+    } else unmount(wrapper);
+    expect(signal.aborted).toBe(true);
+    response.resolve(ref(active({ status: 0, progress: { completed: true } })));
+    await settle();
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(message.success).not.toHaveBeenCalled();
+    expect(api.info).toHaveBeenCalledTimes(change === "target" ? 2 : 1);
+    expect(api.updateStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([null, { taskId: "other", status: 0, instanceUuid: "alpha" },
+    { taskId: "job", status: 0 }, { taskId: "job", status: 0, instanceUuid: "beta" },
+    { taskId: "job", status: -1, instanceUuid: "alpha" }])(
+    "never refreshes or reports success for a missing, mismatched or failed resumed poll %j", async (result) => {
+      api.activeTask.mockResolvedValue(ref(active()));
+      api.updateStatus.mockResolvedValue(ref(result));
+      const wrapper = create("update");
+      await settle();
+      await vi.advanceTimersByTimeAsync(1500);
+      await settle();
+      expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+      expectLocked(wrapper);
+      expect(message.success).not.toHaveBeenCalled();
+      expect(api.info).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(api.updateStatus).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it("clears a resumed poll failure only after Refresh confirms null idle, without another write", async () => {
+    api.activeTask.mockResolvedValueOnce(ref(active()));
+    api.updateStatus.mockRejectedValueOnce(new Error("offline"));
+    const wrapper = create("update");
+    await settle();
+    await vi.advanceTimersByTimeAsync(1500);
+    await settle();
+    expectLocked(wrapper);
+    expect(wrapper.get('[role="alert"]').text()).toBe("TXT_CODE_operation_error_unavailable");
+    api.activeTask.mockResolvedValue(ref(null));
+    await refreshButton(wrapper).trigger("click");
+    await settle();
+    expectLocked(wrapper, false);
+    expect(wrapper.findComponent(OperationProgress).exists()).toBe(false);
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(api.updateStatus).toHaveBeenCalledTimes(1);
+    expect(api.update).not.toHaveBeenCalled();
+    expect(api.reinstall).not.toHaveBeenCalled();
+    expect(message.success).not.toHaveBeenCalled();
+  });
+
+  it("keeps a pending update POST locked when Refresh discovers no task yet", async () => {
+    const post = pending();
+    api.update.mockReturnValueOnce(post.promise);
+    const wrapper = create("update");
+    await settle();
+    await start(wrapper, "update");
+    await refreshButton(wrapper).trigger("click");
+    await settle();
+    expect(api.activeTask).toHaveBeenCalledTimes(2);
+    expectLocked(wrapper);
+    await start(wrapper, "update");
+    expect(api.update).toHaveBeenCalledTimes(1);
+    post.resolve(ref({ taskId: "job" }));
+    await settle();
+    expect(api.updateStatus).toHaveBeenCalledTimes(1);
+    expectLocked(wrapper);
+  });
+
+  it("coalesces Refresh discovery and replaces the old local poll without writes", async () => {
+    api.activeTask.mockResolvedValueOnce(ref(active()));
+    api.updateStatus.mockResolvedValue(ref(active()));
+    const wrapper = create("update");
+    await settle();
+    const discovery = pending();
+    api.activeTask.mockReturnValueOnce(discovery.promise);
+    const refresh = refreshButton(wrapper);
+    await refresh.trigger("click");
+    // Emit directly as well: duplicate handlers must still be harmless.
+    refresh.element.dispatchEvent(new Event("click", { bubbles: true }));
+    await settle();
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(api.activeTask).toHaveBeenCalledTimes(2);
+    expect(api.updateStatus).not.toHaveBeenCalled();
+    expectLocked(wrapper);
+    discovery.resolve(ref(active({ progress: { phase: "apply", indeterminate: true } })));
+    await settle();
+    expect(wrapper.text()).toContain("TXT_CODE_operation_phase_apply");
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(api.updateStatus).toHaveBeenCalledTimes(1);
+    expect(api.update).not.toHaveBeenCalled();
+    expect(api.reinstall).not.toHaveBeenCalled();
+    expect(message.success).not.toHaveBeenCalled();
   });
 });

@@ -644,6 +644,25 @@ router.post(
   }
 );
 
+// Discover an existing update for one instance; match the update endpoint's admin gate.
+router.get(
+  "/active_task",
+  permission({ level: ROLE.ADMIN }),
+  validator({ query: { daemonId: String, uuid: String } }),
+  async (ctx) => {
+    try {
+      const daemonId = String(ctx.query.daemonId);
+      const instanceUuid = String(ctx.query.uuid);
+      ctx.body = await new RemoteRequest(RemoteServiceSubsystem.getInstance(daemonId)).request(
+        "modpack/active_task",
+        { instanceUuid }
+      );
+    } catch (err) {
+      ctx.body = err;
+    }
+  }
+);
+
 // Poll a modpack install/update task
 router.get(
   "/task_status",

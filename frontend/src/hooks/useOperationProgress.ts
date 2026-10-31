@@ -6,7 +6,7 @@ export type OperationFailure = "start" | "missing" | "failed" | "unavailable";
 // Owns a single start + recursive poll chain. Writes are never retried automatically.
 export function useOperationProgress<T extends OperationTask>(
   target: () => string,
-  read: (taskId: string) => Promise<T | null | undefined>,
+  read: (taskId: string, signal?: AbortSignal) => Promise<T | null | undefined>,
   interval = 1500
 ) {
   const busy = ref(false);
@@ -15,9 +15,12 @@ export function useOperationProgress<T extends OperationTask>(
   let generation = 0;
   let disposed = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let controller: AbortController | undefined;
 
   const invalidate = () => {
     ++generation;
+    controller?.abort();
+    controller = undefined;
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
     busy.value = false;
@@ -30,19 +33,23 @@ export function useOperationProgress<T extends OperationTask>(
     invalidate();
   });
 
-  const start = async (
+  type Callbacks = {
+    onStarted?: () => void;
+    onSuccess: (task: T) => void;
+    onFailure?: (reason: OperationFailure, error?: unknown) => void;
+  };
+  const run = async (
     create: () => Promise<string>,
-    callbacks: {
-      onStarted?: () => void;
-      onSuccess: (task: T) => void;
-      onFailure?: (reason: OperationFailure, error?: unknown) => void;
-    }
+    callbacks: Callbacks,
+    existing?: T
   ) => {
     if (disposed || busy.value) return;
     invalidate();
     const ownGeneration = generation;
     const ownTarget = target();
     const current = () => !disposed && generation === ownGeneration && target() === ownTarget;
+    controller = new AbortController();
+    const signal = controller.signal;
     busy.value = true; // Synchronous: includes the pending POST, before the first await.
     const fail = (reason: OperationFailure, error?: unknown) => {
       if (!current()) return;
@@ -62,13 +69,15 @@ export function useOperationProgress<T extends OperationTask>(
       fail("start", error);
       return;
     }
-    callbacks.onStarted?.();
+    if (!existing) callbacks.onStarted?.();
 
     const poll = async () => {
       if (!current()) return;
       let result: T | null | undefined;
       try {
-        result = await read(taskId);
+        // Discovery already supplied the first snapshot. Continue with the same poll chain.
+        result = existing ?? (await read(taskId, signal));
+        existing = undefined;
       } catch (error) {
         fail("unavailable", error);
         return;
@@ -90,5 +99,9 @@ export function useOperationProgress<T extends OperationTask>(
     };
     await poll();
   };
-  return { busy, task, failure, start };
+  const start = (create: () => Promise<string>, callbacks: Callbacks) => run(create, callbacks);
+  // Attaching only observes an existing task and never emits the start notification.
+  const attach = (existing: T, callbacks: Omit<Callbacks, "onStarted">) =>
+    run(async () => existing.taskId, callbacks, existing);
+  return { busy, task, failure, start, attach, reset: invalidate };
 }

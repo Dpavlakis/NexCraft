@@ -17,6 +17,7 @@ import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
 import { getInstanceInfo } from "@/services/apis/instance";
 import {
+  activeModpackTask,
   modpackChangelog,
   modpackVersions,
   modpackTaskStatus,
@@ -332,7 +333,10 @@ watch(
 
 const refresh = async () => {
   const request = changelogRequest;
+  // Discovery starts immediately, independently of version and release-note requests.
+  const discovery = discoverActiveTask();
   await loadInfo();
+  await discovery;
   // Selection changes already trigger the watcher; refresh unchanged notes explicitly.
   if (!disposed && request === changelogRequest) await loadChangelog();
 };
@@ -347,23 +351,99 @@ const formatTime = (ms?: number) => (ms ? new Date(ms).toLocaleString() : "-");
 const {
   busy: taskRunning,
   task,
-  failure: taskFailure,
-  start: startTask
+  failure: pollFailure,
+  start: startTask,
+  attach: attachTask,
+  reset: resetTask
 } = useOperationProgress(
   targetKey,
-  async (taskId) =>
-    (
+  async (taskId, signal) => {
+    const ownDaemonId = daemonId;
+    const ownInstanceId = instanceId;
+    const result = (
       await modpackTaskStatus().execute({
-        params: { daemonId, task_id: taskId },
-        forceRequest: true
+        params: { daemonId: ownDaemonId, task_id: taskId },
+        signal,
+        forceRequest: true,
+        timeout: INSTANCE_VERSIONS_TIMEOUT
       })
-    ).value
+    ).value;
+    if (result && result.instanceUuid !== ownInstanceId) {
+      throw new Error("Task does not belong to the current instance.");
+    }
+    return result;
+  }
 );
+
+const checkingActive = ref(true);
+const discoveryFailed = ref(false);
+const taskFailure = computed(() =>
+  discoveryFailed.value ? "unavailable" : pollFailure.value
+);
+const operationLocked = computed(
+  () => checkingActive.value || taskRunning.value || !!taskFailure.value
+);
+let discoveryRequest = 0;
+let discoveryController: AbortController | undefined;
+
+const completed = () => {
+  message.success(t("TXT_CODE_modpack_update_done"));
+  void loadInfo();
+};
+
+const invalidateDiscovery = () => {
+  ++discoveryRequest;
+  discoveryController?.abort();
+  discoveryController = undefined;
+  checkingActive.value = true;
+  discoveryFailed.value = false;
+  resetTask();
+};
+
+const discoverActiveTask = async () => {
+  if (disposed || discoveryController) return;
+  const request = ++discoveryRequest;
+  const ownTarget = targetKey();
+  const params = { daemonId, uuid: instanceId };
+  const current = () => !disposed && request === discoveryRequest && targetKey() === ownTarget;
+  const controller = (discoveryController = new AbortController());
+  // A Refresh during a pending start must never release that synchronous write lock.
+  const pendingStart = taskRunning.value && !task.value;
+  checkingActive.value = true;
+  discoveryFailed.value = false;
+  if (!pendingStart) resetTask();
+  try {
+    if (!params.daemonId || !params.uuid) throw new Error("Missing instance target.");
+    const result = (
+      await activeModpackTask().execute({
+        params,
+        forceRequest: true,
+        timeout: INSTANCE_VERSIONS_TIMEOUT,
+        signal: controller.signal
+      })
+    ).value;
+    if (!current()) return;
+    if (pendingStart) return;
+    // Only an explicit null confirms idle. Missing, terminal or unrelated data is unsafe to attach.
+    if (result === null) return;
+    if (!result || !result.taskId || result.status !== 1 || result.instanceUuid !== params.uuid) {
+      throw new Error("Invalid active task response.");
+    }
+    await attachTask(result, { onSuccess: completed });
+  } catch {
+    if (current()) discoveryFailed.value = true;
+  } finally {
+    if (current()) {
+      checkingActive.value = false;
+      discoveryController = undefined;
+    }
+  }
+};
 
 const runUpdate = async () => {
   if (
     disposed ||
-    taskRunning.value ||
+    operationLocked.value ||
     infoLoading.value ||
     versionsLoading.value ||
     !packInfo.value ||
@@ -403,10 +483,7 @@ const runUpdate = async () => {
     },
     {
       onStarted: () => message.success(t("TXT_CODE_modpack_update_started")),
-      onSuccess: () => {
-        message.success(t("TXT_CODE_modpack_update_done"));
-        void loadInfo();
-      }
+      onSuccess: completed
     }
   );
 };
@@ -416,6 +493,8 @@ watch(
   () => {
     instanceId = String(getMetaOrRouteValue("instanceId") ?? "");
     daemonId = String(getMetaOrRouteValue("daemonId") ?? "");
+    invalidateDiscovery();
+    void discoverActiveTask();
     ++infoRequest;
     ++versionsRequest;
     versionsController?.abort();
@@ -432,11 +511,13 @@ watch(
 );
 
 onMounted(() => {
-  loadInfo();
+  void discoverActiveTask();
+  void loadInfo();
 });
 
 onBeforeUnmount(() => {
   disposed = true;
+  invalidateDiscovery();
   ++infoRequest;
   ++versionsRequest;
   versionsController?.abort();
@@ -460,7 +541,7 @@ onBeforeUnmount(() => {
               <template #icon><RollbackOutlined /></template>
               {{ t("TXT_CODE_backup_to_console") }}
             </a-button>
-            <a-button :disabled="!isUpdatable" :loading="versionsLoading" @click="refresh">
+            <a-button :loading="checkingActive || versionsLoading" @click="refresh">
               <template #icon><ReloadOutlined /></template>
               {{ t("TXT_CODE_b76d94e0") }}
             </a-button>
@@ -468,7 +549,7 @@ onBeforeUnmount(() => {
         </BetweenMenus>
       </a-col>
 
-      <a-col v-if="taskRunning || taskFailure" :span="24">
+      <a-col v-if="checkingActive || taskRunning || taskFailure" :span="24">
         <CardPanel>
           <template #body>
             <OperationProgress
@@ -540,6 +621,7 @@ onBeforeUnmount(() => {
                   <a-space :size="8" wrap style="width: 100%">
                     <a-select
                       v-model:value="selectedVersion"
+                      :disabled="operationLocked"
                       :loading="versionsLoading"
                       :options="versionOptions"
                       :placeholder="t('TXT_CODE_modpack_update_pick')"
@@ -564,7 +646,7 @@ onBeforeUnmount(() => {
                           isCurrentSelected ||
                           infoLoading ||
                           versionsLoading ||
-                          taskRunning
+                          operationLocked
                         "
                       >
                         <template #icon><CloudDownloadOutlined /></template>
