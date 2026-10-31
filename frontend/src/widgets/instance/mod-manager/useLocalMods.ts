@@ -6,7 +6,7 @@ import {
   toggleModApi
 } from "@/services/apis/modManager";
 import { message } from "ant-design-vue";
-import { computed, onUnmounted, reactive, ref, watch } from "vue";
+import { onUnmounted, reactive, ref, watch } from "vue";
 
 export function useLocalMods(
   instanceId: string,
@@ -26,6 +26,15 @@ export function useLocalMods(
   const fileStatus = ref<any>({});
   const totalMods = ref(0);
   const currentFolder = ref<string | undefined>(undefined);
+  const headerSearchQuery = ref("");
+  let disposed = false;
+  let listActive = true;
+  let epoch = 0;
+  let controller: AbortController | undefined;
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
+  // Only enrich the returned page. Retain a bounded hash cache across page/refresh changes.
+  const extraInfoCache = new Map<string, any>();
 
   const tablePagination = reactive({
     current: 1,
@@ -33,114 +42,152 @@ export function useLocalMods(
     total: 0,
     showSizeChanger: true,
     size: "large",
-    pageSizeOptions: ["10", "20", "50"],
-    showTotal: (total: number) => t("TXT_CODE_TOTAL_ITEMS", { total }),
-    onChange: (page: number, size: number) => {
-      tablePagination.current = page;
-      tablePagination.pageSize = size;
-      loadMods(currentFolder.value);
-    },
-    onShowSizeChange: (current: number, size: number) => {
-      tablePagination.pageSize = size;
-      tablePagination.current = 1;
-      loadMods(currentFolder.value);
-    }
+    pageSizeOptions: ["10", "20", "50", "100", "250"],
+    showTotal: (total: number) => t("TXT_CODE_TOTAL_ITEMS", { total })
   });
 
-  const loadMods = async (folder?: string) => {
-    loading.value = true;
+  const stopPolling = () => {
+    clearTimeout(pollTimer);
+    pollTimer = undefined;
+  };
+
+  const invalidate = () => {
+    ++epoch;
+    controller?.abort();
+    controller = undefined;
+    clearTimeout(searchTimer);
+    searchTimer = undefined;
+    stopPolling();
+    loadingExtra.value = false;
+  };
+
+  const clearResults = () => {
+    mods.value = [];
+    totalMods.value = 0;
+    tablePagination.total = 0;
+    fileStatus.value = {};
+  };
+
+  const loadMods = async (folder: string | undefined = currentFolder.value, background = false) => {
+    if (disposed) return;
+    if (folder !== currentFolder.value) {
+      tablePagination.current = 1;
+      clearResults();
+    }
     currentFolder.value = folder;
+    invalidate();
+    const requestEpoch = epoch;
+    const requestController = new AbortController();
+    controller = requestController;
+    const isCurrent = () =>
+      !disposed && epoch === requestEpoch && !requestController.signal.aborted;
+    const params = {
+      uuid: instanceId,
+      daemonId,
+      page: tablePagination.current,
+      pageSize: tablePagination.pageSize,
+      folder,
+      query: headerSearchQuery.value.trim()
+    };
+    loading.value = !background && listActive;
     try {
       const { execute } = modListApi();
-      const res = await execute({
-        params: {
-          uuid: instanceId,
-          daemonId: daemonId,
-          page: tablePagination.current,
-          pageSize: tablePagination.pageSize,
-          folder
-        }
-      });
-      const newMods = res.value?.mods || [];
-      folders.value = res.value?.folders || [];
-      fileStatus.value = res.value || {};
-      totalMods.value = res.value?.total || 0;
-      tablePagination.total = res.value?.total || 0;
-
-      // Keep existing extraInfo to avoid UI flickering
-      const oldModsMap = new Map();
-      mods.value.forEach((m) => {
-        if (m.file) oldModsMap.set(m.file, m);
-        if (m.hash) oldModsMap.set(m.hash, m);
-      });
-
-      newMods.forEach((newMod) => {
-        const oldMod = oldModsMap.get(newMod.file) || oldModsMap.get(newMod.hash);
-        if (oldMod && oldMod.extraInfo) {
-          newMod.extraInfo = oldMod.extraInfo;
+      const res = await execute({ params, signal: requestController.signal, forceRequest: true });
+      if (!isCurrent()) return;
+      const result = res.value;
+      const newMods = result?.mods || [];
+      // Folder discovery is independent of the filtered result count.
+      folders.value = result?.folders || [];
+      fileStatus.value = result || {};
+      totalMods.value = result?.total || 0;
+      tablePagination.total = totalMods.value;
+      tablePagination.current = result?.page ?? params.page;
+      tablePagination.pageSize = result?.pageSize ?? params.pageSize;
+      newMods.forEach((mod) => {
+        if (mod.hash && extraInfoCache.has(mod.hash)) {
+          mod.extraInfo = extraInfoCache.get(mod.hash);
         }
       });
       mods.value = newMods;
       loading.value = false;
 
-      // Fetch extra info for current page mods in batch (Background)
-      const hashes = mods.value
-        .filter((m) => !m.extraInfo)
-        .map((m) => m.hash)
-        .filter((h) => !!h);
+      const hashes = [...new Set(newMods.filter((m) => !m.extraInfo && m.hash).map((m) => m.hash))];
       if (hashes.length > 0) {
         loadingExtra.value = true;
         try {
           const { execute: fetchBatchInfo } = getModBatchInfoApi();
           const batchRes = await fetchBatchInfo({
-            data: { hashes }
+            data: { hashes },
+            signal: requestController.signal
           });
-          if (batchRes.value) {
-            mods.value.forEach((mod) => {
-              if (mod.hash && batchRes.value![mod.hash]) {
-                mod.extraInfo = batchRes.value![mod.hash];
+          if (!isCurrent()) return;
+          mods.value.forEach((mod) => {
+            const info = mod.hash && batchRes.value?.[mod.hash];
+            if (info) {
+              mod.extraInfo = info;
+              extraInfoCache.set(mod.hash, info);
+              if (extraInfoCache.size > 500) {
+                extraInfoCache.delete(extraInfoCache.keys().next().value!);
               }
-            });
-          }
+            }
+          });
         } catch (e) {
-          console.error("Fetch batch info error:", e);
+          if (isCurrent()) console.error("Fetch batch info error:", e);
         } finally {
-          loadingExtra.value = false;
+          if (isCurrent()) loadingExtra.value = false;
         }
       }
     } catch (err: any) {
-      message.error(err.message);
-      loading.value = false;
+      if (isCurrent()) message.error(err.message);
+    } finally {
+      if (isCurrent()) {
+        loading.value = false;
+        // A recursive timeout prevents overlapping slow polls. Polls share the same query/fence.
+        if (fileStatus.value.downloadTasks?.length) {
+          pollTimer = setTimeout(() => {
+            void loadMods(currentFolder.value, true);
+          }, 2000);
+        }
+      }
     }
   };
 
-  const modSearchQuery = ref("");
-  const pluginSearchQuery = ref("");
+  // The table's change event is the sole pagination owner. Pagination callbacks would
+  // also fire on size changes and can request the same list twice.
+  const handleTableChange = (pagination: { current?: number; pageSize?: number }) => {
+    const size = pagination.pageSize ?? tablePagination.pageSize;
+    const page = size !== tablePagination.pageSize ? 1 : pagination.current ?? 1;
+    if (page === tablePagination.current && size === tablePagination.pageSize) return;
+    tablePagination.current = page;
+    tablePagination.pageSize = size;
+    void loadMods(currentFolder.value);
+  };
 
-  const localMods = computed(() =>
-    mods.value.filter((m) => m.folder === "mods" || (m.type === "mod" && !m.folder))
+  watch(
+    () => headerSearchQuery.value.trim().toLowerCase(),
+    () => {
+      tablePagination.current = 1;
+      invalidate(); // Fence immediately, including during the debounce window.
+      clearResults();
+      loading.value = !disposed && listActive;
+      if (!disposed && listActive) {
+        searchTimer = setTimeout(() => void loadMods(currentFolder.value), 600);
+      }
+    },
+    { flush: "sync" }
   );
-  const localPlugins = computed(() =>
-    mods.value.filter((m) => m.folder === "plugins" || (m.type === "plugin" && !m.folder))
-  );
 
-  const filteredMods = computed(() => {
-    const list = localMods.value;
-    if (!modSearchQuery.value) return list;
-    const q = modSearchQuery.value.toLowerCase();
-    return list.filter(
-      (m) => m.name?.toLowerCase().includes(q) || m.file?.toLowerCase().includes(q)
-    );
-  });
-
-  const filteredPlugins = computed(() => {
-    const list = localPlugins.value;
-    if (!pluginSearchQuery.value) return list;
-    const q = pluginSearchQuery.value.toLowerCase();
-    return list.filter(
-      (m) => m.name?.toLowerCase().includes(q) || m.file?.toLowerCase().includes(q)
-    );
-  });
+  const setListActive = (active: boolean) => {
+    listActive = active;
+    if (!active) {
+      invalidate();
+      loading.value = false;
+      // Transfers still need status updates while the Download tab is open.
+      if (fileStatus.value.downloadTasks?.length) {
+        pollTimer = setTimeout(() => void loadMods(currentFolder.value, true), 2000);
+      }
+    }
+  };
 
   const onToggle = async (record: any) => {
     const toggleData = {
@@ -163,6 +210,7 @@ export function useLocalMods(
           record.file = record.file.replace(".disabled", "");
           record.enabled = true;
         }
+        await loadMods(currentFolder.value);
       } catch (err: any) {
         message.error(err.message);
       }
@@ -186,6 +234,7 @@ export function useLocalMods(
         });
         message.success(t("TXT_CODE_7f0c746d"));
         mods.value = mods.value.filter((m) => m.file !== record.file);
+        await loadMods(currentFolder.value);
       } catch (err: any) {
         message.error(err.message);
       }
@@ -194,51 +243,10 @@ export function useLocalMods(
     checkAndConfirm("delete", record.file, deleteData, immediateFn);
   };
 
-  let timer: any = null;
-  const startPolling = () => {
-    if (timer) return;
-    timer = setInterval(async () => {
-      try {
-        const { execute } = modListApi();
-        const res = await execute({
-          params: {
-            uuid: instanceId,
-            daemonId: daemonId,
-            page: tablePagination.current,
-            pageSize: tablePagination.pageSize,
-            folder: currentFolder.value
-          }
-        });
-        fileStatus.value = res.value || {};
-        if (!fileStatus.value.downloadTasks?.length) {
-          stopPolling();
-          await loadMods(currentFolder.value);
-        }
-      } catch (e) {
-        console.error("Polling error:", e);
-      }
-    }, 2000);
-  };
-
-  const stopPolling = () => {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
-    }
-  };
-
-  watch(
-    () => fileStatus.value.downloadTasks,
-    (tasks) => {
-      if (tasks?.length > 0) {
-        startPolling();
-      }
-    },
-    { deep: true }
-  );
-
   onUnmounted(() => {
-    stopPolling();
+    disposed = true;
+    invalidate();
+    loading.value = false;
   });
 
   return {
@@ -250,10 +258,9 @@ export function useLocalMods(
     totalMods,
     currentFolder,
     loadMods,
-    modSearchQuery,
-    pluginSearchQuery,
-    filteredMods,
-    filteredPlugins,
+    headerSearchQuery,
+    handleTableChange,
+    setListActive,
     onToggle,
     onDelete,
     fileStatus

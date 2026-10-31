@@ -185,12 +185,12 @@ export class ModService {
     instanceUuid: string,
     page: number = 1,
     pageSize: number = 50,
-    folder?: string
+    folder?: string,
+    query: string = ""
   ): Promise<ModListResult> {
-    // Enforce max page size of 50
-    if (pageSize > 50) pageSize = 50;
-    if (pageSize < 1) pageSize = 10;
-    if (page < 1) page = 1;
+    pageSize = Math.min(250, Math.max(1, Math.trunc(Number(pageSize) || 50)));
+    page = Math.max(1, Math.trunc(Number(page) || 1));
+    const search = query.trim().toLowerCase();
 
     const instance = InstanceSubsystem.getInstance(instanceUuid)!;
     const cwd = instance.absoluteCwdPath();
@@ -292,15 +292,23 @@ export class ModService {
       (v, i, a) => a.findIndex((t) => t.file === v.file && t.folder === v.folder) === i
     );
 
-    // Filter by folder if specified
-    const filteredResult = folder
-      ? uniqueResult.filter((m) => m.folder === folder.toLowerCase())
-      : uniqueResult;
+    // Search the complete installed list before counting and paging.
+    const filteredResult = uniqueResult.filter(
+      (m) =>
+        (!folder || m.folder === folder.toLowerCase()) &&
+        (!search || m.name.toLowerCase().includes(search) || m.file.toLowerCase().includes(search))
+    );
 
     // Sort by name for consistent pagination
-    filteredResult.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    filteredResult.sort(
+      (a, b) =>
+        a.name.localeCompare(b.name) ||
+        (a.folder || "").localeCompare(b.folder || "") ||
+        a.file.localeCompare(b.file)
+    );
 
     const total = filteredResult.length;
+    page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
     const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     const paginatedMods = filteredResult.slice(startIndex, endIndex);

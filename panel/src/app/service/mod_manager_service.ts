@@ -189,8 +189,8 @@ class ModManagerService {
     const result: Record<string, any> = {};
     const missingHashes: string[] = [];
 
-    if (hashes.length > 50) {
-      throw new Error("Hashes length cannot be greater than 50");
+    if (hashes.length > 250) {
+      throw new Error("Hashes length cannot be greater than 250");
     }
 
     for (const hash of hashes) {

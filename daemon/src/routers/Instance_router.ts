@@ -638,14 +638,15 @@ routerApp.on("instance/outputlog", async (ctx, data) => {
 
 routerApp.on("instance/mods/list", async (ctx, data) => {
   const instanceUuid = data.instanceUuid;
-  const page = Number(data.page) || 1;
-  const pageSize = Math.min(Number(data.pageSize) || 50, 50); // Max 50
+  const page = Math.max(1, Math.trunc(Number(data.page) || 1));
+  const pageSize = Math.min(250, Math.max(1, Math.trunc(Number(data.pageSize) || 50)));
   const folder = data.folder ? String(data.folder) : undefined;
+  const query = String(data.query || "");
   try {
     const fileManager = new FileManager(
       InstanceSubsystem.getInstance(instanceUuid)!.absoluteCwdPath()
     );
-    const mods = await modService.listMods(instanceUuid, page, pageSize, folder);
+    const mods = await modService.listMods(instanceUuid, page, pageSize, folder, query);
     const downloadTasks = downloadManager.tasks
       .filter((t) => fileManager.checkPath(t.path))
       .map((t) => {

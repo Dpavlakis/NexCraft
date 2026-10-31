@@ -59,7 +59,6 @@ const { instanceInfo, isRunning: isInstanceRunning } = useInstanceInfo({
 });
 
 const activeKey = ref(TAB_KEY_MODS);
-const headerSearchQuery = ref("");
 
 const isWindows = computed(() => {
   const config = instanceInfo.value?.config;
@@ -178,7 +177,12 @@ const {
   onToggle,
   onDelete,
   fileStatus,
-  tablePagination
+  tablePagination,
+  totalMods,
+  currentFolder,
+  headerSearchQuery,
+  handleTableChange,
+  setListActive
 } = useLocalMods(instanceId!, daemonId!, checkAndConfirm, addDeferredTask);
 
 const getCurrentFolder = () => {
@@ -276,25 +280,6 @@ watch(
   { immediate: true }
 );
 
-const filterBySearch = (list: any[]) => {
-  if (!headerSearchQuery.value) return list;
-  const query = headerSearchQuery.value.toLowerCase();
-  return list.filter(
-    (m) =>
-      (m.name || "").toLowerCase().includes(query) || (m.file || "").toLowerCase().includes(query)
-  );
-};
-
-const filteredMods = computed(() => {
-  // Backend already filters by folder, just apply local search
-  return filterBySearch(mods.value);
-});
-
-const filteredPlugins = computed(() => {
-  // Backend already filters by folder, just apply local search
-  return filterBySearch(mods.value);
-});
-
 const columns = computed(() => {
   const cols: any[] = [
     {
@@ -389,24 +374,16 @@ const searchColumns = computed(() => {
   return cols;
 });
 
-const handleTableChange = (pagination: any) => {
-  if (
-    tablePagination.current !== pagination.current ||
-    tablePagination.pageSize !== pagination.pageSize
-  ) {
-    tablePagination.current = pagination.current;
-    tablePagination.pageSize = pagination.pageSize;
-    loadMods(getCurrentFolder());
-  }
-};
-
 // Handle tab change event
 const handleTabChange = (newKey: string | number) => {
+  setListActive(newKey !== TAB_KEY_DOWNLOAD);
   tablePagination.current = 1; // Reset to first page on tab change
   if (newKey === TAB_KEY_MODS || newKey === TAB_KEY_PLUGINS) {
     loadMods(newKey === TAB_KEY_MODS ? "mods" : "plugins");
   }
 };
+
+watch(activeKey, handleTabChange, { flush: "sync" });
 
 onMounted(async () => {
   loadMods(getCurrentFolder());
@@ -534,15 +511,14 @@ onMounted(async () => {
                 v-model:activeKey="activeKey"
                 class="mod-manager-tabs"
                 destroy-inactive-tab-pane
-                @change="handleTabChange"
               >
                 <a-tab-pane v-if="hasModsFolder" :key="TAB_KEY_MODS">
                   <template #tab>
                     <Flex align="center" :gap="6">
                       {{ t("TXT_CODE_MOD_LIST") }}
                       <a-badge
-                        v-if="!loading && activeKey === TAB_KEY_MODS"
-                        :count="filteredMods.length"
+                        v-if="!loading && currentFolder === 'mods' && activeKey === TAB_KEY_MODS"
+                        :count="totalMods"
                         :show-zero="true"
                         :overflow-count="999"
                         :number-style="{
@@ -562,7 +538,7 @@ onMounted(async () => {
                     <LocalModTable
                       :key="TAB_KEY_MODS"
                       :loading="loading"
-                      :data-source="filteredMods"
+                      :data-source="mods"
                       :columns="columns"
                       :pagination="tablePagination"
                       @change="handleTableChange"
@@ -580,8 +556,10 @@ onMounted(async () => {
                     <Flex align="center" :gap="6">
                       {{ t("TXT_CODE_PLUGIN_LIST") }}
                       <a-badge
-                        v-if="!loading && activeKey === TAB_KEY_PLUGINS"
-                        :count="filteredPlugins.length"
+                        v-if="
+                          !loading && currentFolder === 'plugins' && activeKey === TAB_KEY_PLUGINS
+                        "
+                        :count="totalMods"
                         :show-zero="true"
                         :overflow-count="999"
                         :number-style="{
@@ -601,7 +579,7 @@ onMounted(async () => {
                     <LocalModTable
                       :key="TAB_KEY_PLUGINS"
                       :loading="loading"
-                      :data-source="filteredPlugins"
+                      :data-source="mods"
                       :columns="columns"
                       :pagination="tablePagination"
                       @change="handleTableChange"
