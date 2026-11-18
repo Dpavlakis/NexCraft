@@ -21,16 +21,15 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
 - `languages/*.json` — i18n; en_US.json is source of truth. Daemon uses `{{var}}`; frontend uses `{var}`.
 
 ## Build & deploy (IMPORTANT)
-- **Local dev repo: `D:\NexCraft`** (moved off OneDrive). Node 24 LTS + npm installed; deps installed in all workspaces. **Type-check locally before every push** (catches errors without a slow Docker round-trip):
+- Install Node 24 LTS + npm and dependencies in all workspaces. **Type-check locally before every push** (catches errors without a slow Docker round-trip):
   - daemon: `npm run build --prefix daemon` · panel: `npm run build --prefix panel` · frontend: `npm run type-check --prefix frontend` (full: `npm run build --prefix frontend`).
-  - PowerShell gotcha: each shell starts with a **stale PATH** and cwd resets — prefix commands with `$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` then `Set-Location D:\NexCraft`.
-  - The OneDrive copy at `C:\Users\dimit\OneDrive\Documents\MCS` is the old location — work in `D:\NexCraft`.
-- After local checks pass, commit + push to `origin main`; the user pulls on Unraid (`/mnt/user/appdata/nexcraft-src`) and rebuilds the Docker image(s). The Docker build remains the final gate.
-- **Always paste the FULL copy-paste rebuild block EVERY time a rebuild is suggested** — `cd` + `git pull` + both `docker build` + `docker rm -f` + BOTH `docker run` commands (daemon incl. the `/mnt/user/Backup/Minecraft` backup mount) + `docker ps | grep nexcraft`. NEVER abbreviate with "use the block from before" or omit the run commands. Say which image(s) changed:
+  - In PowerShell, ensure Node.js and npm are on PATH and run commands from the repository root.
+- After local checks pass, commit + push to `origin main`; the user pulls the source checkout on Unraid and rebuilds the Docker image(s). The Docker build remains the final gate.
+- **Always paste the FULL copy-paste rebuild block EVERY time a rebuild is suggested** — `cd` + `git pull` + both `docker build` + `docker rm -f` + BOTH `docker run` commands (daemon including the configured backup mount) + `docker ps | grep nexcraft`. NEVER abbreviate with "use the block from before" or omit the run commands. Say which image(s) changed:
   - daemon (`daemon/`, `common/`) → `nexcraft-daemon` (container `nexcraft-daemon`)
   - web (`frontend/`, `panel/`, `languages/`) → `nexcraft-web` (container `nexcraft-web`)
   - The **web build also compiles the daemon** (panel bundles daemon source), so a daemon type error breaks the web build too.
-- Containers (Unraid, network `br0.2`): daemon `192.168.2.46`, web `192.168.2.47`; data under `/mnt/user/appdata/nexcraft/...`; source checkout at `/mnt/user/appdata/nexcraft-src` (re-clone of `Dpavlakis/NexCraft`). Use local image tags (template GUI force-pulls). (Images/containers `nexcraft-daemon` / `nexcraft-web`, renamed from the legacy `mcsm-*:backup-test` / `mcsm-*-test`; data dir moved from `mcsm-test` to `nexcraft` on a fresh wipe.)
+- Containers on Unraid: configure the container network, addresses, source checkout, persistent data directories, and backup mounts for the target environment. Use local image tags (template GUI force-pulls). Images/containers: `nexcraft-daemon` / `nexcraft-web`.
 - Commit messages end with: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 
 ## Conventions / gotchas
@@ -58,7 +57,7 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
 ## In-flight / next session (checkpoint 2026-05-31)
 **Branches simplified to `main` + `test`** (see Branch model up top).
 
-**🚢 SHIPPED: v1.1.0 (2026-05-31).** `test` promoted to `main` (merge `506b79b5`; resolved `frontend/src/widgets/market/index.vue` by taking test's ModpackBrowser version), tagged **`v1.1.0`** (pushed → triggered the Publish Docker workflow to build `:latest` prod images). `main` == `test` at promotion. Bundles: World Management (#15), import existing server, Bedrock Minecraft settings, richer install detail (#30), single create path (#18) + #28/#29 polish, and the config-editor / Select-All / breadcrumb+logo / Advanced-Settings fixes. **TODO after workflow green: force-update prod stack (.41/.42) to pull `:latest`.** **GitHub Release page:** `gh` installed (v2.93.0) but auth was pending — create the Release for tag `v1.1.0` once `gh auth login` is done (or via web UI). New work resumes on `test`.
+**🚢 SHIPPED: v1.1.0 (2026-05-31).** `test` promoted to `main` (merge `506b79b5`; resolved `frontend/src/widgets/market/index.vue` by taking test's ModpackBrowser version), tagged **`v1.1.0`** (pushed → triggered the Publish Docker workflow to build `:latest` prod images). `main` == `test` at promotion. Bundles: World Management (#15), import existing server, Bedrock Minecraft settings, richer install detail (#30), single create path (#18) + #28/#29 polish, and the config-editor / Select-All / breadcrumb+logo / Advanced-Settings fixes. **TODO after workflow green: force-update prod stack to pull `:latest`.** **GitHub Release page:** `gh` installed (v2.93.0) but auth was pending — create the Release for tag `v1.1.0` once `gh auth login` is done (or via web UI). New work resumes on `test`.
 
 (Historical detail below — all now in v1.1.0 on `main`:)
 
@@ -78,7 +77,7 @@ The original MCSManager is credited (login footer + Settings → About). Keep ch
    - **Velocity in builder** (proxy support) — add **Velocity** to the modpack-browser software picker via the PaperMC API (same as Paper/Folia). Its own brainstorm/spec/plan.
    - **#27 bump `docker.yml` action pins** — MONITOR-ONLY: CI works today via the `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` flag; bump to verified-latest tags only when Node20-deprecation warnings actually appear in Actions logs (don't bump majors blindly — risks the release pipeline).
    - **Next release = v1.2.0** (Automation tab #14+#16 + the post-1.1.0 polish already on `test`) — promote `test`→`main` + tag once eyeballed on the Test stack.
-6. **Test deployment stack:** `:test` image tag (built by dispatching the Publish Docker workflow on `test`), Test Unraid templates (`unraid/nexcraft-{web,daemon}-test.xml`, Icon/TemplateURL now point at the `test` branch), isolated data `/mnt/user/appdata/nexcraft-test`, TEST-badged logo. Prod on .41/.42, **Test on .46/.47**. The user triggers the publish workflow (don't extract the GitHub token — safety-blocked). **On `test`→`main` promotion:** drop the temporary hidden-cards patch — `main`'s `frontend/src/widgets/market/index.vue` hides the Create-Instance section (commit `eac13a73`), but `test`'s version replaces those cards with the Import/Existing source tab, so take `test`'s file; main's duplicate Node24 CI commit (`bc832848`) is already semantically present on `test`.
+6. **Test deployment stack:** `:test` image tag (built by dispatching the Publish Docker workflow on `test`), Test Unraid templates (`unraid/nexcraft-{web,daemon}-test.xml`, Icon/TemplateURL now point at the `test` branch), isolated test data, TEST-badged logo. Keep production and test deployments isolated. The user triggers the publish workflow (don't extract the GitHub token — safety-blocked). **On `test`→`main` promotion:** drop the temporary hidden-cards patch — `main`'s `frontend/src/widgets/market/index.vue` hides the Create-Instance section (commit `eac13a73`), but `test`'s version replaces those cards with the Import/Existing source tab, so take `test`'s file; main's duplicate Node24 CI commit (`bc832848`) is already semantically present on `test`.
 
 ## Open / optional
 - Optional: add more README/docs screenshots (Metrics, Players, Update card).
