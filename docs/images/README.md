@@ -35,3 +35,15 @@ Screenshots used by the docs pages and README. All are `.webp` (light mode, full
 | `daemons.webp` | Daemons (node status + live CPU/RAM) | installation |
 
 All current shots are full-resolution light-mode captures (browser maximized, full width). When replacing one, capture the same way and convert to `.webp`.
+
+## Converting source screenshots
+
+With `sharp` installed, run from the checkout frontend directory:
+
+```sh
+node ../docs/images/_convert.mjs /path/to/screenshots
+```
+
+Alternatively, set `NEXCRAFT_SCREENSHOT_DIR`. An explicit argument takes precedence.
+Edit `MAP` in `_convert.mjs` to choose source filenames. Output always goes to
+the script's `docs/images` directory, regardless of the working directory.

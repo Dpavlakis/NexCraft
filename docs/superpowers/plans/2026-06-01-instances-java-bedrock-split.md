@@ -13,7 +13,7 @@
 ## Conventions
 - Gate = `npm run build --prefix daemon` / `--prefix panel` / `npm run type-check --prefix frontend` + en_US valid. PowerShell PATH prefix:
   ```powershell
-  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
   ```
 - Branch `test`. Commits end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - Spec: `docs/superpowers/specs/2026-06-01-instances-java-bedrock-split-design.md`.
@@ -50,7 +50,7 @@ READ the `instance/select` handler. Find the `queryWrapper.select<Instance>((v) 
 
 - [ ] **Step 2: Build daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles. (If `condition` is typed and rejects `.type`, widen the access — read how `condition.status`/`condition.tag` are accessed; if `condition` is `any`/loosely typed, no change needed.)
@@ -93,7 +93,7 @@ Do NOT modify the global `/remote_services_instances_global` handler (type filte
 
 - [ ] **Step 2: Build panel**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix panel
 ```
 Expected: compiles.
@@ -132,7 +132,7 @@ Add (near other instance-list/filter keys):
 
 - [ ] **Step 3: Validate JSON + type-check frontend**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 node -e "JSON.parse(require('fs').readFileSync('languages/en_US.json','utf8')); console.log('OK')"
 npm run type-check --prefix frontend
 ```
@@ -226,7 +226,7 @@ Note: the stripe is positioned against the nearest positioned ancestor. The `.in
 
 - [ ] **Step 5: Type-check frontend**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors.
@@ -291,7 +291,7 @@ Confirm `handleQueryInstance` resets the page (the status filter uses it; check 
 
 - [ ] **Step 5: Type-check frontend**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors.
@@ -312,7 +312,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 1: Full builds**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 npm run build --prefix panel
 npm run type-check --prefix frontend

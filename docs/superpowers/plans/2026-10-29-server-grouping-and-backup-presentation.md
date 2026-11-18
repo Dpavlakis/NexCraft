@@ -8,7 +8,7 @@
 
 ## Execution record
 
-Completed the four assigned views and added narrow ServerGroup, ServerSourceBadge and BackupList components plus metadata/presentation helpers. All changes are direct edits in D:/Projects/NexCraft on test. No worktrees, branches, commits, package changes or publication.
+Completed the four assigned views and added narrow ServerGroup, ServerSourceBadge and BackupList components plus metadata/presentation helpers. All changes are direct edits in C:/path/to/NexCraft on test. No worktrees, branches, commits, package changes or publication.
 
 Focused runner: from frontend, `node node_modules/vitest/vitest.mjs run --config src/settings-tests/group-backup.config.ts`.
 

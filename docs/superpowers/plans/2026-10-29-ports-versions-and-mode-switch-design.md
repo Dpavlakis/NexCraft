@@ -2,7 +2,7 @@
 
 Date: 2026-10-29. Approved design: ../specs/2026-10-29-ports-versions-and-mode-switch-design.md.
 Status: approved for execution.
-All shell commands use explicit workdir D:\Projects\NexCraft, full PowerShell executable path, and login=false.
+All shell commands use explicit workdir C:\path\to\NexCraft, full PowerShell executable path, and login=false.
 Writes outside the current writable roots require require_escalated with a specific reason.
 
 ## Execution and contracts

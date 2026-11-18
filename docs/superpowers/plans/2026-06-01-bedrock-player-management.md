@@ -19,7 +19,7 @@ This codebase has **no unit-test runner** (no jest/vitest/mocha script; no test 
 **Verification commands** (PowerShell — each shell starts with a stale PATH, so prefix once per shell):
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 ```
 
 - Daemon build: `npm run build --prefix daemon`

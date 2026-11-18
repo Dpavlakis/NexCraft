@@ -13,7 +13,7 @@
 ## Conventions
 - No test runner — gate is **`npm run type-check --prefix frontend`** + JSON validity. PowerShell PATH prefix before npm/node:
   ```powershell
-  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
   ```
 - Branch `test` (already checked out). Commits end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - Spec: `docs/superpowers/specs/2026-05-31-rich-software-detail-design.md`. Approved mockup: `docs/mockups/install-detail-30-mockup.html`.
@@ -206,7 +206,7 @@ The `TXT_CODE_loader_blurb_*` keys already exist. Update each one's VALUE to mat
 
 - [ ] **Step 4: Validate JSON + type-check**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 node -e "JSON.parse(require('fs').readFileSync('languages/en_US.json','utf8')); console.log('en_US.json OK')"
 npm run type-check --prefix frontend
 ```
@@ -304,7 +304,7 @@ Add (near the other `.custom-detail` / `.pack-*` rules):
 
 - [ ] **Step 4: Type-check**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors. (If vue-tsc complains `dialog.item.mcType` is not on the item type, widen the dialog.item type or cast — but it should exist since the version items carry `mcType`.)
@@ -325,7 +325,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 1: Full builds**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 npm run build --prefix frontend
 ```

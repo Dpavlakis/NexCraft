@@ -1,6 +1,6 @@
 # Authentication hardening — implemented contract (audit #3)
 
-Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
+Date: 2026-10-29. Checkout: C:/path/to/NexCraft, branch test.
 Status: Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 
 This contract addresses replayable browser sessions, credential/factor invalidation and unsafe 2FA replacement. Browser sessions are revocable server-side records; replacement secrets are staged until verified and persisted. The following sections define the implemented guarantees.

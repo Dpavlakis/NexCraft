@@ -14,7 +14,7 @@
 - **No unit-test runner exists.** Per CLAUDE.md the gate is **type-check / build** (`npm run type-check --prefix frontend`, `npm run build --prefix panel`) + manual check on the Test stack. Do NOT add a test framework. Each task's verification = a clean build.
 - **PowerShell PATH prefix (run before EVERY npm command):**
   ```powershell
-  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
   ```
 - **Branch:** `test` (already checked out — do NOT create a branch).
 - **Commit messages end with:** `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
@@ -58,7 +58,7 @@ The file still emits `QUICKSTART_METHOD.IMPORT`, so keep the `import { QUICKSTAR
 
 - [ ] **Step 4: Type-check**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors.
@@ -85,7 +85,7 @@ This task removes the three wizard components and every reference to them, and r
 
 - [ ] **Step 1: Verify nothing outside config/index.ts imports the three components**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 ```
 Then (Grep tool, or `findstr`): search `frontend/src` for `QuickStart.vue`, `QuickStartFlow.vue`, `McPreset.vue`. Expected: only `frontend/src/config/index.ts` references them. If any OTHER file imports them, STOP and report (the plan assumed only config/index.ts does).
 
@@ -188,7 +188,7 @@ Delete the `page: "/quickstart"` block (the one whose `items` contains a single 
 
 - [ ] **Step 9: Build frontend + panel (the gate)**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 npm run build --prefix panel
 ```
@@ -221,7 +221,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 Run this for the candidate list (PowerShell). It prints each key with its reference count across `frontend/` + `panel/` source (excluding the language JSON files):
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 $keys = @("TXT_CODE_e0fca76","TXT_CODE_e01539f1","TXT_CODE_d628e631","TXT_CODE_2799a1dd","TXT_CODE_88249aee","TXT_CODE_9b99b72e","TXT_CODE_724ce74d")
 foreach ($k in $keys) {
   $n = (Get-ChildItem -Recurse frontend/src,panel/src -Include *.ts,*.vue | Select-String -SimpleMatch $k | Measure-Object).Count
@@ -236,7 +236,7 @@ Use the Edit tool to delete each `"TXT_CODE_xxxx": "...",` line that Step 1 repo
 
 - [ ] **Step 3: Validate JSON + type-check**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 node -e "JSON.parse(require('fs').readFileSync('languages/en_US.json','utf8')); console.log('en_US.json OK')"
 npm run type-check --prefix frontend
 ```
@@ -261,7 +261,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 1: Full builds**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 npm run build --prefix panel
 npm run build --prefix frontend

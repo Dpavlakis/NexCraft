@@ -1,6 +1,6 @@
 # Runtime and dependency hardening — implementation and verification record (audit #3)
 
-Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
+Date: 2026-10-29. Checkout: C:/path/to/NexCraft, branch test.
 Status: Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 Contract: [runtime specification](../specs/2026-10-29-runtime-dependency-hardening.md).
 Evidence: [final results](2026-10-29-runtime-dependency-hardening-results.md).
@@ -34,7 +34,7 @@ The production boot failure occurred despite passing tests/builds. It is retaine
 
 ## Resume and repeat verification
 
-Retained Linux Node/npm are under /home/dimit/nexcraft-runtime.K43JZB/toolchain/bin; final integrated source is /home/dimit/nexcraft-integrated.MQy9oG. Detailed reports, checksums, build logs and browser artifact paths remain in the results record. Use a fresh source snapshot and locked installs for future source changes; do not copy Windows node_modules into Linux.
+Retained Linux Node/npm are under /home/example/nexcraft-runtime.K43JZB/toolchain/bin; final integrated source is /home/example/nexcraft-integrated.MQy9oG. Detailed reports, checksums, build logs and browser artifact paths remain in the results record. Use a fresh source snapshot and locked installs for future source changes; do not copy Windows node_modules into Linux.
 
 These are repeat-verification commands for a prepared Linux snapshot with locked dependencies, rather than outstanding source-integration steps:
 

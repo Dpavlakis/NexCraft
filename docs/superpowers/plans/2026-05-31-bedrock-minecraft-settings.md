@@ -14,7 +14,7 @@
 - No test runner — gate = `npm run build --prefix daemon` / `npm run build --prefix panel` / `npm run type-check --prefix frontend` + JSON validity.
 - PowerShell PATH prefix before npm/node:
   ```powershell
-  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
   ```
 - Branch `test` (checked out). Commits end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - Spec: `docs/superpowers/specs/2026-05-31-bedrock-minecraft-settings-design.md`.
@@ -117,7 +117,7 @@ routerApp.on("instance/server_property", (ctx, data) => {
 
 - [ ] **Step 3: Build the daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: webpack compiles, no TS errors.
@@ -185,7 +185,7 @@ export const serverProperty = useDefineApi<
 
 - [ ] **Step 3: Build panel + type-check frontend**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix panel
 npm run type-check --prefix frontend
 ```
@@ -221,7 +221,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 2: Validate**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 node -e "JSON.parse(require('fs').readFileSync('languages/en_US.json','utf8')); console.log('OK')"
 ```
 Expected: `OK`. (Watch for duplicate keys — reconcile if any already exist.)
@@ -364,7 +364,7 @@ Inside it, keep the EXISTING Java MOTD `<a-col>` but gate it `v-if="isMinecraftJ
 
 - [ ] **Step 5: Type-check**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors. (If `Modal` import missing, add it. If `serverProperty` return typing complains, the `.value` is `string | boolean` — cast/String() as shown.)
@@ -385,7 +385,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 1: Full builds**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 npm run build --prefix panel
 npm run type-check --prefix frontend

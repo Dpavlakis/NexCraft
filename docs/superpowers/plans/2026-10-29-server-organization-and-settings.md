@@ -1,6 +1,6 @@
 # Server organization and settings — implementation plan
 
-Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
+Date: 2026-10-29. Checkout: C:/path/to/NexCraft, branch test.
 Specification: [design specification](../specs/2026-10-29-server-organization-and-settings.md).
 Status: implementation and isolated preview in progress; no rollout.
 

@@ -2,7 +2,7 @@
 
 **USER APPROVED: no generic throttle for ordinary authenticated panel use.** This policy supersedes the earlier 24/32/48-capacity experiments and the 48-request hotfix in f56a2dc3. The signed-in token bucket is removed, not enlarged. Reads, preference writes, instance actions, icon credentials and terminal stream credentials all bypass generic admission after live store-backed identity validation. No route allowlist, path matching, new limiter or authentication threshold is introduced.
 
-Actual checkout: `D:/Projects/NexCraft`, branch `test`. GHCR remains on HOLD pending the parent's independent authentication coverage, complete suite/build/CI and release decision. This bounded correction does not commit, push or publish. Earlier publication checkpoints are historical and do not authorize release of this correction.
+Actual checkout: `C:/path/to/NexCraft`, branch `test`. GHCR remains on HOLD pending the parent's independent authentication coverage, complete suite/build/CI and release decision. This bounded correction does not commit, push or publish. Earlier publication checkpoints are historical and do not authorize release of this correction.
 
 ## Admission and authorization
 

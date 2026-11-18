@@ -3,13 +3,13 @@
 Date: 2026-10-29. Status: implementation/review, local verification and #4 CI complete. Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 Evidence: [results and publication status](2026-10-29-reliability-hardening-results.md).
 Contract: [specification](../specs/2026-10-29-reliability-hardening.md).
-Baseline checkout: `D:/Projects/NexCraft`, `test`, HEAD `673783fd23aed0bd42dc0214e98b999a70472049`.
+Baseline checkout: `C:/path/to/NexCraft`, `test`, HEAD `673783fd23aed0bd42dc0214e98b999a70472049`.
 
 ## Execution boundaries
 
 Approved workflow: Sol6.1 subagent implementation/review, integration and push to `test`, successful CI, then GHCR dispatch. Code `7d66bb8b` is pushed, #4 CI passed, and combined #3/#4 publication is requested. Main is unchanged; #5 waits for the user's live test and promotion requires manual acceptance.
 
-Use full-path PowerShell with `-NoProfile` (tool `login:false`) and explicit workdir. The configured `D:/NexCraft` is absent; do not create a replacement checkout. Request tool escalation only when access to the relocated checkout requires it.
+Use full-path PowerShell with `-NoProfile` (tool `login:false`) and explicit workdir. The configured `C:/path/to/NexCraft` is absent; do not create a replacement checkout. Request tool escalation only when access to the relocated checkout requires it.
 
 For each implementation task: reproduce the failure with the named behavioral test, make the smallest fix, run its focused tests and inspect the diff against the specification. Use actual source; do not replace it with a duplicate implementation or rely on text/regex assertions. Do not mark a task done on compilation alone.
 
@@ -114,7 +114,7 @@ PowerShell setup for each shell:
 
 ```powershell
 $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-Set-Location -LiteralPath 'D:\Projects\NexCraft'
+Set-Location -LiteralPath 'C:\path\to\NexCraft'
 git branch --show-current
 git status --short
 ```

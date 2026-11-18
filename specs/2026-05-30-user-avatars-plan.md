@@ -8,7 +8,7 @@
 
 **Tech Stack:** Koa (panel backend), Vue 3 + Ant Design Vue 4 + vue-i18n (frontend), webpack (panel build), vue-tsc + vite (frontend).
 
-**Verification methodology:** This project uses type-check + build as the gate (no unit-test runner in the workflow). Each task ends by building the affected package(s) and committing. Run commands from `D:\NexCraft` with the Node PATH prefix the project uses.
+**Verification methodology:** This project uses type-check + build as the gate (no unit-test runner in the workflow). Each task ends by building the affected package(s) and committing. Run commands from `C:\path\to\NexCraft` with the Node PATH prefix the project uses.
 
 PATH prefix for every PowerShell command:
 ```
@@ -106,14 +106,14 @@ Then, inside the `edit(uuid, config)` method, add an avatar branch alongside the
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd D:\NexCraft; npm run build --prefix panel
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd C:\path\to\NexCraft; npm run build --prefix panel
 ```
 Expected: `webpack ... compiled successfully`. (The `TXT_CODE_avatar.invalid` key is added in Task 7; the build does not fail on a missing key — it resolves at runtime — but if you prefer, do Task 7 first.)
 
 - [ ] **Step 5: Commit**
 
 ```
-cd D:\NexCraft; git add panel/src/app/entity/entity_interface.ts panel/src/app/entity/user.ts panel/src/app/service/user_service.ts; git commit -m "feat(user): add avatar field + validation/persistence" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+cd C:\path\to\NexCraft; git add panel/src/app/entity/entity_interface.ts panel/src/app/entity/user.ts panel/src/app/service/user_service.ts; git commit -m "feat(user): add avatar field + validation/persistence" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
 ---
@@ -197,14 +197,14 @@ Then inside the handler, before `await userSystem.edit(uuid, config);`:
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd D:\NexCraft; npm run build --prefix panel
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd C:\path\to\NexCraft; npm run build --prefix panel
 ```
 Expected: `compiled successfully`.
 
 - [ ] **Step 5: Commit**
 
 ```
-cd D:\NexCraft; git add panel/src/app/service/instance_service.ts panel/src/app/routers/general_user_router.ts panel/src/app/routers/user_overview_router.ts; git commit -m "feat(user): expose avatar in self-info; accept on self/admin update" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+cd C:\path\to\NexCraft; git add panel/src/app/service/instance_service.ts panel/src/app/routers/general_user_router.ts panel/src/app/routers/user_overview_router.ts; git commit -m "feat(user): expose avatar in self-info; accept on self/admin update" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
 ---
@@ -362,14 +362,14 @@ const boxStyle = computed(() => ({
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd D:\NexCraft; npm run type-check --prefix frontend
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd C:\path\to\NexCraft; npm run type-check --prefix frontend
 ```
 Expected: no errors (command prints the vue-tsc invocation and exits 0).
 
 - [ ] **Step 6: Commit**
 
 ```
-cd D:\NexCraft; git add languages/en_US.json frontend/src/types/user.ts frontend/src/tools/avatar.ts frontend/src/components/UserAvatar.vue; git commit -m "feat(frontend): avatar types, util, and UserAvatar component" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+cd C:\path\to\NexCraft; git add languages/en_US.json frontend/src/types/user.ts frontend/src/tools/avatar.ts frontend/src/components/UserAvatar.vue; git commit -m "feat(frontend): avatar types, util, and UserAvatar component" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
 ---
@@ -486,14 +486,14 @@ Add the UI block in the template, right after the opening `<a-form ... layout="v
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd D:\NexCraft; npm run type-check --prefix frontend; npm run build --prefix frontend
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd C:\path\to\NexCraft; npm run type-check --prefix frontend; npm run build --prefix frontend
 ```
 Expected: type-check clean, `✓ built`.
 
 - [ ] **Step 4: Commit**
 
 ```
-cd D:\NexCraft; git add frontend/src/services/apis/user.ts frontend/src/components/MyselfInfoDialog.vue; git commit -m "feat(frontend): avatar uploader in profile dialog" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+cd C:\path\to\NexCraft; git add frontend/src/services/apis/user.ts frontend/src/components/MyselfInfoDialog.vue; git commit -m "feat(frontend): avatar uploader in profile dialog" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
 ---
@@ -600,14 +600,14 @@ Add styles in the `<style lang="scss" scoped>` block (inside `.app-header-wrappe
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd D:\NexCraft; npm run type-check --prefix frontend; npm run build --prefix frontend
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd C:\path\to\NexCraft; npm run type-check --prefix frontend; npm run build --prefix frontend
 ```
 Expected: clean type-check, `✓ built`.
 
 - [ ] **Step 4: Commit**
 
 ```
-cd D:\NexCraft; git add frontend/src/hooks/useHeaderMenus.ts frontend/src/components/AppHeader.vue; git commit -m "feat(frontend): header avatar + username dropdown" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+cd C:\path\to\NexCraft; git add frontend/src/hooks/useHeaderMenus.ts frontend/src/components/AppHeader.vue; git commit -m "feat(frontend): header avatar + username dropdown" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
 ---
@@ -696,14 +696,14 @@ Add a menu item in the `action` dropdown's `<a-menu>` (e.g. after the Edit item,
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd D:\NexCraft; npm run type-check --prefix frontend; npm run build --prefix frontend
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd C:\path\to\NexCraft; npm run type-check --prefix frontend; npm run build --prefix frontend
 ```
 Expected: clean type-check, `✓ built`.
 
 - [ ] **Step 4: Commit**
 
 ```
-cd D:\NexCraft; git add frontend/src/widgets/UserList.vue; git commit -m "feat(frontend): avatars in Users list + admin set avatar" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+cd C:\path\to\NexCraft; git add frontend/src/widgets/UserList.vue; git commit -m "feat(frontend): avatars in Users list + admin set avatar" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
 ---
@@ -714,14 +714,14 @@ cd D:\NexCraft; git add frontend/src/widgets/UserList.vue; git commit -m "feat(f
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd D:\NexCraft; npm run build --prefix daemon; npm run build --prefix panel; npm run type-check --prefix frontend; npm run build --prefix frontend
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd C:\path\to\NexCraft; npm run build --prefix daemon; npm run build --prefix panel; npm run type-check --prefix frontend; npm run build --prefix frontend
 ```
 Expected: all succeed.
 
 - [ ] **Step 2: Push**
 
 ```
-cd D:\NexCraft; git push nexcraft main
+cd C:\path\to\NexCraft; git push nexcraft main
 ```
 
 - [ ] **Step 3: Manual verification (after rebuilding the web image / running the publish workflow + updating the container)**

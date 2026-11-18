@@ -1,6 +1,6 @@
 # Security boundaries and rollback-capable restore
 
-Date: 2026-10-29. Target: `test` in `D:\Projects\NexCraft`.
+Date: 2026-10-29. Target: `test` in `C:\path\to\NexCraft`.
 Authorization: the user approved this design with “okay begin”; execution has no additional design approval gate. This document specifies intended behavior, not a claim that implementation or verification is complete.
 
 ## Scope: audit batch S1–S6

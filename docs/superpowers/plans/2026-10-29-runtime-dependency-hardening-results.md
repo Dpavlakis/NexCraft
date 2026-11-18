@@ -1,6 +1,6 @@
 # Runtime and dependency hardening — final implementation results (audit #3)
 
-Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
+Date: 2026-10-29. Checkout: C:/path/to/NexCraft, branch test.
 Status: Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 
 ## Final integrated verification
@@ -21,14 +21,14 @@ No tests were weakened. The two review-confirmed auth issues are fixed: logout i
 The production/full audit node counts, in root/common/daemon/panel/frontend order, are **0/0/0/2/0** and **1/0/0/2/1**. Residuals represent one high session-to-Zod 3 advisory chain and one low development deepmerge advisory duplicated across root/frontend scanner trees.
 ## Persistent disposable environment
 
-- Repository: /home/dimit/nexcraft-runtime.K43JZB/repo (Ubuntu Linux filesystem).
-- Node: /home/dimit/nexcraft-runtime.K43JZB/toolchain/bin/node — 24.22.2.
-- npm: /home/dimit/nexcraft-runtime.K43JZB/toolchain/bin/npm — 11.19.1.
-- Evidence: /home/dimit/nexcraft-runtime.K43JZB/evidence (raw audit JSON stays outside the checkout).
-- Fresh production trees: /home/dimit/nexcraft-runtime.K43JZB/runtime/{common,daemon,web}.
-- Isolated daemon build: /home/dimit/nexcraft-runtime.K43JZB/isolated-daemon.
+- Repository: /home/example/nexcraft-runtime.K43JZB/repo (Ubuntu Linux filesystem).
+- Node: /home/example/nexcraft-runtime.K43JZB/toolchain/bin/node — 24.22.2.
+- npm: /home/example/nexcraft-runtime.K43JZB/toolchain/bin/npm — 11.19.1.
+- Evidence: /home/example/nexcraft-runtime.K43JZB/evidence (raw audit JSON stays outside the checkout).
+- Fresh production trees: /home/example/nexcraft-runtime.K43JZB/runtime/{common,daemon,web}.
+- Isolated daemon build: /home/example/nexcraft-runtime.K43JZB/isolated-daemon.
 
-The official x64 Node archive was actually downloaded and checked against pinned SHA256 48cc0e21e048790e54c0cf5749c2725005313d652651c40b7a21feb9697aaf75; its entry matched the downloaded official SHASUMS256.txt. Initial /tmp staging disappeared on WSL restart; retained evidence/tools use persistent /home/dimit storage. Windows Node remains 24.16.0; actual Windows node_modules have since been refreshed from the final locks (Vue 3.5.44, vue-i18n 11.4.16, Vite 7.3.7).
+The official x64 Node archive was actually downloaded and checked against pinned SHA256 48cc0e21e048790e54c0cf5749c2725005313d652651c40b7a21feb9697aaf75; its entry matched the downloaded official SHASUMS256.txt. Initial /tmp staging disappeared on WSL restart; retained evidence/tools use persistent /home/example storage. Windows Node remains 24.16.0; actual Windows node_modules have since been refreshed from the final locks (Vue 3.5.44, vue-i18n 11.4.16, Vite 7.3.7).
 
 ## Installed versions and scope
 
@@ -86,7 +86,7 @@ Docker final-image CI and hosted Chrome CI passed in run 40940013639, including 
 
 ## Resume locations
 
-Final integrated Linux source and production output: /home/dimit/nexcraft-integrated.MQy9oG and its frontend/dist. Retained toolchain/audit/runtime evidence is listed above. The [implementation record](2026-10-29-runtime-dependency-hardening.md) contains repeat-verification commands for a prepared locked snapshot; no source patch application remains.
+Final integrated Linux source and production output: /home/example/nexcraft-integrated.MQy9oG and its frontend/dist. Retained toolchain/audit/runtime evidence is listed above. The [implementation record](2026-10-29-runtime-dependency-hardening.md) contains repeat-verification commands for a prepared locked snapshot; no source patch application remains.
 
 ## Production bootstrap regression — verified 2026-10-29
 
@@ -96,7 +96,7 @@ The unchanged Vite 7 build failed before Vue mounted: `TypeError: Cannot read pr
 
 Only `frontend/vite.config.ts` manualChunks changed in product configuration: all `ant-design-vue/` and root/nested `@ant-design/` modules now share `ant`; ECharts and zrender share `echart`. All other intentional grouping remains. The rebuilt static import graph has no chunk cycles. The tradeoff is larger cohesive chunks: Ant Design 1,325.72 kB (385.94 kB gzip), ECharts 1,126.69 kB (378.37 kB gzip). The existing size threshold still reports these; no threshold increase, package downgrade, exception suppression or entry workaround was used.
 
-Final source files `frontend/vite.config.ts` and `scripts/frontend-production-smoke.mjs` were copied into `/home/dimit/nexcraft-integrated.MQy9oG`; frontend full type-check/build passed using `/home/dimit/nexcraft-runtime.K43JZB/toolchain/bin/node` 24.22.2 and npm 11.19.1. No dependencies were installed or changed by this verification. Build log: `/home/dimit/nexcraft-boot-fix.Ya6geo/final-build.log`.
+Final source files `frontend/vite.config.ts` and `scripts/frontend-production-smoke.mjs` were copied into `/home/example/nexcraft-integrated.MQy9oG`; frontend full type-check/build passed using `/home/example/nexcraft-runtime.K43JZB/toolchain/bin/node` 24.22.2 and npm 11.19.1. No dependencies were installed or changed by this verification. Build log: `/home/example/nexcraft-boot-fix.Ya6geo/final-build.log`.
 
 The maintained helper uses Node 24 built-in HTTP, WebSocket and Chrome DevTools Protocol APIs, without additional npm dependencies. It serves real dist bytes with read-only local fixtures, denies external requests, mutations, sockets and downloads, and creates separate cold browser contexts at 1440×1000 light and 390×844 dark. It checks Vue's mounted app, the visible login form, hidden loader, theme, successful assets and uncaught exceptions. Failure diagnostics are printed for CI; JSON and PNG evidence remain in its unique OS temp directory. A 50-second deadline bounds the run; cleanup closes only its own browser/server and removes only its verified temporary browser profile.
 
@@ -118,13 +118,13 @@ All application traffic in these checks stayed at `http://localhost:4182/`; no r
 
 Exact evidence:
 
-- Original failure: `C:\Users\dimit\AppData\Local\Temp\nexcraft-prod-smoke-20261029-125908\report.json`.
-- Final helper against baseline: `C:\Users\dimit\AppData\Local\Temp\nexcraft-production-smoke-J4L3iK\report.json` (both failure screenshots alongside).
-- Final helper success: `C:\Users\dimit\AppData\Local\Temp\nexcraft-production-smoke-zJieCu\report.json`; screenshots `login-1440-light.png` and `login-390-dark.png` alongside.
-- Missing-CSS negative control: `C:\Users\dimit\AppData\Local\Temp\nexcraft-production-smoke-CNRzSu\report.json`.
-- Authenticated/chart success: `C:\Users\dimit\AppData\Local\Temp\nexcraft-production-smoke-sp5vhG\report.json`; screenshots `instances-1440-light.png`, `instances-390-dark.png`, `account-1440-light.png`, `account-390-dark.png`, `echarts-1440-light.png`, `echarts-390-dark.png` alongside. Temporary adapter: `C:\Users\dimit\AppData\Local\Temp\nexcraft-production-auth-qa-jMIuFX\qa.mjs`.
-- Production output: `/home/dimit/nexcraft-integrated.MQy9oG/frontend/dist`; principal files `index.html`, `assets/index-CNTAJQft.js`, `assets/mount-D-oPE9Z_.js`, `assets/ant-CWI-SgKr.js`, `assets/echart-BhOSovaa.js`.
-- Index SHA256: `0c1a0a640e7c6c313cf86b9027268b34cd4d932fffe8a044273262962c7d6fb0`. Principal-file checksums and static graph: `/home/dimit/nexcraft-boot-fix.Ya6geo/production-sha256.json` and `chunk-graph.json`. Baseline retained at `/home/dimit/nexcraft-boot-fix.Ya6geo/baseline-dist` with original index SHA256 `2ff8989326d0b93cd397f3386fcd349e952211ae0b9568cd7a58e1e04f9aa38c`.
+- Original failure: `C:\Users\example\AppData\Local\Temp\nexcraft-prod-smoke-20261029-125908\report.json`.
+- Final helper against baseline: `C:\Users\example\AppData\Local\Temp\nexcraft-production-smoke-J4L3iK\report.json` (both failure screenshots alongside).
+- Final helper success: `C:\Users\example\AppData\Local\Temp\nexcraft-production-smoke-zJieCu\report.json`; screenshots `login-1440-light.png` and `login-390-dark.png` alongside.
+- Missing-CSS negative control: `C:\Users\example\AppData\Local\Temp\nexcraft-production-smoke-CNRzSu\report.json`.
+- Authenticated/chart success: `C:\Users\example\AppData\Local\Temp\nexcraft-production-smoke-sp5vhG\report.json`; screenshots `instances-1440-light.png`, `instances-390-dark.png`, `account-1440-light.png`, `account-390-dark.png`, `echarts-1440-light.png`, `echarts-390-dark.png` alongside. Temporary adapter: `C:\Users\example\AppData\Local\Temp\nexcraft-production-auth-qa-jMIuFX\qa.mjs`.
+- Production output: `/home/example/nexcraft-integrated.MQy9oG/frontend/dist`; principal files `index.html`, `assets/index-CNTAJQft.js`, `assets/mount-D-oPE9Z_.js`, `assets/ant-CWI-SgKr.js`, `assets/echart-BhOSovaa.js`.
+- Index SHA256: `0c1a0a640e7c6c313cf86b9027268b34cd4d932fffe8a044273262962c7d6fb0`. Principal-file checksums and static graph: `/home/example/nexcraft-boot-fix.Ya6geo/production-sha256.json` and `chunk-graph.json`. Baseline retained at `/home/example/nexcraft-boot-fix.Ya6geo/baseline-dist` with original index SHA256 `2ff8989326d0b93cd397f3386fcd349e952211ae0b9568cd7a58e1e04f9aa38c`.
 
 The production-bootstrap fix consists of the chunk config, maintained helper and security-validation browser step/trigger. Overall #3 implementation and local integration are complete. Docker final-image and hosted Chrome CI gates subsequently passed in run 40940013639, as recorded below. Combined #3/#4 GHCR publication is now requested; completion is unverified and main is unchanged. Broader design preview work is unchanged, with Modpack/Custom sections queued for #5.
 

@@ -13,7 +13,7 @@
 ## Conventions
 - Gate = `npm run build --prefix daemon` / `--prefix panel` / `npm run type-check --prefix frontend` + `en_US.json` valid. PowerShell PATH prefix before npm/node:
   ```powershell
-  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
   ```
 - Branch `test` (checked out). Commits end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - Spec: `docs/superpowers/specs/2026-06-01-sleep-on-empty-design.md`.
@@ -79,7 +79,7 @@ In `defaultInstanceInfo` (the object that mirrors the config; #14 added `schedul
 
 - [ ] **Step 4: Build daemon + type-check frontend**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 npm run type-check --prefix frontend
 ```
@@ -209,7 +209,7 @@ export function buildLoginDisconnect(motd: string): Buffer {
 
 - [ ] **Step 2: Build daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles.
@@ -386,7 +386,7 @@ export default new WakeListenerService();
 
 - [ ] **Step 2: Build daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles. (`fs-extra`, `net`, `path` are available — `fs-extra` is used across the daemon. `logger` from `./log`. If the circular `Instance` import is an issue like in #14, it builds fine there, so it will here.)
@@ -499,7 +499,7 @@ Register the task for ALL Minecraft instances (Java + Bedrock — sleep works fo
 
 - [ ] **Step 3: Build daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles.
@@ -555,7 +555,7 @@ Then, next to the existing `scheduledRestartService.applyForInstance(this);` cal
 
 - [ ] **Step 3: Build daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles (watch for circular import; #14's identical pattern built fine).
@@ -592,7 +592,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 2: Validate**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 node -e "JSON.parse(require('fs').readFileSync('languages/en_US.json','utf8')); console.log('OK')"
 ```
 Expected: `OK`.
@@ -689,7 +689,7 @@ Inside the Automation `<a-tab-pane>`, AFTER the Scheduled Restart `</a-form-item
 
 - [ ] **Step 3: Type-check frontend**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors. (`sleepOnEmpty` is on the config type from Task 1, so bindings type-check.)
@@ -710,7 +710,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 1: Full builds**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 npm run build --prefix panel
 npm run type-check --prefix frontend

@@ -10,11 +10,11 @@
 
 **Verification methodology:** Build + type-check is the gate (no unit-test runner). Each task ends by building the affected package(s) and committing.
 
-**CRITICAL — repo location:** The ONLY correct repo is `D:\NexCraft`. A stale decoy clone exists at `C:\Users\dimit\OneDrive\Documents\MCS` (the shell's default CWD) — never touch it. Use ABSOLUTE `D:\NexCraft\...` paths for Read/Edit/Write and `Set-Location D:\NexCraft` for every command.
+**Repository location:** `C:\path\to\NexCraft` is an example checkout path. Substitute your checkout location in absolute paths and `Set-Location` commands below.
 
 PATH prefix for every PowerShell command:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft;
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft;
 ```
 Builds: `npm run build --prefix daemon` · `npm run build --prefix panel` · `npm run type-check --prefix frontend` · `npm run build --prefix frontend`.
 
@@ -52,7 +52,7 @@ Daemon: none.
 
 - [ ] **Step 1: Add `theme` to `IUser`**
 
-In `D:\NexCraft\panel\src\app\entity\entity_interface.ts`, in `interface IUser`, after `avatar?: string;`:
+In `C:\path\to\NexCraft\panel\src\app\entity\entity_interface.ts`, in `interface IUser`, after `avatar?: string;`:
 ```ts
   avatar?: string;
   theme?: string;
@@ -60,7 +60,7 @@ In `D:\NexCraft\panel\src\app\entity\entity_interface.ts`, in `interface IUser`,
 
 - [ ] **Step 2: Add `theme` to the `User` class**
 
-In `D:\NexCraft\panel\src\app\entity\user.ts`, in `class User`, after `avatar: string = "";`:
+In `C:\path\to\NexCraft\panel\src\app\entity\user.ts`, in `class User`, after `avatar: string = "";`:
 ```ts
   avatar: string = "";
   theme: string = "";
@@ -68,7 +68,7 @@ In `D:\NexCraft\panel\src\app\entity\user.ts`, in `class User`, after `avatar: s
 
 - [ ] **Step 3: Add the theme id list + validator + persist in `edit()`**
 
-In `D:\NexCraft\panel\src\app\service\user_service.ts`, near the top (after the avatar helper added earlier), add:
+In `C:\path\to\NexCraft\panel\src\app\service\user_service.ts`, near the top (after the avatar helper added earlier), add:
 ```ts
 // Known theme ids — kept in sync with the frontend registry
 // (frontend/src/config/themes.ts). The panel can't import frontend code, so
@@ -104,7 +104,7 @@ git add panel/src/app/entity/entity_interface.ts panel/src/app/entity/user.ts pa
 
 - [ ] **Step 1: Include `theme` in self-info**
 
-In `D:\NexCraft\panel\src\app\service\instance_service.ts`, in `getInstancesByUuid`'s final `return { ... }`, after `avatar: user.avatar,`:
+In `C:\path\to\NexCraft\panel\src\app\service\instance_service.ts`, in `getInstancesByUuid`'s final `return { ... }`, after `avatar: user.avatar,`:
 ```ts
     avatar: user.avatar,
     theme: user.theme,
@@ -112,7 +112,7 @@ In `D:\NexCraft\panel\src\app\service\instance_service.ts`, in `getInstancesByUu
 
 - [ ] **Step 2: Self theme endpoint**
 
-In `D:\NexCraft\panel\src\app\routers\general_user_router.ts`, add the import alongside the avatar one:
+In `C:\path\to\NexCraft\panel\src\app\routers\general_user_router.ts`, add the import alongside the avatar one:
 ```ts
 import { validateAvatarString, isValidThemeId } from "../service/user_service";
 ```
@@ -138,7 +138,7 @@ router.put(
 
 - [ ] **Step 3: Admin edit accepts theme**
 
-In `D:\NexCraft\panel\src\app\routers\user_overview_router.ts`, the admin `PUT /` handler passes `config` to `userSystem.edit` (which already validates `theme` from Task 1). No change strictly required — `edit()` validates. Confirm by reading; if the handler whitelists fields explicitly, add `theme`. (As of now `edit(uuid, config)` copies known fields, so no change needed.)
+In `C:\path\to\NexCraft\panel\src\app\routers\user_overview_router.ts`, the admin `PUT /` handler passes `config` to `userSystem.edit` (which already validates `theme` from Task 1). No change strictly required — `edit()` validates. Confirm by reading; if the handler whitelists fields explicitly, add `theme`. (As of now `edit(uuid, config)` copies known fields, so no change needed.)
 
 - [ ] **Step 4: Build the panel**
 
@@ -158,7 +158,7 @@ git add panel/src/app/service/instance_service.ts panel/src/app/routers/general_
 
 - [ ] **Step 1: Write the generator script (temp)**
 
-Create `D:\NexCraft\scripts\gen-stone-tile.cjs`:
+Create `C:\path\to\NexCraft\scripts\gen-stone-tile.cjs`:
 ```js
 // One-time generator for the seamless stone texture used by the header/sidebar.
 // Run: node scripts/gen-stone-tile.cjs  (requires sharp; dev-only, not shipped)
@@ -195,7 +195,7 @@ sharp(Buffer.from(svg)).png().toFile(out).then((i) => console.log("wrote", out, 
 
 Run:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft; if (-not (Test-Path node_modules\sharp)) { npm install --no-save sharp }; node scripts/gen-stone-tile.cjs
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft; if (-not (Test-Path node_modules\sharp)) { npm install --no-save sharp }; node scripts/gen-stone-tile.cjs
 ```
 Expected: `wrote ...stone-tile.png 128x128`. Confirm the PNG exists: `Test-Path frontend\src\assets\stone-tile.png` → True.
 
@@ -214,7 +214,7 @@ git add frontend/src/assets/stone-tile.png scripts/gen-stone-tile.cjs; git commi
 
 - [ ] **Step 1: Create the registry**
 
-Create `D:\NexCraft\frontend\src\config\themes.ts`:
+Create `C:\path\to\NexCraft\frontend\src\config\themes.ts`:
 ```ts
 export interface ThemeDef {
   id: string;
@@ -284,7 +284,7 @@ export const themeById = (id?: string): ThemeDef =>
 
 - [ ] **Step 2: i18n keys**
 
-In `D:\NexCraft\languages\en_US.json` add:
+In `C:\path\to\NexCraft\languages\en_US.json` add:
 ```json
   "TXT_CODE_theme_label": "Theme",
   "TXT_CODE_theme_name_nexcraft": "NexCraft",
@@ -297,7 +297,7 @@ In `D:\NexCraft\languages\en_US.json` add:
 
 - [ ] **Step 3: `theme?` on `BaseUserInfo`**
 
-In `D:\NexCraft\frontend\src\types\user.ts`, in `interface BaseUserInfo`, after `avatar?: string;`:
+In `C:\path\to\NexCraft\frontend\src\types\user.ts`, in `interface BaseUserInfo`, after `avatar?: string;`:
 ```ts
   avatar?: string;
   theme?: string;
@@ -320,7 +320,7 @@ Goal: add theme-id machinery that drives accent + CSS gradient vars + light/dark
 
 - [ ] **Step 1: Imports + state**
 
-At the top of `D:\NexCraft\frontend\src\stores\useAppConfigStore.ts`, add:
+At the top of `C:\path\to\NexCraft\frontend\src\stores\useAppConfigStore.ts`, add:
 ```ts
 import { THEMES, DEFAULT_THEME_ID, THEME_ID_KEY, themeById, type ThemeDef } from "@/config/themes";
 ```
@@ -395,7 +395,7 @@ git add frontend/src/stores/useAppConfigStore.ts; git commit -m "feat(theme): ap
 
 - [ ] **Step 1: Header texture + gradient**
 
-In `D:\NexCraft\frontend\src\components\AppHeader.vue` `<style>`, the `.app-header-wrapper` currently sets `background-image: linear-gradient(90deg, #162961 ... #1587ac 100%);`. Replace that hardcoded gradient with a stacked texture + theme gradient. Change the rule to:
+In `C:\path\to\NexCraft\frontend\src\components\AppHeader.vue` `<style>`, the `.app-header-wrapper` currently sets `background-image: linear-gradient(90deg, #162961 ... #1587ac 100%);`. Replace that hardcoded gradient with a stacked texture + theme gradient. Change the rule to:
 ```scss
 .app-header-wrapper {
   box-shadow: 0 2px 4px 0 var(--card-shadow-color);
@@ -410,7 +410,7 @@ In `D:\NexCraft\frontend\src\components\AppHeader.vue` `<style>`, the `.app-head
 
 - [ ] **Step 2: Sidebar texture + gradient**
 
-In `D:\NexCraft\frontend\src\components\AppSidebarMenu.vue` `<style>`, the `.left-sidebar` rule has a hardcoded `linear-gradient(...) , url("@/assets/side.png")`. Replace the `background-image` with:
+In `C:\path\to\NexCraft\frontend\src\components\AppSidebarMenu.vue` `<style>`, the `.left-sidebar` rule has a hardcoded `linear-gradient(...) , url("@/assets/side.png")`. Replace the `background-image` with:
 ```scss
   background-image: var(--nx-sidebar-grad), url("@/assets/stone-tile.png");
   background-blend-mode: overlay, normal;
@@ -440,11 +440,11 @@ git add frontend/src/components/AppHeader.vue frontend/src/components/AppSidebar
 
 - [ ] **Step 1: Remove the header light/dark dropdown entry**
 
-In `D:\NexCraft\frontend\src\hooks\useHeaderMenus.ts`, remove the `setTheme` import usage and the whole `appMenus` entry that uses `BgColorsOutlined` (the one with `title: t("TXT_CODE_5d88a9b")`, `leftSideTitle: t("TXT_CODE_ee01c10c")`, `icon: BgColorsOutlined`, and the AUTO/LIGHT/DARK `menus`). Also remove `const { setTheme } = useAppConfigStore();` (and the `useAppConfigStore` import if now unused), and remove the `BgColorsOutlined` and `AppTheme` imports if now unused.
+In `C:\path\to\NexCraft\frontend\src\hooks\useHeaderMenus.ts`, remove the `setTheme` import usage and the whole `appMenus` entry that uses `BgColorsOutlined` (the one with `title: t("TXT_CODE_5d88a9b")`, `leftSideTitle: t("TXT_CODE_ee01c10c")`, `icon: BgColorsOutlined`, and the AUTO/LIGHT/DARK `menus`). Also remove `const { setTheme } = useAppConfigStore();` (and the `useAppConfigStore` import if now unused), and remove the `BgColorsOutlined` and `AppTheme` imports if now unused.
 
 - [ ] **Step 2: Apply theme when user info loads**
 
-In `D:\NexCraft\frontend\src\stores\useAppStateStore.ts`, import the config store applier. At the top add:
+In `C:\path\to\NexCraft\frontend\src\stores\useAppStateStore.ts`, import the config store applier. At the top add:
 ```ts
 import { useAppConfigStore } from "./useAppConfigStore";
 ```
@@ -489,7 +489,7 @@ git add frontend/src/hooks/useHeaderMenus.ts frontend/src/stores/useAppStateStor
 
 - [ ] **Step 1: API**
 
-In `D:\NexCraft\frontend\src\services\apis\user.ts`, append:
+In `C:\path\to\NexCraft\frontend\src\services\apis\user.ts`, append:
 ```ts
 export const updateMyTheme = useDefineApi<
   {
@@ -506,7 +506,7 @@ export const updateMyTheme = useDefineApi<
 
 - [ ] **Step 2: Picker logic in the dialog**
 
-In `D:\NexCraft\frontend\src\components\MyselfInfoDialog.vue` `<script setup>`, add imports:
+In `C:\path\to\NexCraft\frontend\src\components\MyselfInfoDialog.vue` `<script setup>`, add imports:
 ```ts
 import { THEMES } from "@/config/themes";
 import { updateMyTheme } from "@/services/apis/user";
@@ -600,7 +600,7 @@ Expected: all succeed.
 
 - [ ] **Step 2: Confirm no stale references**
 
-Run: `git -C D:\NexCraft grep -n "AppTheme\|setTheme(" -- frontend/src` — should return nothing in changed code paths (only the `AppTheme` enum definition in `types/const.ts` may remain, unused, which is fine; optionally delete it if no references remain).
+Run: `git -C C:\path\to\NexCraft grep -n "AppTheme\|setTheme(" -- frontend/src` — should return nothing in changed code paths (only the `AppTheme` enum definition in `types/const.ts` may remain, unused, which is fine; optionally delete it if no references remain).
 
 - [ ] **Step 3: Push**
 
