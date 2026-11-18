@@ -8,7 +8,7 @@ The bounded daemon fix addresses the six audited defects. Direct Java selection 
 
 ## Scope and boundaries
 
-- Actual shared checkout: `D:\Projects\NexCraft`, branch `test`. Read root CLAUDE.md and AGENTS.md. The repository requirement for Sol6.1 subagent implementation remains in force. The assigned worker has a no-recursion boundary and creates no nested workers; this does not override the parent workflow. No branch/worktree operations, commits, pushes, deployment or package changes were performed.
+- Actual shared checkout: `C:\path\to\NexCraft`, branch `test`. Read root CLAUDE.md and AGENTS.md. The repository requirement for Sol6.1 subagent implementation remains in force. The assigned worker has a no-recursion boundary and creates no nested workers; this does not override the parent workflow. No branch/worktree operations, commits, pushes, deployment or package changes were performed.
 - Product changes: Java manager, daemon Java router, Java launcher replacement helper, GeneralStart spawn-error handling, PTY managed-runtime reservation and helper spawn-error handling, and narrowly coupled instance Java save/resolution/resource cleanup/automatic correction. Global `Instance.parameters()` semantics remain untouched.
 - Tests/spec/plan/report are the other owned files. Other workers' frontend presentation, frontend apiService, panel session/permission, and authentication tests were not edited. No preview server or user data was accessed.
 - New message strings are staged only in ignored `frontend/node_modules/.cache/nexcraft-preview/java-fix-strings.json`. Another worker must merge these into the language resources before preview/rollout; until then the new keys are not localized. `languages/en_US.json` was not edited.
@@ -37,7 +37,7 @@ Deletion scans unreadable/malformed saved configs conservatively and fails rathe
 
 ## Reproduction and checks
 
-Windows, full PowerShell executable, `login:false`, working directory `D:\Projects\NexCraft`:
+Windows, full PowerShell executable, `login:false`, working directory `C:\path\to\NexCraft`:
 
 ```powershell
 & 'C:\Program Files\nodejs\node.exe' --test scripts/security-tests/java-selection.test.cjs
@@ -46,7 +46,7 @@ Windows, full PowerShell executable, `login:false`, working directory `D:\Projec
 Linux, same checkout through the existing WSL runtime:
 
 ```powershell
-wsl.exe --exec /bin/sh -lc 'cd /mnt/d/Projects/NexCraft && /home/dimit/nexcraft-runtime.K43JZB/toolchain/bin/node --test scripts/security-tests/java-selection.test.cjs'
+wsl.exe --exec /bin/sh -lc 'cd /path/to/NexCraft && /home/example/nexcraft-runtime.K43JZB/toolchain/bin/node --test scripts/security-tests/java-selection.test.cjs'
 ```
 
 Before implementation, converting the existing defect assertions to positive regressions produced **7 passing / 8 failing** tests on Windows. Failures exposed quoting loss, script acceptance, stale usage, pending/selected deletion, invalid selection, missing executable acceptance, and memory changing after failed persistence. The author-verified file had 28 positive checks including concurrency and normal controls; independent review added seven focused checks, for 35 total before the parent combined run; there are no passing BUG characterizations remaining.
@@ -83,7 +83,7 @@ Two concrete gaps were reproduced before their source fixes:
 
 Additional controls prove that malformed JavaSelection staging files do not enter the InstanceConfig saved-reference scan, malformed saved configs still block public deletion, and a parser exception releases reserved A after B is selected without spawning. The existing GeneralStart asynchronous ENOENT and failed-install cleanup controls were included because the new fixes touch those boundaries.
 
-Exact Windows check, from D:\Projects\NexCraft:
+Exact Windows check, from C:\path\to\NexCraft:
 
 ~~~powershell
 & 'C:\Program Files\nodejs\node.exe' --test --test-name-pattern='PTY|non-Java GeneralStart|active installation|saved-reference scanning|parse failure releases|real download/install failure|spawn ENOENT' scripts/security-tests/java-selection.test.cjs
@@ -92,7 +92,7 @@ Exact Windows check, from D:\Projects\NexCraft:
 Exact Linux check through the existing WSL runtime:
 
 ~~~powershell
-wsl.exe --exec /bin/sh -lc 'cd /mnt/d/Projects/NexCraft && /home/dimit/nexcraft-runtime.K43JZB/toolchain/bin/node --test --test-name-pattern="PTY|non-Java GeneralStart|active installation|saved-reference scanning|parse failure releases|real download/install failure|spawn ENOENT" scripts/security-tests/java-selection.test.cjs'
+wsl.exe --exec /bin/sh -lc 'cd /path/to/NexCraft && /home/example/nexcraft-runtime.K43JZB/toolchain/bin/node --test --test-name-pattern="PTY|non-Java GeneralStart|active installation|saved-reference scanning|parse failure releases|real download/install failure|spawn ENOENT" scripts/security-tests/java-selection.test.cjs'
 ~~~
 
 Both checks: 8 passed, 0 failed, 0 skipped. After the final metadata-failure control was added, it was run separately on each platform with the same commands above and --test-name-pattern='failed final install metadata': 1 passed, 0 failed, 0 skipped on each. The eight previously passing checks were not repeated. TypeScript 5.9.3, daemon tsconfig options, no emit, edited PTY start and Java manager source files plus configured ambient roots: 0 syntactic/semantic diagnostics in those two files. The Java manager check was refreshed after the final failure-state correction: 0 focused diagnostics. Scoped git diff --check passed. No full suite/build or complete 35-test rerun was performed by this reviewer; the parent integrates the final run. No existing Java executable needed to run for these eight checks.

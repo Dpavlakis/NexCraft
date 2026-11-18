@@ -1,6 +1,6 @@
 # Configuration interactions and Java presentation
 
-Date: 2026-10-29. Scope: assigned frontend files and English catalog in D:\Projects\NexCraft on test. Parent requirements are already brainstormed; parent coordinates preview before rollout.
+Date: 2026-10-29. Scope: assigned frontend files and English catalog in C:\path\to\NexCraft on test. Parent requirements are already brainstormed; parent coordinates preview before rollout.
 
 Use the existing compact operational styling. Configuration file entries are one semantic, keyboard-accessible row button with readable descriptions. Only InstanceConfigEditor opts into rounded boolean switches, visible Yes/No, and a field label. Preserve other LineOption callers and all nonboolean/raw value types and explicit Save.
 

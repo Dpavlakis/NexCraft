@@ -15,7 +15,7 @@
 - **No unit-test runner exists** in `daemon/` or `panel/` (only `build` = webpack/tsc). Per `CLAUDE.md`, the verification gate is **type-check (`npm run build`) + Docker build + manual testing on the Test stack** — NOT a test framework. So tasks below use **type-check as the per-task gate**, plus a manual verification checklist at the end (Task 9). Do **not** introduce a test framework.
 - **PowerShell gotcha (run before EVERY build command):**
   ```powershell
-  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
   ```
 - **Build commands:** daemon `npm run build --prefix daemon` · panel `npm run build --prefix panel` (also compiles daemon — panel bundles daemon source) · frontend type-check `npm run type-check --prefix frontend`.
 - **Commit messages end with:** `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
@@ -56,7 +56,7 @@
 The import work (`feat/import-existing-server`) is not yet merged to `main` and touches the same registration files this feature edits (`config/index.ts`, `config/router.ts`, `frontend_layout.ts`, `ManagerBtns.vue`, `operation_logger.ts`, `panel/app/index.ts`). Branch off it to avoid double-editing/conflicts.
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 git checkout feat/import-existing-server
 git pull --ff-only origin feat/import-existing-server
 git checkout -b feat/world-management
@@ -117,7 +117,7 @@ In `languages/en_US.json`, add these flat keys (mirror the existing flat `TXT_CO
 - [ ] **Step 4: Validate JSON**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 node -e "JSON.parse(require('fs').readFileSync('languages/en_US.json','utf8')); console.log('en_US.json OK')"
 ```
 Expected: `en_US.json OK`
@@ -368,7 +368,7 @@ export async function placeWorld(
 - [ ] **Step 2: Type-check the daemon**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: webpack build completes with no TypeScript errors. (If `archiver`'s `.directory(dir, false)` complains about the `false` literal type, the `name as any` cast in `zipFolders` already handles it.)
@@ -378,7 +378,7 @@ Expected: webpack build completes with no TypeScript errors. (If `archiver`'s `.
 Create a temp script and run it; it exercises `findWorldRoot`, `getActiveWorldPaths`, and `worldDownloadFileName` against fixtures, then deletes itself.
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 @'
 import fs from "fs-extra";
 import path from "path";
@@ -709,7 +709,7 @@ export class WorldResetTask extends AsyncTask {
 - [ ] **Step 3: Type-check the daemon**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: no TypeScript errors. (If `$t("TXT_CODE_backup.busy")` / `"TXT_CODE_backup.stopTimeout"` keys are missing, they already exist — used by `RestoreTask`. `TXT_CODE_world.*` were added in Task 1.)
@@ -843,7 +843,7 @@ import "../routers/world_router";
 - [ ] **Step 3: Type-check the daemon**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: no TypeScript errors. (Confirm `FileManager.checkFileName` is a static method — it is, per `http_router.ts` usage `FileManager.checkFileName(...)`.)
@@ -1068,7 +1068,7 @@ And inside `mountRouters(...)`, alongside the other `apiRouter.use(...)` lines (
 - [ ] **Step 4: Type-check the panel (this also compiles the daemon)**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix panel
 ```
 Expected: no TypeScript errors. (If `prepared` is typed `unknown`, annotate the `request<...>` call: `request<{ fileName: string; relPath: string }>("world/prepare_download", { instanceUuid })`.)
@@ -1156,7 +1156,7 @@ export const worldTaskStatus = useDefineApi<
 - [ ] **Step 2: Type-check the frontend**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors.
@@ -1479,7 +1479,7 @@ onBeforeUnmount(stopPolling);
 - [ ] **Step 3: Type-check the frontend**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors. Fix import paths / prop typing until clean.
@@ -1604,7 +1604,7 @@ import InstanceWorld from "@/widgets/instance/World.vue";
 - [ ] **Step 5: Type-check frontend + panel**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 npm run build --prefix panel
 ```
@@ -1630,7 +1630,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 - [ ] **Step 1: Full local builds (the binding gate)**
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 npm run build --prefix panel
 npm run build --prefix frontend
@@ -1645,7 +1645,7 @@ git push -u origin feat/world-management
 
 - [ ] **Step 3: Provide the FULL Unraid rebuild block to the user**
 
-Both images change (daemon: `daemon/`,`common/`; web: `frontend/`,`panel/`,`languages/`). Paste the COMPLETE copy-paste rebuild block per CLAUDE.md — `cd` + `git pull` + BOTH `docker build` + BOTH `docker rm -f` + BOTH `docker run` (daemon incl. the `/mnt/user/Backup/Minecraft` backup mount) + `docker ps | grep nexcraft`. Do NOT abbreviate. (Use the Test stack: `:test` tag, web `192.168.2.47`, daemon `192.168.2.46`.)
+Both images change (daemon: `daemon/`,`common/`; web: `frontend/`,`panel/`,`languages/`). Paste the COMPLETE copy-paste rebuild block per CLAUDE.md — `cd` + `git pull` + BOTH `docker build` + BOTH `docker rm -f` + BOTH `docker run` (daemon incl. the `/mnt/user/Backup/Minecraft` backup mount) + `docker ps | grep nexcraft`. Do NOT abbreviate. (Use the Test stack: `:test` tag, web `192.0.2.47`, daemon `192.0.2.46`.)
 
 - [ ] **Step 4: Manual verification on the Test stack (from the spec)**
 

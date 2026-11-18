@@ -17,7 +17,7 @@
 No unit-test runner exists (builds-not-tests). Each task is verified by a clean build/type-check; the feature is validated by a manual Test-stack pass (final task). PowerShell prefix (stale PATH each shell):
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 ```
 
 - Daemon build: `npm run build --prefix daemon`

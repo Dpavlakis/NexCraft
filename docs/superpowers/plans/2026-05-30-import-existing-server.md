@@ -16,7 +16,7 @@
 - Panel `tsconfig` targets **ES2018** — no `String.prototype.matchAll`; use a `g`-flagged `RegExp.exec` loop.
 - `a-select` v-model rejects `null` — use `undefined`.
 - PowerShell prefix for every command:
-  `$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft;`
+  `$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft;`
 - Commit messages end with: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. Push to `nexcraft main` only when the user asks.
 
 ---

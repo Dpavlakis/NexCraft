@@ -1,18 +1,31 @@
 // One-off: convert mapped source screenshots -> docs/images/<target>.webp
-// Usage (from D:\NexCraft\frontend so it can resolve `sharp`):
-//   node ../docs/images/_convert.mjs
+// Usage (with sharp installed in the checkout):
+//   node docs/images/_convert.mjs /path/to/screenshots
+// Or set NEXCRAFT_SCREENSHOT_DIR instead of passing a directory.
 //
 // Edit MAP below: source PNG (in the Screenshots folder) -> target webp name.
 // Set `src` to a file in SRC_DIR. Comment out / remove lines you don't have.
 // Existing docs/images/*.webp are ~full-width light-mode; these originals are
 // 2559px wide — we keep them crisp (no downscale) and just encode to webp q82.
 
-import sharp from "sharp";
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
-const SRC_DIR = "C:/Users/dimit/OneDrive/Pictures/Screenshots";
-const OUT_DIR = path.resolve(process.cwd(), "../docs/images");
+const sourceDir = process.argv[2] || process.env.NEXCRAFT_SCREENSHOT_DIR;
+if (!sourceDir) {
+  console.error("Usage: node _convert.mjs <screenshot-directory> (or set NEXCRAFT_SCREENSHOT_DIR)");
+  process.exit(1);
+}
+const SRC_DIR = path.resolve(sourceDir);
+if (!fs.statSync(SRC_DIR, { throwIfNoEntry: false })?.isDirectory()) {
+  console.error(`Screenshot directory does not exist: ${SRC_DIR}`);
+  process.exit(1);
+}
+const OUT_DIR = fileURLToPath(new URL("./", import.meta.url));
+const require = createRequire(new URL("../../frontend/package.json", import.meta.url));
+const sharp = require("sharp");
 
 // FILL THIS IN — source screenshot filename -> target webp basename (no extension).
 const MAP = {

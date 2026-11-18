@@ -1,6 +1,6 @@
 # Authentication hardening — implementation and verification record (audit #3)
 
-Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
+Date: 2026-10-29. Checkout: C:/path/to/NexCraft, branch test.
 Status: Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 Contract: [authentication specification](../specs/2026-10-29-authentication-hardening.md).
 

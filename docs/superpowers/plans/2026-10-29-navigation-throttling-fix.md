@@ -4,7 +4,7 @@
 
 Spec: ../specs/2026-10-29-navigation-throttling-fix.md
 
-Actual checkout `D:/Projects/NexCraft`, branch `test`. GHCR HOLD remains in effect. Parent owns independent authentication coverage, complete suite/build/CI and any later release decision.
+Actual checkout `C:/path/to/NexCraft`, branch `test`. GHCR HOLD remains in effect. Parent owns independent authentication coverage, complete suite/build/CI and any later release decision.
 
 1. Read AGENTS.md/CLAUDE.md and follow the user's current checkout/test-only/direct-execution instructions where stale guidance conflicts. Inventory public login/install, SSO/exchange, preference and sensitive password/API-key/2FA routes before editing.
 2. Remove authenticated requestBucket state and token-bucket accounting. Validate the original live store entry and `user(ctx)` before admitting an authenticated request without generic throttling. Preserve anonymous eight-per-second accounting, API-key/role/token checks, session revocation/conflict behavior, login IP protections and independent proof-five controls. No route flags, path matching, new thresholds or route/service policy edits are needed.

@@ -1,7 +1,7 @@
 # Reliability hardening — implemented contracts and verification status (audit #4)
 
 Date: 2026-10-29. Status: implementation/review, local verification and #4 CI complete. Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
-Checkout: `D:/Projects/NexCraft`, branch `test`, baseline HEAD `673783fd23aed0bd42dc0214e98b999a70472049`.
+Checkout: `C:/path/to/NexCraft`, branch `test`, baseline HEAD `673783fd23aed0bd42dc0214e98b999a70472049`.
 Source: local audit reference `audit-reports/2026-10-29-code-validation.md` (untracked; not a published documentation link).
 Execution: [reliability plan](../plans/2026-10-29-reliability-hardening.md).
 

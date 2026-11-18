@@ -13,7 +13,7 @@
 ## Conventions
 - No test runner — gate is **`npm run build --prefix daemon`** / **`--prefix panel`** / **`npm run type-check --prefix frontend`** + `en_US.json` validity. PowerShell PATH prefix before npm/node:
   ```powershell
-  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+  $env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
   ```
 - Branch `test` (checked out). Commits end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - Spec: `docs/superpowers/specs/2026-06-01-scheduled-restart-design.md`.
@@ -65,7 +65,7 @@ In `daemon/src/entity/instance/Instance_config.ts`, immediately after the `publi
 
 - [ ] **Step 3: Build daemon (type gate)**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles. (If `InstanceConfig implements IGlobalInstanceConfig` errors because the new required field isn't present, the Step 2 default provides it — make sure the property name matches exactly.)
@@ -223,7 +223,7 @@ Confirm `../utils/sleep` exports `sleep` (it's used by `world_replace_task.ts` a
 
 - [ ] **Step 3: Build daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles, no TS errors.
@@ -286,7 +286,7 @@ In `loadInstances()`, inside the `instanceConfigs.forEach(...)` loop, right afte
 
 - [ ] **Step 3: Build daemon**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 ```
 Expected: compiles. (Watch for a circular-import issue: `instance.ts` importing the service which imports `instance.ts` only for the `Instance` TYPE — since the service imports `Instance` for typing and uses it at runtime only via the passed argument + static constants, this is fine in webpack. If a runtime circular error appears, change the service's `Instance` import to `import type Instance` and reference `Instance.STATUS_RUNNING` via the passed instance's constructor instead — but try the straightforward way first.)
@@ -327,7 +327,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 2: Validate JSON**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 node -e "JSON.parse(require('fs').readFileSync('languages/en_US.json','utf8')); console.log('OK')"
 ```
 Expected: `OK`.
@@ -471,7 +471,7 @@ Notes: `isGlobalTerminal` and `isTemplateMode` are existing computeds in this fi
 
 - [ ] **Step 4: Type-check the frontend**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run type-check --prefix frontend
 ```
 Expected: no errors. (The `IGlobalInstanceConfig.scheduledRestart` type from Task 1 makes the bindings type-check. If `a-input-number`/`a-radio` value typing complains, adjust `:value`/`v-model` per the project's Ant version — match existing usages in the same file.)
@@ -492,7 +492,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 - [ ] **Step 1: Full builds**
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft
 npm run build --prefix daemon
 npm run build --prefix panel
 npm run type-check --prefix frontend

@@ -1,6 +1,6 @@
 # Server organization and settings — design specification
 
-Date: 2026-10-29. Checkout: D:/Projects/NexCraft, branch test.
+Date: 2026-10-29. Checkout: C:/path/to/NexCraft, branch test.
 Status: native Vue preview work; visual acceptance and rollout remain pending.
 This is the reviewed integration of the planning agent's draft.
 

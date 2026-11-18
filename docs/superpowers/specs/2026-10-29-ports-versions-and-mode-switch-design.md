@@ -1,7 +1,7 @@
 # Ports, versions, and mode switch — approved design
 
 Date: 2026-10-29. Status: approved for execution; all preview items approved.
-Repository: D:\Projects\NexCraft.
+Repository: C:\path\to\NexCraft.
 AGENTS.md was read; the user's actual path and explicit release restrictions override stale path/push instructions there.
 
 ## Scope and experience

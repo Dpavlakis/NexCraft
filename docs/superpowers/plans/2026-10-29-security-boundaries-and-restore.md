@@ -1,6 +1,6 @@
 # Security boundaries and restore implementation plan
 
-Date: 2026-10-29. Branch: `test`. Workspace: `D:\Projects\NexCraft`.
+Date: 2026-10-29. Branch: `test`. Workspace: `C:\path\to\NexCraft`.
 Design: `../specs/2026-10-29-security-boundaries-and-restore-design.md`.
 The user's “okay begin” authorizes execution; no additional design approval gate applies. All agents use gpt6.1sol only. The parent coordinates the four implementation workers and support work, and performs spec-compliance and code-quality review. No commit, push or deploy is authorized.
 

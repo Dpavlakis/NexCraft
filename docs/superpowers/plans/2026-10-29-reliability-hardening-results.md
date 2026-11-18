@@ -1,6 +1,6 @@
 # Reliability hardening — implementation results and publication status (audit #4)
 
-Date: 2026-10-29. Checkout: `D:/Projects/NexCraft`, branch `test`.
+Date: 2026-10-29. Checkout: `C:/path/to/NexCraft`, branch `test`.
 Status: implementation/review, local verification and #4 CI complete. Code `7d66bb8b` pushed to `test`; #4 CI passed all 390 tests and build/browser/image/runtime gates. Combined #3/#4 GHCR publication requested; completion unverified. Main is unchanged.
 Contract: [specification](../specs/2026-10-29-reliability-hardening.md). Execution record: [plan](2026-10-29-reliability-hardening.md).
 
@@ -41,8 +41,8 @@ Do not substitute #3's successful run for #4 validation. The historical 79/79 co
 
 Parent-reported helper outcome: PASS against the actual final compiled dist, using isolated Edge at 1440 light and 390 dark. Vue and login are true, page errors are zero, and all 14 assets return HTTP 200 in each case.
 
-- Report: `C:\Users\dimit\AppData\Local\Temp\nexcraft-production-smoke-VoRB1I\report.json`.
-- Actual final dist: `D:\Projects\NexCraft\frontend\node_modules\.cache\nexcraft-preview\reliability-production-1793302676896`.
+- Report: `C:\Users\example\AppData\Local\Temp\nexcraft-production-smoke-VoRB1I\report.json`.
+- Actual final dist: `C:\path\to\NexCraft\frontend\node_modules\.cache\nexcraft-preview\reliability-production-1793302676896`.
 
 This completes #4 local verification. Separate #4 CI run 40942055728 also passed actual shipping-image and hosted-Chrome checks; these outcomes are established by #4 evidence.
 

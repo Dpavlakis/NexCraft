@@ -8,11 +8,11 @@
 
 **Tech Stack:** Koa + TypeScript (panel, daemon, webpack), Vue 3 + Ant Design Vue 4 + vue-i18n (frontend, vue-tsc + vite).
 
-**Verification methodology:** This project uses build + type-check as the gate (no unit-test runner). Each task ends by building the affected package(s) and committing. Run from `D:\NexCraft` with the Node PATH prefix.
+**Verification methodology:** This project uses build + type-check as the gate (no unit-test runner). Each task ends by building the affected package(s) and committing. Run from `C:\path\to\NexCraft` with the Node PATH prefix.
 
 PATH prefix for every PowerShell command:
 ```
-$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location D:\NexCraft;
+$env:Path = "C:\Program Files\nodejs;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); Set-Location C:\path\to\NexCraft;
 ```
 Builds: `npm run build --prefix daemon` · `npm run build --prefix panel` · `npm run type-check --prefix frontend` · `npm run build --prefix frontend`.
 
